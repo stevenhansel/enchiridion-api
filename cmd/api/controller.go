@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/adjust/rmq/v4"
 	"github.com/cloudinary/cloudinary-go"
 	"github.com/cloudinary/cloudinary-go/api/uploader"
 	"github.com/labstack/echo/v4"
@@ -14,6 +14,7 @@ import (
 type Controller struct {
 	e   *echo.Echo
 	cld *cloudinary.Cloudinary
+	q   rmq.Connection
 }
 
 func handleExpirationTime(expirationTime int) {
@@ -41,22 +42,45 @@ func (c *Controller) Upload(ctx echo.Context) error {
 
 	res, err := c.cld.Upload.Upload(ctx.Request().Context(), f, uploader.UploadParams{})
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 
 	go handleExpirationTime(expirationTime)
 
 	// TODO: publish the message from rmq
+	queue, err := c.q.OpenQueue("device")
+	if err != nil {
+		return err
+	}
+
+	if err := queue.Publish("this is just a test payload"); err != nil {
+		return err
+	}
 
 	return ctx.JSON(http.StatusOK, map[string]interface{}{
 		"imageUrl": res.SecureURL,
 	})
 }
 
-func NewController(e *echo.Echo, cld *cloudinary.Cloudinary) *Controller {
+func (c *Controller) TestPublish(ctx echo.Context) error {
+	queue, err := c.q.OpenQueue("device")
+	if err != nil {
+		return err
+	}
+
+	if err := queue.Publish("this is just a test payload"); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]interface{}{
+		"status": true,
+	})
+}
+
+func NewController(e *echo.Echo, cld *cloudinary.Cloudinary, q *rmq.Connection) *Controller {
 	return &Controller{
 		e:   e,
 		cld: cld,
+		q:   *q,
 	}
 }
