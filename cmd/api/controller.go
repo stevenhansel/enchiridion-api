@@ -1,9 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/adjust/rmq/v4"
 	"github.com/cloudinary/cloudinary-go"
@@ -17,11 +18,24 @@ type Controller struct {
 	q   rmq.Connection
 }
 
-func handleExpirationTime(expirationTime int) {
-	duration := time.Duration(expirationTime) * time.Second
-	time.AfterFunc(duration, func() {
-		// TODO: handle expiration time, deleting the image in cloudinary + publishing a message to the queue
-	})
+type SyncJobPayload struct {
+	Operation string `json:"operation"`
+	URL       string `json:"imageUrl"`
+	Filename  string `json:"filename"`
+}
+
+type ExpirationJobPayload struct {
+	URL            string `json:"imageUrl"`
+	Filename       string `json:"filename"`
+	DeviceID       int    `json:"deviceId"`
+	ExpirationTime int    `json:"expirationTime"`
+}
+
+func getSyncQueueName(deviceID int) string {
+	return fmt.Sprintf("sync-device-%d", deviceID)
+}
+func getExpirationQueueName() string {
+	return "expiration-device"
 }
 
 func (c *Controller) Upload(ctx echo.Context) error {
@@ -35,6 +49,13 @@ func (c *Controller) Upload(ctx echo.Context) error {
 		return err
 	}
 
+	deviceID, err := strconv.Atoi(ctx.FormValue("deviceId"))
+	if err != nil {
+		return err
+	}
+
+	filename := ctx.FormValue("filename")
+
 	f, err := file.Open()
 	if err != nil {
 		return err
@@ -45,15 +66,39 @@ func (c *Controller) Upload(ctx echo.Context) error {
 		return err
 	}
 
-	go handleExpirationTime(expirationTime)
-
-	// TODO: publish the message from rmq
-	queue, err := c.q.OpenQueue("device")
+	syncQueue, err := c.q.OpenQueue(getSyncQueueName(deviceID))
 	if err != nil {
 		return err
 	}
 
-	if err := queue.Publish("this is just a test payload"); err != nil {
+	expirationQueue, err := c.q.OpenQueue(getExpirationQueueName())
+	if err != nil {
+		return err
+	}
+
+	syncJobPayload, err := json.Marshal(SyncJobPayload{
+		Operation: "append",
+		URL:       res.SecureURL,
+		Filename:  filename,
+	})
+	if err != nil {
+		return err
+	}
+
+	expirationJobPayload, err := json.Marshal(ExpirationJobPayload{
+		URL:            res.SecureURL,
+		Filename:       filename,
+		DeviceID:       deviceID,
+		ExpirationTime: expirationTime,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := syncQueue.Publish(string(syncJobPayload)); err != nil {
+		return err
+	}
+	if err := expirationQueue.Publish(string(expirationJobPayload)); err != nil {
 		return err
 	}
 
@@ -68,7 +113,7 @@ func (c *Controller) TestPublish(ctx echo.Context) error {
 		return err
 	}
 
-	if err := queue.Publish("this is just a test payload"); err != nil {
+	if err := queue.Publish("just a test payload"); err != nil {
 		return err
 	}
 
