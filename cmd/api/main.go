@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,7 +13,17 @@ import (
 )
 
 func main() {
-	config, err := NewConfiguration(".")
+	var environment Environment
+
+	flag.Var(
+		&environment,
+		"env",
+		"application environment, could be either (development|staging|production)",
+	)
+
+	flag.Parse()
+
+	config, err := NewConfiguration(environment, ".")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "err: %v\n", err)
 		os.Exit(1)
@@ -24,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	q, err := rmq.OpenConnection("producer", "tcp", "localhost:6379", 1, nil)
+	q, err := rmq.OpenConnection("producer", "tcp", config.REDIS_QUEUE_ADDR, 1, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "err: %v\n", err)
 		os.Exit(1)
