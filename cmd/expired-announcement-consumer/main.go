@@ -55,7 +55,7 @@ func main() {
 
 	flag.Parse()
 
-	config, err := config.NewConfiguration(environment, ".")
+	config, err := config.NewConfiguration(environment)
 	if err != nil {
 		panic(err)
 	}
