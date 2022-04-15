@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/adjust/rmq/v4"
+	"github.com/stevenhansel/enchridion-api/internal/config"
 )
 
 type SyncJobPayload struct {
@@ -43,10 +45,25 @@ const (
 )
 
 func main() {
+	var environment config.Environment
+
+	flag.Var(
+		&environment,
+		"env",
+		"application environment, could be either (development|staging|production)",
+	)
+
+	flag.Parse()
+
+	config, err := config.NewConfiguration(environment, ".")
+	if err != nil {
+		panic(err)
+	}
+
 	errChan := make(chan error, 10)
 	go logErrors(errChan)
 
-	connection, err := rmq.OpenConnection("consumer", "tcp", "localhost:6379", 1, errChan)
+	connection, err := rmq.OpenConnection("consumer", "tcp", config.RedisQueueAddr, 1, errChan)
 	if err != nil {
 		panic(err)
 	}
