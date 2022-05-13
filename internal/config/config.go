@@ -14,6 +14,8 @@ type Configuration struct {
 	CloudinaryApiSecret string `mapstructure:"CLOUDINARY_API_SECRET"`
 
 	RedisQueueAddr string `mapstructure:"REDIS_QUEUE_ADDR"`
+
+	POSTGRES_CONNECTION_URI string `mapstructure:"POSTGRES_CONNECTION_URI"`
 }
 
 func initializeDevelopmentConfig() error {

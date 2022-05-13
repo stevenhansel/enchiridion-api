@@ -1,7 +1,12 @@
 package presentation
 
-type Presentation struct{}
+type Presentation struct {
+	announcement AnnouncementUsecaseQuerier
 
-func New() *Presentation {
-	return &Presentation{}
+}
+
+func New(announcement AnnouncementUsecaseQuerier) *Presentation {
+	return &Presentation{
+		announcement: announcement,
+	}
 }
