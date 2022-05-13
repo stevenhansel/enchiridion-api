@@ -15,17 +15,17 @@ func New(env config.Environment) (*Container, error) {
 		return nil, err
 	}
 
-	repository, err := createRepositoryLayer()
+	repository, err := createRepositoryLayer(internal)
 	if err != nil {
 		return nil, err
 	}
 
-	usecase, err := createUsecaseLayer()
+	usecase, err := createUsecaseLayer(internal, repository)
 	if err != nil {
 		return nil, err
 	}
 
-	presentation, err := createPresentationLayer()
+	presentation, err := createPresentationLayer(internal, repository, usecase)
 	if err != nil {
 		return nil, err
 	}

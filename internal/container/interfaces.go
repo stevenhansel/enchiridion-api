@@ -12,9 +12,9 @@ type Presentation struct {
 	PresentationFloorDashboard        *floorDashboard.Presentation
 }
 
-func createPresentationLayer() (*Presentation, error) {
-	announcementDashboard := announcementDashboard.New()
-	deviceDashboard := deviceDashboard.New()
+func createPresentationLayer(internal *Internal, repository *Repository, usecase *Usecase) (*Presentation, error) {
+	announcementDashboard := announcementDashboard.New(usecase.UsecaseAnnouncement)
+	deviceDashboard := deviceDashboard.New(usecase.UsecaseDevice)
 	floorDashboard := floorDashboard.New()
 
 	return &Presentation{

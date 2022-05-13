@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -146,25 +148,35 @@ func (r *Repository) FindOneDetailed(ctx context.Context, id int) (*Announcement
 }
 
 type InsertAnnouncementParams struct {
-	Title    string
-	Media    string
-	Filename string
-	Duration int
-	Notes    string
+	Title     string
+	Media     string
+	Filename  string
+	Duration  int
+	Notes     string
+	DeviceIDs []int
 }
 
 func (r *Repository) Insert(ctx context.Context, params *InsertAnnouncementParams) error {
-	query := `
-		insert into "announcement"
-		(
-			"title",
-			"media",
-			"filename",
-			"duration",
-			"notes"
+	deviceIDs := strings.Trim(strings.Replace(fmt.Sprint(params.DeviceIDs), " ", ",", -1), "[]")
+
+	query := fmt.Sprintf(`
+		with result as (
+			insert into "announcement"
+			(
+				"title",
+				"media",
+				"filename",
+				"duration",
+				"notes"
+			)
+			values ($1, $2, $3, $4, $5)
+			returning "id"
 		)
-		values ($1, $2, $3, $4, $5)
-	`
+		insert into "device_announcement" ("announcement_id", "device_id")
+		select result.id, unnest('{%s}'::int[]) from result
+	`, deviceIDs)
+
+	fmt.Println("deviceIDS:", deviceIDs)
 
 	if _, err := r.db.Exec(
 		ctx,

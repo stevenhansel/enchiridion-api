@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
-	"time"
 
 	"github.com/cloudinary/cloudinary-go/api/uploader"
 
@@ -34,10 +33,11 @@ func (u *Usecase) AnnouncementDetail(ctx context.Context, id int) (*announcement
 }
 
 type CreateAnnouncementParams struct {
-	Title    string
-	Media    *multipart.FileHeader
-	Duration int
-	Notes    string
+	Title     string
+	Media     *multipart.FileHeader
+	Duration  int
+	Notes     string
+	DeviceIDs []int
 }
 
 func (u *Usecase) CreateAnnouncement(ctx context.Context, params *CreateAnnouncementParams) error {
@@ -51,13 +51,14 @@ func (u *Usecase) CreateAnnouncement(ctx context.Context, params *CreateAnnounce
 		return err
 	}
 
-	duration := int(time.Hour * time.Duration(24*params.Duration))
+	duration := 60 * 60 * 24 * params.Duration
 	err = u.db.Insert(ctx, &announcementRepository.InsertAnnouncementParams{
-		Title:    params.Title,
-		Media:    res.SecureURL,
-		Filename: res.OriginalFilename,
-		Duration: duration,
-		Notes:    params.Notes,
+		Title:     params.Title,
+		Media:     res.SecureURL,
+		Filename:  res.OriginalFilename,
+		Duration:  duration,
+		Notes:     params.Notes,
+		DeviceIDs: params.DeviceIDs,
 	})
 	if err != nil {
 		return err
