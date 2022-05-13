@@ -1,5 +1,4 @@
 #!/bin/sh
-#!/bin/bash
 docker run \
   --name enchridion-redis \
   --volume enchridion-redis-data:/data \
