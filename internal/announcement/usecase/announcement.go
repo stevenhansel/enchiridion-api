@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
+	"strings"
 
 	"github.com/cloudinary/cloudinary-go/api/uploader"
 
@@ -52,10 +53,13 @@ func (u *Usecase) CreateAnnouncement(ctx context.Context, params *CreateAnnounce
 	}
 
 	duration := 60 * 60 * 24 * params.Duration
+	contentType := params.Media.Header.Get("Content-Type")
+	fileExt := strings.Split(contentType, "/")[1]
+
 	err = u.db.Insert(ctx, &announcementRepository.InsertAnnouncementParams{
 		Title:     params.Title,
 		Media:     res.SecureURL,
-		Filename:  res.OriginalFilename,
+		Filename:  fmt.Sprintf("%s.%s", res.AssetID, fileExt),
 		Duration:  duration,
 		Notes:     params.Notes,
 		DeviceIDs: params.DeviceIDs,

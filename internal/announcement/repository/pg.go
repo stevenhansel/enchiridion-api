@@ -176,8 +176,6 @@ func (r *Repository) Insert(ctx context.Context, params *InsertAnnouncementParam
 		select result.id, unnest('{%s}'::int[]) from result
 	`, deviceIDs)
 
-	fmt.Println("deviceIDS:", deviceIDs)
-
 	if _, err := r.db.Exec(
 		ctx,
 		query,
