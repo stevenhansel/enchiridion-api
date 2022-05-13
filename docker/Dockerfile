@@ -17,6 +17,7 @@ RUN go mod verify
 
 COPY . .
 RUN make build
+RUN make migration/build
 
 # Stage 1
 FROM alpine:latest
@@ -27,6 +28,8 @@ WORKDIR /app/
 
 COPY --from=build /app/bin/api .
 COPY --from=build /app/bin/expired-announcement-consumer .
+COPY --from=build /app/bin/migration .
+COPY --from=build /app/database/migrations ./database/migrations/
 COPY --from=build /app/docker/entrypoint.sh . 
 
 RUN ls -la
