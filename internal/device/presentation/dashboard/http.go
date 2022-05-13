@@ -3,7 +3,6 @@ package presentation
 import (
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -23,11 +22,11 @@ type listDeviceResponse struct {
 
 type listDeviceContent struct {
 	ID          int       `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
+	// Name        string    `json:"name"`
+	// Description string    `json:"description"`
 	MachineID   string    `json:"machineId"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	// CreatedAt   time.Time `json:"createdAt"`
+	// UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 func (p *Presentation) listDevice(c echo.Context) error {
@@ -42,11 +41,11 @@ func (p *Presentation) listDevice(c echo.Context) error {
 	contents := make([]listDeviceContent, len(devices))
 	for i := 0; i < len(devices); i++ {
 		contents[i].ID = devices[i].ID
-		contents[i].Name = devices[i].Name
-		contents[i].Description = devices[i].Description
+		// contents[i].Name = devices[i].Name
+		// contents[i].Description = devices[i].Description
 		contents[i].MachineID = devices[i].MachineID
-		contents[i].CreatedAt = devices[i].CreatedAt
-		contents[i].UpdatedAt = devices[i].UpdatedAt
+		// contents[i].CreatedAt = devices[i].CreatedAt
+		// contents[i].UpdatedAt = devices[i].UpdatedAt
 	}
 
 	return c.JSON(http.StatusOK, &listDeviceResponse{Contents: contents})

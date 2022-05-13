@@ -3,18 +3,17 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
 )
 
 type Device struct {
 	ID          int       `db:"id"`
-	Name        string    `db:"name"`
-	Description string    `db:"description"`
+	// Name        string    `db:"name"`
+	// Description string    `db:"description"`
 	MachineID   string    `db:"machine_id"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	// CreatedAt   time.Time `db:"created_at"`
+	// UpdatedAt   time.Time `db:"updated_at"`
 }
 
 func (r *Repository) Find(ctx context.Context) ([]*Device, error) {
@@ -23,11 +22,7 @@ func (r *Repository) Find(ctx context.Context) ([]*Device, error) {
 	query := `
 		select
 			"id",
-			"name",
-			"description",
 			"machine_id"
-			"created_at",
-			"updated_at"
 		from "device"
 	`
 
@@ -36,7 +31,7 @@ func (r *Repository) Find(ctx context.Context) ([]*Device, error) {
 		return nil, err
 	}
 
-	if err := pgxscan.ScanOne(&devices, rows); err != nil {
+	if err := pgxscan.ScanAll(&devices, rows); err != nil {
 		return nil, err
 	}
 
