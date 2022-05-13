@@ -32,13 +32,9 @@ func (s *Server) registerRoutes(e *echo.Echo) {
 		return c.String(http.StatusOK, "Enchridion API; status: healthy")
 	})
 
-	announcementDashboardGroup := e.Group("/dashboard")
-	deviceDashboardGroup := e.Group("/dashboard")
-	floorDashboardGroup := e.Group("/dashboard")
-
-	s.PresentationAnnouncementDashboard.Attach(announcementDashboardGroup)
-	s.PresentationDeviceDashboard.Attach(deviceDashboardGroup)
-	s.PresentationFloorDashboard.Attach(floorDashboardGroup)
+	s.PresentationAnnouncementDashboard.Attach(e.Group("/dashboard"))
+	s.PresentationDeviceDashboard.Attach(e.Group("/dashboard"))
+	s.PresentationFloorDashboard.Attach(e.Group("/dashboard"))
 }
 
 func (s *Server) Serve() {
