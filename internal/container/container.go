@@ -1,5 +1,7 @@
 package container
 
+import "github.com/stevenhansel/enchridion-api/internal/config"
+
 type Container struct {
 	Internal
 	Repository
@@ -7,8 +9,8 @@ type Container struct {
 	Presentation
 }
 
-func New() (*Container, error) {
-	internal, err := createInternalLayer()
+func New(env config.Environment) (*Container, error) {
+	internal, err := createInternalLayer(env)
 	if err != nil {
 		return nil, err
 	}
@@ -29,9 +31,9 @@ func New() (*Container, error) {
 	}
 
 	return &Container{
-		Internal: internal,
-		Repository: repository,
-		Usecase: usecase,
-		Presentation: presentation,
+		Internal: *internal,
+		Repository: *repository,
+		Usecase: *usecase,
+		Presentation: *presentation,
 	}, nil
 }

@@ -6,16 +6,13 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/adjust/rmq/v4"
-	"github.com/cloudinary/cloudinary-go"
 	"github.com/cloudinary/cloudinary-go/api/uploader"
 	"github.com/labstack/echo/v4"
+	"github.com/stevenhansel/enchridion-api/internal/container"
 )
 
 type Controller struct {
-	e   *echo.Echo
-	cld *cloudinary.Cloudinary
-	q   rmq.Connection
+	*container.Container
 }
 
 type SyncJobPayload struct {
@@ -61,17 +58,17 @@ func (c *Controller) Upload(ctx echo.Context) error {
 		return err
 	}
 
-	res, err := c.cld.Upload.Upload(ctx.Request().Context(), f, uploader.UploadParams{})
+	res, err := c.Cloudinary.Upload.Upload(ctx.Request().Context(), f, uploader.UploadParams{})
 	if err != nil {
 		return err
 	}
 
-	syncQueue, err := c.q.OpenQueue(getSyncQueueName(deviceID))
+	syncQueue, err := c.Rmq.OpenQueue(getSyncQueueName(deviceID))
 	if err != nil {
 		return err
 	}
 
-	expirationQueue, err := c.q.OpenQueue(getExpirationQueueName())
+	expirationQueue, err := c.Rmq.OpenQueue(getExpirationQueueName())
 	if err != nil {
 		return err
 	}
@@ -108,7 +105,7 @@ func (c *Controller) Upload(ctx echo.Context) error {
 }
 
 func (c *Controller) TestPublish(ctx echo.Context) error {
-	queue, err := c.q.OpenQueue("device")
+	queue, err := c.Rmq.OpenQueue("device")
 	if err != nil {
 		return err
 	}
@@ -122,10 +119,6 @@ func (c *Controller) TestPublish(ctx echo.Context) error {
 	})
 }
 
-func NewController(e *echo.Echo, cld *cloudinary.Cloudinary, q *rmq.Connection) *Controller {
-	return &Controller{
-		e:   e,
-		cld: cld,
-		q:   *q,
-	}
+func NewController(container *container.Container) *Controller {
+	return &Controller{container}
 }

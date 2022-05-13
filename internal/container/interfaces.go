@@ -1,7 +1,17 @@
 package container
 
-type Presentation struct {}
+import (
+	announcementDashboard "github.com/stevenhansel/enchridion-api/internal/announcement/presentation/dashboard"
+)
 
-func createPresentationLayer() (Presentation, error) {
-	return Presentation{}, nil
+type Presentation struct {
+	PresentationAnnouncementDashboard *announcementDashboard.Presentation
+}
+
+func createPresentationLayer() (*Presentation, error) {
+	announcementDashboard := announcementDashboard.New()
+
+	return &Presentation{
+		PresentationAnnouncementDashboard: announcementDashboard,
+	}, nil
 }

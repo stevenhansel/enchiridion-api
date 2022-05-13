@@ -43,7 +43,7 @@ func initializeProductionConfig(config *Configuration) error {
 	return nil
 }
 
-func NewConfiguration(environment Environment) (*Configuration, error) {
+func New(environment Environment) (*Configuration, error) {
 	var config Configuration
 
 	if environment == DEVELOPMENT {
