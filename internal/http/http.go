@@ -33,8 +33,12 @@ func (s *Server) registerRoutes(e *echo.Echo) {
 	})
 
 	announcementDashboardGroup := e.Group("/dashboard")
+	deviceDashboardGroup := e.Group("/dashboard")
+	floorDashboardGroup := e.Group("/dashboard")
 
 	s.PresentationAnnouncementDashboard.Attach(announcementDashboardGroup)
+	s.PresentationDeviceDashboard.Attach(deviceDashboardGroup)
+	s.PresentationFloorDashboard.Attach(floorDashboardGroup)
 }
 
 func (s *Server) Serve() {
