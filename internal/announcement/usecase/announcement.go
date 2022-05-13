@@ -71,13 +71,18 @@ func (u *Usecase) CreateAnnouncement(ctx context.Context, params *CreateAnnounce
 	return nil
 }
 
-func (u *Usecase) UpdateAnnouncementApproval(ctx context.Context, id int, approve bool) error {
-	announcement, err := u.db.FindOne(ctx, id)
+type UpdateAnnouncementApprovalParams struct {
+	AnnouncementID int
+	Approve        bool `json:"approve"`
+}
+
+func (u *Usecase) UpdateAnnouncementApproval(ctx context.Context, params *UpdateAnnouncementApprovalParams) error {
+	announcement, err := u.db.FindOne(ctx, params.AnnouncementID)
 	if err != nil {
 		return err
 	}
 
-	devices, err := u.device.ListDevicesByAnnouncementID(ctx, id)
+	devices, err := u.device.ListDevicesByAnnouncementID(ctx, params.AnnouncementID)
 	if err != nil {
 		return err
 	}
@@ -88,13 +93,13 @@ func (u *Usecase) UpdateAnnouncementApproval(ctx context.Context, id int, approv
 
 	var status announcementRepository.AnnouncementStatus
 
-	if approve {
+	if params.Approve {
 		status = announcementRepository.WaitingForSync
 	} else {
 		status = announcementRepository.Rejected
 	}
 
-	if err := u.db.UpdateApprovalStatus(ctx, id, status); err != nil {
+	if err := u.db.UpdateApprovalStatus(ctx, params.AnnouncementID, status); err != nil {
 		return err
 	}
 
@@ -134,6 +139,7 @@ func (u *Usecase) UpdateAnnouncementApproval(ctx context.Context, id int, approv
 		if err := syncQueue.Publish(string(syncJobPayload)); err != nil {
 			return err
 		}
+
 		if err := expirationQueue.Publish(string(expirationJobPayload)); err != nil {
 			return err
 		}

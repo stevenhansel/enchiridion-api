@@ -32,8 +32,8 @@ type listAnnouncementContent struct {
 	Status         announcementRepository.AnnouncementStatus `json:"status"`
 	Notes          string                                    `json:"notes"`
 	Duration       int                                       `json:"duration"`
-	RejectionNotes string                                    `json:"rejectionNotes"`
-	ApprovedAt     *time.Time                                `json:"approvedAt"`
+	// RejectionNotes *string                                   `json:"rejectionNotes"`
+	// ApprovedAt     *time.Time                                `json:"approvedAt"`
 	CreatedAt      time.Time                                 `json:"createdAt"`
 	UpdatedAt      time.Time                                 `json:"updatedAt"`
 }
@@ -56,8 +56,8 @@ func (p *Presentation) listAnnouncement(c echo.Context) error {
 		contents[i].Status = announcements[i].Status
 		contents[i].Notes = announcements[i].Notes
 		contents[i].Duration = announcements[i].Duration
-		contents[i].RejectionNotes = announcements[i].RejectionNotes
-		contents[i].ApprovedAt = announcements[i].ApprovedAt
+		// contents[i].RejectionNotes = announcements[i].RejectionNotes
+		// contents[i].ApprovedAt = announcements[i].ApprovedAt
 		contents[i].CreatedAt = announcements[i].CreatedAt
 		contents[i].UpdatedAt = announcements[i].UpdatedAt
 	}
@@ -111,5 +111,23 @@ func (p *Presentation) createAnnouncement(c echo.Context) error {
 }
 
 func (p *Presentation) updateAnnouncementApproval(c echo.Context) error {
-	panic("not implemented")
+	ctx := c.Request().Context()
+
+	params := &announcementUsecase.UpdateAnnouncementApprovalParams{}
+	if err := c.Bind(params); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Something went wrong when parsing the input")
+	}
+	announcementID, err := strconv.Atoi(c.Param("announcementId"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Announcement ID invalid")
+	}
+
+	params.AnnouncementID = announcementID
+
+	if err := p.announcement.UpdateAnnouncementApproval(ctx, params); err != nil {
+		log.Println(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Something went wrong")
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }

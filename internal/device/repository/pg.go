@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -59,11 +60,12 @@ func (r *Repository) Insert(ctx context.Context, MachineID string) error {
 }
 
 type BulkFindAnnouncementByID struct {
-	ID          int       `db:"device_id"`
-	Name        string    `db:"device_name"`
-	Description string    `db:"device_description"`
-	CreatedAt   time.Time `db:"device_created_at"`
-	UpdatedAt   time.Time `db:"device_updated_at"`
+	ID int `db:"device_id"`
+	// Name        string    `db:"device_name"`
+	// Description string    `db:"device_description"`
+	// MachineID string    `db:"device_machine_id"`
+	// CreatedAt time.Time `db:"device_created_at"`
+	// UpdatedAt time.Time `db:"device_updated_at"`
 }
 
 func (r *Repository) FindByAnnouncementID(ctx context.Context, announcementID int) ([]*Device, error) {
@@ -71,11 +73,7 @@ func (r *Repository) FindByAnnouncementID(ctx context.Context, announcementID in
 
 	query := `
 		select
-			"device"."id" as "device_id",
-			"device"."name" as "device_name",
-			"device"."description" as "device_description",
-			"device"."created_at" as "device_created_at",
-			"device"."updated_at" as "device_updated_at"
+			"device"."id" as "device_id"
 		from "device_announcement"
 		join "device" on "device"."id" = "device_announcement"."device_id"
 		where "device_announcement"."announcement_id" = $1
@@ -90,12 +88,20 @@ func (r *Repository) FindByAnnouncementID(ctx context.Context, announcementID in
 	}
 
 	devices := make([]*Device, len(bulk))
+	fmt.Println("bulk: ", bulk)
+	fmt.Println("len", len(bulk))
+	fmt.Println("bulk[0]", bulk[0].ID)
+	fmt.Println("len devices", len(devices))
+	fmt.Println("devices", devices)
 	for i := 0; i < len(bulk); i++ {
+		devices[i] = &Device{}
+
 		devices[i].ID = bulk[i].ID
-		devices[i].Name = bulk[i].Name
-		devices[i].Description = bulk[i].Description
-		devices[i].CreatedAt = bulk[i].CreatedAt
-		devices[i].UpdatedAt = bulk[i].UpdatedAt
+		// devices[i].Name = bulk[i].Name
+		// devices[i].Description = bulk[i].Description
+		// devices[i].MachineID = bulk[i].MachineID
+		// devices[i].CreatedAt = bulk[i].CreatedAt
+		// devices[i].UpdatedAt = bulk[i].UpdatedAt
 	}
 
 	return devices, nil

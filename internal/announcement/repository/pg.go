@@ -21,17 +21,17 @@ var (
 )
 
 type Announcement struct {
-	ID             int                `db:"id"`
-	Title          string             `db:"title"`
-	Media          string             `db:"media"`
-	Filename       string             `db:"filename"`
-	Status         AnnouncementStatus `db:"status"`
-	Notes          string             `db:"notes"`
-	Duration       int                `db:"duration"`
-	RejectionNotes string             `db:"rejection_notes"`
-	ApprovedAt     *time.Time         `db:"approved_at"`
-	CreatedAt      time.Time          `db:"created_at"`
-	UpdatedAt      time.Time          `db:"updated_at"`
+	ID       int                `db:"id"`
+	Title    string             `db:"title"`
+	Media    string             `db:"media"`
+	Filename string             `db:"filename"`
+	Status   AnnouncementStatus `db:"status"`
+	Notes    string             `db:"notes"`
+	Duration int                `db:"duration"`
+	// RejectionNotes *string             `db:"rejection_notes"`
+	// ApprovedAt     *time.Time         `db:"approved_at"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 	// UserID int `db:"user_id"`
 }
 
@@ -47,8 +47,6 @@ func (r *Repository) Find(ctx context.Context) ([]*Announcement, error) {
 			"status", 
 			"notes", 
 			"duration", 
-			"rejection_notes", 
-			"approved_at", 
 			"created_at", 
 			"updated_at"
 		from "announcement"
@@ -67,7 +65,7 @@ func (r *Repository) Find(ctx context.Context) ([]*Announcement, error) {
 }
 
 func (r *Repository) FindOne(ctx context.Context, id int) (*Announcement, error) {
-	var announcement *Announcement
+	var announcement Announcement
 
 	query := `
 		select 
@@ -78,15 +76,13 @@ func (r *Repository) FindOne(ctx context.Context, id int) (*Announcement, error)
 			"status", 
 			"notes", 
 			"duration", 
-			"rejection_notes", 
-			"approved_at", 
 			"created_at", 
 			"updated_at"
 		from "announcement"
 		where "id" = $1
 	`
 
-	rows, err := r.db.Query(ctx, query)
+	rows, err := r.db.Query(ctx, query, id)
 	if err != nil {
 		return nil, err
 	}
@@ -95,21 +91,21 @@ func (r *Repository) FindOne(ctx context.Context, id int) (*Announcement, error)
 		return nil, err
 	}
 
-	return announcement, nil
+	return &announcement, nil
 }
 
 type AnnouncementDetail struct {
-	ID             int                `db:"announcement_id"`
-	Title          string             `db:"announcement_title"`
-	Media          string             `db:"announcement_media"`
-	Filename       string             `db:"announcement_filename"`
-	Status         AnnouncementStatus `db:"announcement_status"`
-	Notes          string             `db:"announcement_notes"`
-	Duration       int                `db:"announcement_duration"`
-	RejectionNotes string             `db:"announcement_rejection_notes"`
-	ApprovedAt     *time.Time         `db:"announcement_approved_at"`
-	CreatedAt      time.Time          `db:"announcement_created_at"`
-	UpdatedAt      time.Time          `db:"announcement_updated_at"`
+	ID       int                `db:"announcement_id"`
+	Title    string             `db:"announcement_title"`
+	Media    string             `db:"announcement_media"`
+	Filename string             `db:"announcement_filename"`
+	Status   AnnouncementStatus `db:"announcement_status"`
+	Notes    string             `db:"announcement_notes"`
+	Duration int                `db:"announcement_duration"`
+	// RejectionNotes string             `db:"announcement_rejection_notes"`
+	// ApprovedAt     *time.Time         `db:"announcement_approved_at"`
+	CreatedAt time.Time `db:"announcement_created_at"`
+	UpdatedAt time.Time `db:"announcement_updated_at"`
 }
 
 // TODO: not completed
@@ -124,8 +120,6 @@ func (r *Repository) FindOneDetailed(ctx context.Context, id int) (*Announcement
 			"announcement"."status" as "announcement_status", 
 			"announcement"."notes" as "announcement_notes", 
 			"announcement"."duration" as "announcement_duration", 
-			"announcement"."rejection_notes" as "announcement_rejection_notes", 
-			"announcement"."approved_at" as "announcement_approved_at", 
 			"announcement"."created_at" as "announcement_created_at", 
 			"announcement"."updated_at" as "announcement_updated_at",
 		from "announcement"

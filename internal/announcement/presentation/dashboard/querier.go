@@ -10,5 +10,5 @@ import (
 type AnnouncementUsecaseQuerier interface {
 	ListAnnouncement(ctx context.Context) ([]*announcementRepository.Announcement, error)
 	CreateAnnouncement(ctx context.Context, params *announcementUsecase.CreateAnnouncementParams) error
-	UpdateAnnouncementApproval(ctx context.Context, id int, approve bool) error
+	UpdateAnnouncementApproval(ctx context.Context, params *announcementUsecase.UpdateAnnouncementApprovalParams) error
 }
