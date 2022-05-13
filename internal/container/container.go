@@ -1,6 +1,6 @@
 package container
 
-import "github.com/stevenhansel/enchridion-api/internal/config"
+import "github.com/stevenhansel/enchiridion-api/internal/config"
 
 type Container struct {
 	Internal

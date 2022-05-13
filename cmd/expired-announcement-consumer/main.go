@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/adjust/rmq/v4"
-	"github.com/stevenhansel/enchridion-api/internal/config"
+	"github.com/stevenhansel/enchiridion-api/internal/config"
 )
 
 type SyncJobPayload struct {

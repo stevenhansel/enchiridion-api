@@ -12,7 +12,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 
-	"github.com/stevenhansel/enchridion-api/internal/container"
+	"github.com/stevenhansel/enchiridion-api/internal/container"
 )
 
 type Server struct {

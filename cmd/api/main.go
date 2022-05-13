@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/stevenhansel/enchridion-api/internal/config"
-	"github.com/stevenhansel/enchridion-api/internal/container"
-	internalHttp "github.com/stevenhansel/enchridion-api/internal/http"
+	"github.com/stevenhansel/enchiridion-api/internal/config"
+	"github.com/stevenhansel/enchiridion-api/internal/container"
+	internalHttp "github.com/stevenhansel/enchiridion-api/internal/http"
 )
 
 func main() {

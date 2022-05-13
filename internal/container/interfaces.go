@@ -1,9 +1,9 @@
 package container
 
 import (
-	announcementDashboard "github.com/stevenhansel/enchridion-api/internal/announcement/presentation/dashboard"
-	deviceDashboard "github.com/stevenhansel/enchridion-api/internal/device/presentation/dashboard"
-	floorDashboard "github.com/stevenhansel/enchridion-api/internal/floor/presentation/dashboard"
+	announcementDashboard "github.com/stevenhansel/enchiridion-api/internal/announcement/presentation/dashboard"
+	deviceDashboard "github.com/stevenhansel/enchiridion-api/internal/device/presentation/dashboard"
+	floorDashboard "github.com/stevenhansel/enchiridion-api/internal/floor/presentation/dashboard"
 )
 
 type Presentation struct {

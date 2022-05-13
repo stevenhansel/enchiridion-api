@@ -8,7 +8,7 @@ import (
 
 	"github.com/cloudinary/cloudinary-go/api/uploader"
 	"github.com/labstack/echo/v4"
-	"github.com/stevenhansel/enchridion-api/internal/container"
+	"github.com/stevenhansel/enchiridion-api/internal/container"
 )
 
 type Controller struct {

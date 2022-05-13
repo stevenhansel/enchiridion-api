@@ -4,7 +4,7 @@ import (
 	"github.com/adjust/rmq/v4"
 	"github.com/cloudinary/cloudinary-go"
 
-	"github.com/stevenhansel/enchridion-api/internal/config"
+	"github.com/stevenhansel/enchiridion-api/internal/config"
 )
 
 type Internal struct {
