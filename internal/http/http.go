@@ -25,6 +25,7 @@ func (s *Server) registerMiddleware(e *echo.Echo) {
 		StackSize: 1 << 10, // 1 KB
 		LogLevel:  log.ERROR,
 	}))
+	e.Use(middleware.CORS())
 }
 
 func (s *Server) registerRoutes(e *echo.Echo) {
