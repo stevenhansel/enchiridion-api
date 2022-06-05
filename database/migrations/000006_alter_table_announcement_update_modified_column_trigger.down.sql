@@ -1,1 +1,0 @@
-drop trigger update_announcement_updated_at on announcement
