@@ -15,6 +15,7 @@ pub struct InsertUserParams<'a> {
 pub trait UserRepositoryInterface: Interface {
     async fn create<'a>(&self, params: &'a InsertUserParams) -> Result<i32, sqlx::Error>;
     async fn find_one_by_id(&self, id: i32) -> Result<User, sqlx::Error>;
+    async fn find_one_by_email(&self, email: String) -> Result<User, sqlx::Error>;
 }
 
 #[derive(Component)]
@@ -51,6 +52,21 @@ impl UserRepositoryInterface for UserRepository {
             where id = $1
             "#,
             id
+        )
+        .fetch_one(&self._db)
+        .await?;
+
+        Ok(user)
+    }
+
+    async fn find_one_by_email(&self, email: String) -> Result<User, sqlx::Error> {
+        let user = sqlx::query_as!(
+            User,
+            r#"
+            select id, name, email, password, registration_reason from "user"
+            where email = $1
+            "#,
+            email,
         )
         .fetch_one(&self._db)
         .await?;

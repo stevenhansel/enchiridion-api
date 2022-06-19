@@ -4,10 +4,7 @@ use argon2::{password_hash::PasswordHasher, Argon2};
 use async_trait::async_trait;
 use shaku::{Component, Interface};
 
-use crate::user::{
-    domain::User,
-    repository::{InsertUserParams, UserRepositoryInterface},
-};
+use crate::user::{domain::User, repository::InsertUserParams, service::UserServiceInterface};
 
 pub struct RegisterParams {
     pub name: String,
@@ -25,7 +22,7 @@ pub trait AuthServiceInterface: Interface {
 #[shaku(interface = AuthServiceInterface)]
 pub struct AuthService {
     #[shaku(inject)]
-    _user_repository: Arc<dyn UserRepositoryInterface>,
+    _user_service: Arc<dyn UserServiceInterface>,
 }
 
 #[async_trait]
@@ -46,11 +43,11 @@ impl AuthServiceInterface for AuthService {
             password,
         };
 
-        let user_id = match self._user_repository.create(&params).await {
+        let user_id = match self._user_service.create(&params).await {
             Ok(id) => id,
             Err(e) => return Err(e.to_string()),
         };
-        let user = match self._user_repository.find_one_by_id(user_id).await {
+        let user = match self._user_service.get_user_by_id(user_id).await {
             Ok(user) => user,
             Err(e) => return Err(e.to_string()),
         };
