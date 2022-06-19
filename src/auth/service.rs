@@ -28,6 +28,15 @@ pub struct AuthService {
 #[async_trait]
 impl AuthServiceInterface for AuthService {
     async fn register(&self, params: RegisterParams) -> Result<User, String> {
+        match self
+            ._user_service
+            .get_user_by_email(params.email.clone())
+            .await
+        {
+            Ok(_) => return Err(String::from("Email already exists")),
+            _ => (),
+        };
+
         let hash = match Argon2::default()
             .hash_password(params.password.as_bytes(), "secretsecretsecretsecret")
         {
