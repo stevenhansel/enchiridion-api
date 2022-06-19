@@ -9,9 +9,13 @@ use shaku_actix::Inject;
 use sqlx::{Pool, Postgres};
 
 mod container;
-use container::{
-    AuthServiceInterface, Container, RegisterParams, UserRepository, UserRepositoryParameters,
-};
+use container::container::Container;
+
+mod auth;
+mod user;
+
+use auth::service::{AuthServiceInterface, RegisterParams};
+use user::repository::{UserRepository, UserRepositoryParameters};
 
 async fn health_check() -> impl Responder {
     HttpResponse::Ok()
@@ -32,7 +36,13 @@ struct RegisterResponse {
     id: i32,
     name: String,
     email: String,
-    reason: String,
+    registration_reason: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ErrorResponse {
+    message: String,
 }
 
 async fn register(
@@ -49,11 +59,20 @@ async fn register(
         Ok(user) => user,
         Err(e) => {
             println!("{}", e.to_string());
-            return HttpResponse::InternalServerError();
+            return HttpResponse::InternalServerError().json(ErrorResponse {
+                message: e.to_string(),
+            });
         }
     };
 
-    HttpResponse::Created()
+    let response = RegisterResponse {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        registration_reason: user.registration_reason,
+    };
+
+    HttpResponse::Created().json(response)
 }
 
 pub fn run(listener: TcpListener, pool: Pool<Postgres>) -> Result<Server, std::io::Error> {
