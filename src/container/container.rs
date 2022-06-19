@@ -5,7 +5,7 @@ use crate::user::repository::UserRepository;
 
 module! {
     pub Container {
-        components = [UserRepository, AuthService],
+        components = [AuthService, UserRepository],
         providers = []
     }
 }

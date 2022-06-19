@@ -1,8 +1,12 @@
 use std::sync::Arc;
 
-use argon2::{
-    password_hash::{PasswordHash, PasswordHasher},
-    Argon2,
+use argon2::{password_hash::PasswordHasher, Argon2};
+use async_trait::async_trait;
+use shaku::{Component, Interface};
+
+use crate::user::{
+    domain::User,
+    repository::{InsertUserParams, UserRepositoryInterface},
 };
 
 pub struct RegisterParams {

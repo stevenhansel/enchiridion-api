@@ -1,9 +1,14 @@
+#![allow(dead_code)]
 use std::net::TcpListener;
 
 use enchiridion_api::run;
 use sqlx::PgPool;
 
+// Mod declarations
+mod auth;
 mod container;
+mod http;
+mod user;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {

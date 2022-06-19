@@ -1,19 +1,13 @@
 use async_trait::async_trait;
-use shaku::{module, Component, Interface};
+use shaku::{Component, Interface};
 use sqlx::{Pool, Postgres};
 
-pub struct InsertUserParams<'a> {
-    name: String,
-    email: String,
-    password: &'a [u8],
-    registration_reason: String,
-}
+use super::domain::User;
 
-pub struct User {
-    pub id: i32,
+pub struct InsertUserParams<'a> {
     pub name: String,
     pub email: String,
-    password: Vec<u8>,
+    pub password: &'a [u8],
     pub registration_reason: String,
 }
 
