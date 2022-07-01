@@ -1,0 +1,430 @@
+{
+  "uuid": "c909d368-d2be-46f5-9235-f7516ae9fea2",
+  "lastMigration": 20,
+  "name": "Enchiridion API",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 3001,
+  "hostname": "0.0.0.0",
+  "routes": [
+    {
+      "uuid": "5cae6507-ddad-4c60-9902-662559cffdbf",
+      "documentation": "Login API using Email & Password",
+      "method": "post",
+      "endpoint": "dashboard/v1/auth/login",
+      "responses": [
+        {
+          "uuid": "ea5a39ce-f2e9-429a-afdf-5db1ee254a6e",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Success",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        },
+        {
+          "uuid": "63bc3ba9-ae2c-4489-8dde-56c132686de5",
+          "body": "",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "VALIDATION_ERROR",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "f52776d9-60fe-4d7c-a03f-c595d1489bc3",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "AUTHENTICATION_FAILED",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "4243831e-863f-4a1e-a82c-1864a228b2db",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 429,
+          "label": "AUTHENTICATION_TOO_MANY_REQUESTS",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "041f43fe-c9f7-4d95-bdc5-d31c487fc924",
+      "documentation": "Register API",
+      "method": "post",
+      "endpoint": "dashboard/v1/auth/register",
+      "responses": [
+        {
+          "uuid": "71e53332-f8d8-465d-a21d-45fb52f71279",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "43906b8c-33f1-4986-a1c6-5936e1b7a7be",
+      "documentation": "Send Verification Link to Email API (with JWT Payload)",
+      "method": "get",
+      "endpoint": "dashboard/v1/auth/verification/:userId",
+      "responses": [
+        {
+          "uuid": "10de2fd7-8eae-444c-80d3-631d4654d7b4",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "64d41090-2745-45a0-9fbe-b7fe7923fd9b",
+      "documentation": "API for Confirm Email Verification using JWT",
+      "method": "put",
+      "endpoint": "dashboard/v1/auth/verification",
+      "responses": [
+        {
+          "uuid": "66f37573-0806-44a9-8a8e-a54f7be192a9",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "08a112ed-77c2-4b33-932b-d132bb8aa917",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "dashboard/v1/auth/forgot-password",
+      "responses": [
+        {
+          "uuid": "3d4a2242-7dc1-42f2-9fc6-5b29501ad082",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "00978d55-8173-49b8-a706-d669b76ef922",
+      "documentation": "",
+      "method": "put",
+      "endpoint": "dashboard/v1/auth/reset-password",
+      "responses": [
+        {
+          "uuid": "6dfa4a05-d5b8-41b7-9c00-bf973567d473",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "15d4d81f-b59a-4f3e-be34-ba0f9a142bef",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "dashboard/v1/auth/logout",
+      "responses": [
+        {
+          "uuid": "08381ae9-b994-4aac-bb87-ca439fcb69e3",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "1295987e-dcb8-4c1b-b047-0dbb67e816be",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "dashboard/v1/announcements",
+      "responses": [
+        {
+          "uuid": "998e2a68-35f3-4556-9a21-b016043c8c31",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "43d920aa-72b4-4003-9ca0-e0880ebf50e4",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "dashboard/v1/announcements/:announcementId",
+      "responses": [
+        {
+          "uuid": "d479750c-fe4e-4384-bc40-6aef0e42ce5c",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "113cea6b-65d1-4a81-a6f7-e9258645dfbb",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "dashboard/v1/announcements",
+      "responses": [
+        {
+          "uuid": "4ca0ce9e-3c9e-4aca-94c5-55af1326b159",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "37eab11f-1177-42bc-8476-22db8817e54a",
+      "documentation": "",
+      "method": "put",
+      "endpoint": "dashboard/v1/announcements/approval",
+      "responses": [
+        {
+          "uuid": "23687229-0d85-4716-9e23-97fec4a16b91",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "28cc63d6-5686-498a-a72a-266b56ad48bb",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "dashboard/v1/floors",
+      "responses": [
+        {
+          "uuid": "bfe3a6ae-0032-4c14-b744-6c7e3c5d7a6a",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    },
+    {
+      "uuid": "144ce9ae-59c0-4a8f-bbe4-e48becaee02c",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "dashboard/v1/floors/:fl",
+      "responses": [
+        {
+          "uuid": "ee97c0aa-673a-478b-b626-aac7669a66a3",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "filePath": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "randomResponse": false,
+      "sequentialResponse": false
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": true,
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    }
+  ],
+  "proxyReqHeaders": [
+    {
+      "key": "",
+      "value": ""
+    }
+  ],
+  "proxyResHeaders": [
+    {
+      "key": "",
+      "value": ""
+    }
+  ]
+}
