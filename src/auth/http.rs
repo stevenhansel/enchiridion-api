@@ -44,7 +44,6 @@ pub async fn register(
     match auth_service.register(params).await {
         Ok(user) => user,
         Err(e) => {
-            println!("{}", e.to_string());
             return HttpResponse::InternalServerError().json(ErrorResponse {
                 message: e.to_string(),
             });

@@ -20,7 +20,7 @@ cp .env.example .env
 
 3.  Migrate the database with sqlx, note that sqlx migrate won't work if you don't have `DATABASE_URL` in the .env
 ```
-sqlx migrate run
+sqlx migrate run --source database/migrations
 ```
 
 4. Run the app

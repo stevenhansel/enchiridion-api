@@ -7,6 +7,7 @@ use enchiridion_api::startup::run;
 use enchiridion_api::config::Configuration;
 use enchiridion_api::container::Container;
 use enchiridion_api::user::{UserRepository, UserRepositoryParameters};
+use enchiridion_api::role::{RoleRepository, RoleRepositoryParameters};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -17,7 +18,8 @@ async fn main() -> std::io::Result<()> {
         .unwrap();
 
     let container = Container::builder()
-        .with_component_parameters::<UserRepository>(UserRepositoryParameters { _db: pool })
+        .with_component_parameters::<UserRepository>(UserRepositoryParameters { _db: pool.clone() })
+        .with_component_parameters::<RoleRepository>(RoleRepositoryParameters { _db: pool.clone() })
         .build();
 
     let listener = TcpListener::bind(config.address)?;

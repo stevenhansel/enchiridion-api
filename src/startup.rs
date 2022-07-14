@@ -22,28 +22,26 @@ pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::i
             .route("/health_check", web::get().to(health_check))
             .service(
                 web::scope("/dashboard")
-                    .service(
-                        web::scope("/v1/auth")
-                            .route("/register", web::post().to(auth_http::register))
-                            .route(
-                                "/verification/{email}",
-                                web::get().to(auth_http::send_email_verification),
-                            )
-                            .route(
-                                "/verification",
-                                web::put().to(auth_http::confirm_email_verification),
-                            )
-                            .route("/login", web::post().to(auth_http::login))
-                            .route("/refresh", web::put().to(auth_http::refresh_token))
-                            .route(
-                                "/forgot-password",
-                                web::get().to(auth_http::forgot_password),
-                            )
-                            .route("/reset-password", web::put().to(auth_http::reset_password)),
+                    .route("/v1/auth/register", web::post().to(auth_http::register))
+                    .route(
+                        "/v1/auth/verification/{email}",
+                        web::get().to(auth_http::send_email_verification),
                     )
-                    .service(
-                        web::scope("/v1/role").route("/", web::get().to(role_http::list_role)),
-                    ),
+                    .route(
+                        "/v1/auth/verification",
+                        web::put().to(auth_http::confirm_email_verification),
+                    )
+                    .route("/v1/auth/login", web::post().to(auth_http::login))
+                    .route("/v1/auth/refresh", web::put().to(auth_http::refresh_token))
+                    .route(
+                        "/v1/auth/forgot-password",
+                        web::get().to(auth_http::forgot_password),
+                    )
+                    .route(
+                        "/v1/auth/reset-password",
+                        web::put().to(auth_http::reset_password),
+                    )
+                    .route("/v1/role", web::get().to(role_http::list_role)),
             )
     })
     .listen(listener)?
