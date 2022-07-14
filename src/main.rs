@@ -1,23 +1,25 @@
-#![allow(dead_code)]
 use std::net::TcpListener;
 
-use enchiridion_api::run;
 use sqlx::PgPool;
+use secrecy::ExposeSecret;
 
-// Mod declarations
-mod auth;
-mod container;
-mod http;
-mod user;
+use enchiridion_api::startup::run;
+use enchiridion_api::config::Configuration;
+use enchiridion_api::container::Container;
+use enchiridion_api::user::{UserRepository, UserRepositoryParameters};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let pool = PgPool::connect("postgres://postgres:postgres@localhost/enchiridion")
+    let config = Configuration::for_development().expect("Failed to read configuration");
+
+    let pool = PgPool::connect(config.database_url.expose_secret())
         .await
         .unwrap();
 
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", 8080))
-        .expect(format!("Failed to bind port {}", 8080).as_str());
+    let container = Container::builder()
+        .with_component_parameters::<UserRepository>(UserRepositoryParameters { _db: pool })
+        .build();
 
-    run(listener, pool)?.await
+    let listener = TcpListener::bind(config.address)?;
+    run(listener, container)?.await
 }

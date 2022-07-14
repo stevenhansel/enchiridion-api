@@ -1,14 +1,33 @@
 # Enchiridion API
 
+Requirements:
+- rust
+- docker
+- sqlx-rs (https://github.com/launchbadge/sqlx)
+
+### Development setup
+
+1. Create .env from .env.example
 ```
-docker run \
-	--name enchiridion-api-db \
-	--volume enchiridion-api-data:/var/lib/postgresql/data \
-	-p 5432:5432 \
-	--rm \
-	--detach \
-	-e POSTGRES_USER=postgres \
-	-e POSTGRES_PASSWORD=postgres \
-	-e POSTGRES_DB=enchiridion \
-	postgres
+cp .env.example .env
 ```
+
+2. Run the postgres docker instance:
+
+```
+./scripts/postgres.sh
+```
+
+3.  Migrate the database with sqlx, note that sqlx migrate won't work if you don't have `DATABASE_URL` in the .env
+```
+sqlx migrate run
+```
+
+4. Run the app
+```
+cargo run
+```
+
+### Database Migrations
+
+Adding new migration file `sqlx migrate add <migration_name>`

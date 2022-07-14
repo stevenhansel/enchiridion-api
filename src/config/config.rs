@@ -1,6 +1,6 @@
 use std::env;
-use std::fmt;
 use std::error;
+use std::fmt;
 
 use ::secrecy::Secret;
 
@@ -15,8 +15,10 @@ impl error::Error for ConfigError {}
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ConfigError::DevelopmentConfigError =>  write!(f, "An error occurred in the .env file"),
-            ConfigError::DeploymentConfigError => write!(f, "An error occured in the system environment variable"),
+            ConfigError::DevelopmentConfigError => write!(f, "An error occurred in the .env file"),
+            ConfigError::DeploymentConfigError => {
+                write!(f, "An error occured in the system environment variable")
+            }
         }
     }
 }
@@ -34,18 +36,21 @@ impl From<env::VarError> for ConfigError {
 }
 
 pub struct Configuration {
+    pub address: String,
     pub database_url: Secret<String>,
 }
 
 impl Configuration {
     pub fn for_development() -> Result<Configuration, ConfigError> {
         Ok(Configuration {
+            address: dotenvy::var("ADDRESS")?,
             database_url: Secret::new(dotenvy::var("DATABASE_URL")?),
         })
     }
 
     pub fn for_deployment() -> Result<Configuration, ConfigError> {
         Ok(Configuration {
+            address: env::var("ADDRESS")?,
             database_url: Secret::new(env::var("DATABASE_URL")?),
         })
     }
