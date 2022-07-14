@@ -7,6 +7,7 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use crate::container::Container;
 
 use crate::auth::http as auth_http;
+use crate::role::http as role_http;
 
 async fn health_check() -> impl Responder {
     HttpResponse::Ok()
@@ -20,25 +21,29 @@ pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::i
             .app_data(container.clone())
             .route("/health_check", web::get().to(health_check))
             .service(
-                web::scope("/dashboard").service(
-                    web::scope("/v1/auth")
-                        .route("/register", web::post().to(auth_http::register))
-                        .route(
-                            "/verification/{email}",
-                            web::get().to(auth_http::send_email_verification),
-                        )
-                        .route(
-                            "/verification",
-                            web::put().to(auth_http::confirm_email_verification),
-                        )
-                        .route("/login", web::post().to(auth_http::login))
-                        .route("/refresh", web::put().to(auth_http::refresh_token))
-                        .route(
-                            "/forgot-password",
-                            web::get().to(auth_http::forgot_password),
-                        )
-                        .route("/reset-password", web::put().to(auth_http::reset_password)),
-                ),
+                web::scope("/dashboard")
+                    .service(
+                        web::scope("/v1/auth")
+                            .route("/register", web::post().to(auth_http::register))
+                            .route(
+                                "/verification/{email}",
+                                web::get().to(auth_http::send_email_verification),
+                            )
+                            .route(
+                                "/verification",
+                                web::put().to(auth_http::confirm_email_verification),
+                            )
+                            .route("/login", web::post().to(auth_http::login))
+                            .route("/refresh", web::put().to(auth_http::refresh_token))
+                            .route(
+                                "/forgot-password",
+                                web::get().to(auth_http::forgot_password),
+                            )
+                            .route("/reset-password", web::put().to(auth_http::reset_password)),
+                    )
+                    .service(
+                        web::scope("/v1/role").route("/", web::get().to(role_http::list_role)),
+                    ),
             )
     })
     .listen(listener)?
