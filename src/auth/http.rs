@@ -2,8 +2,10 @@ use actix_web::{web::Json, HttpResponse};
 use serde::{Deserialize, Serialize};
 use shaku_actix::Inject;
 
+use crate::auth::service::RegisterParams;
+use crate::container::Container;
+
 use super::service::AuthServiceInterface;
-use crate::{auth::service::RegisterParams, container::container::Container};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,12 +36,12 @@ pub async fn register(
     auth_service: Inject<Container, dyn AuthServiceInterface>,
 ) -> HttpResponse {
     let params = RegisterParams {
-        name: body.name.clone(),
-        email: body.email.clone(),
-        password: body.password.clone(),
-        reason: body.reason.clone(),
+        name: body.name.to_string(),
+        email: body.email.to_string(),
+        password: body.password.to_string(),
+        reason: body.reason.to_string(),
     };
-    let user = match auth_service.register(params).await {
+    match auth_service.register(params).await {
         Ok(user) => user,
         Err(e) => {
             println!("{}", e.to_string());
@@ -49,12 +51,29 @@ pub async fn register(
         }
     };
 
-    let response = RegisterResponse {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        registration_reason: user.registration_reason,
-    };
+    HttpResponse::NoContent().finish()
+}
 
-    HttpResponse::Created().json(response)
+pub async fn send_email_verification() -> HttpResponse {
+    HttpResponse::NoContent().finish()
+}
+
+pub async fn confirm_email_verification() -> HttpResponse {
+    HttpResponse::NoContent().finish()
+}
+
+pub async fn forgot_password() -> HttpResponse {
+    HttpResponse::NoContent().finish()
+}
+
+pub async fn reset_password() -> HttpResponse {
+    HttpResponse::NoContent().finish()
+}
+
+pub async fn login() -> HttpResponse {
+    HttpResponse::NoContent().finish()
+}
+
+pub async fn refresh_token() -> HttpResponse {
+    HttpResponse::NoContent().finish()
 }
