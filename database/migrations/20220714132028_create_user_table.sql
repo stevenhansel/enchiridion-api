@@ -7,7 +7,7 @@ create table "user" (
   name varchar(255) not null,
   email varchar(255) unique not null,
   password bytea not null,
-  registration_reason text not null,
+  registration_reason text,
 
   profile_picture text,
 
