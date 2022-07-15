@@ -1,4 +1,4 @@
-use actix_web::{web::Json, HttpResponse};
+use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use shaku_actix::Inject;
 use validator::Validate;
@@ -33,8 +33,8 @@ pub struct ErrorResponse {
 }
 
 pub async fn register(
-    body: Json<RegisterBody>,
     auth_service: Inject<Container, dyn AuthServiceInterface>,
+    body: web::Json<RegisterBody>,
 ) -> HttpResponse {
     if let Err(e) = body.validate() {
         let e = ApiValidationError::new(e);
@@ -65,10 +65,10 @@ pub async fn register(
                     vec![message],
                 ))
             }
-            AuthError::InternalServerError(message) => {
+            _ => {
                 return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
                     AuthErrorCode::InternalServerError.to_string(),
-                    vec![message],
+                    vec![AuthError::InternalServerError.to_string()],
                 ))
             }
         }
@@ -77,11 +77,33 @@ pub async fn register(
     HttpResponse::NoContent().finish()
 }
 
-pub async fn send_email_verification() -> HttpResponse {
+pub async fn send_email_confirmation(
+    auth_service: Inject<Container, dyn AuthServiceInterface>,
+    path: web::Path<String>,
+) -> HttpResponse {
+    let email = path.into_inner();
+
+    if let Err(e) = auth_service.send_email_confirmation(email).await {
+        match e {
+            AuthError::UserNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AuthErrorCode::UserNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            _ => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AuthErrorCode::InternalServerError.to_string(),
+                    vec![AuthError::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
     HttpResponse::NoContent().finish()
 }
 
-pub async fn confirm_email_verification() -> HttpResponse {
+pub async fn confirm_email() -> HttpResponse {
     HttpResponse::NoContent().finish()
 }
 

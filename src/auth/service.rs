@@ -1,16 +1,23 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
+use std::thread;
 
 use argon2::{password_hash::PasswordHasher, Argon2};
 use async_trait::async_trait;
+use hmac::{Hmac, Mac};
+use jwt::SignWithKey;
 use secrecy::ExposeSecret;
+use sha2::Sha256;
 use shaku::{Component, Interface};
 
 use crate::config::Configuration;
 use crate::database::DatabaseError;
-use crate::email;
+use crate::email::{self, EmailParams};
 use crate::user::{InsertUserParams, UserRepositoryInterface};
 
 use super::AuthError;
+
+type HmacSha256 = Hmac<Sha256>;
 
 pub struct RegisterParams {
     pub name: String,
@@ -23,6 +30,7 @@ pub struct RegisterParams {
 #[async_trait]
 pub trait AuthServiceInterface: Interface {
     async fn register(&self, params: RegisterParams) -> Result<(), AuthError>;
+    async fn send_email_confirmation(&self, email: String) -> Result<(), AuthError>;
 }
 
 #[derive(Component)]
@@ -42,7 +50,7 @@ impl AuthServiceInterface for AuthService {
             self._configuration.password_secret.expose_secret(),
         ) {
             Ok(p) => p.serialize(),
-            Err(e) => return Err(AuthError::InternalServerError(e.to_string())),
+            Err(_) => return Err(AuthError::InternalServerError),
         };
 
         match self
@@ -59,8 +67,8 @@ impl AuthServiceInterface for AuthService {
             Ok(id) => id,
             Err(e) => match e {
                 sqlx::Error::Database(db_error) => {
-                    if let Some(raw_code) = db_error.code() {
-                        let code = raw_code.to_string();
+                    if let Some(code) = db_error.code() {
+                        let code = code.to_string();
                         if code == DatabaseError::UniqueConstraintError.to_string() {
                             return Err(AuthError::EmailAlreadyExists(
                                 "Email is already registered in our system".into(),
@@ -70,11 +78,81 @@ impl AuthServiceInterface for AuthService {
                         }
                     }
 
-                    return Err(AuthError::InternalServerError(db_error.to_string()));
+                    return Err(AuthError::InternalServerError);
                 }
-                e => return Err(AuthError::InternalServerError(e.to_string())),
+                _ => return Err(AuthError::InternalServerError),
             },
         };
+
+        Ok(())
+    }
+
+    async fn send_email_confirmation(&self, email: String) -> Result<(), AuthError> {
+        let user = match self._user_repository.find_one_by_email(email).await {
+            Ok(user) => user,
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(AuthError::UserNotFound(
+                        "User with the given email was not found".into(),
+                    ))
+                }
+                _ => return Err(AuthError::InternalServerError),
+            },
+        };
+
+        if user.is_email_confirmed == true {
+            return Err(AuthError::EmailAlreadyConfirmed(
+                "The email is already confirmed".into(),
+            ));
+        }
+
+        let key = match HmacSha256::new_from_slice(
+            self._configuration
+                .email_confirmation_secret
+                .expose_secret()
+                .as_bytes(),
+        ) {
+            Ok(key) => key,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let mut claims = BTreeMap::new();
+        claims.insert("user_id", user.id.to_string());
+        claims.insert("iat", chrono::Utc::now().to_string());
+        claims.insert(
+            "exp",
+            (chrono::Utc::now()
+                + chrono::Duration::seconds(
+                    self._configuration.email_confirmation_expiration_seconds,
+                ))
+            .to_string(),
+        );
+
+        let token = match claims.sign_with_key(&key) {
+            Ok(token) => token,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let confirmation_link = format!(
+            "{}/verification?token={}",
+            self._configuration.dashboard_baseurl, token,
+        );
+
+        let html = format!(
+            "<p>Please confirm your email address by clicking this <a href=\"{}\">link</a>",
+            confirmation_link
+        )
+        .to_string();
+
+        let email_params = EmailParams {
+            from: "Enchiridion <noreply@stevenhansel.com>".into(),
+            to: user.email,
+            subject: "[Enchiridion] Please confirm your email address".into(),
+            html,
+        };
+        if let Err(_) = self._email.send(email_params).await {
+            return Err(AuthError::InternalServerError);
+        }
 
         Ok(())
     }

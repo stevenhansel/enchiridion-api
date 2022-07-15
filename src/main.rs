@@ -13,7 +13,7 @@ use enchiridion_api::user::{UserRepository, UserRepositoryParameters};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let config = Configuration::for_development().expect("Failed to read configuration");
+    let config = Configuration::with_env_file().expect("Failed to read configuration");
 
     let pool = PgPool::connect(config.database_url.expose_secret())
         .await

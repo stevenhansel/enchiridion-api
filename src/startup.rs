@@ -25,11 +25,11 @@ pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::i
                     .route("/v1/auth/register", web::post().to(auth_http::register))
                     .route(
                         "/v1/auth/verification/{email}",
-                        web::get().to(auth_http::send_email_verification),
+                        web::get().to(auth_http::send_email_confirmation),
                     )
                     .route(
                         "/v1/auth/verification",
-                        web::put().to(auth_http::confirm_email_verification),
+                        web::put().to(auth_http::confirm_email),
                     )
                     .route("/v1/auth/login", web::post().to(auth_http::login))
                     .route("/v1/auth/refresh", web::put().to(auth_http::refresh_token))

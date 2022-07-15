@@ -29,3 +29,7 @@ secrecy = { version = "0.8.0", features = ["serde"] }
 dotenv_codegen = "0.15.0"
 dotenvy = "0.15.1"
 validator = { version = "0.15.0", features = ["derive"] }
+jwt = "0.16.0"
+hmac = "0.12.1"
+sha2 = "0.10.2"
+chrono = "0.4.19"

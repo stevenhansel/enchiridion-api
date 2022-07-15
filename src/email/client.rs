@@ -15,10 +15,10 @@ impl From<reqwest::Error> for EmailError {
 
 #[derive(Default)]
 pub struct EmailParams {
-    from: String,
-    to: String,
-    subject: String,
-    html: String,
+    pub from: String,
+    pub to: String,
+    pub subject: String,
+    pub html: String,
 }
 
 #[async_trait]
