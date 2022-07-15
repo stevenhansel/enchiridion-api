@@ -48,6 +48,10 @@ pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::i
                     )
                     .route(
                         "/v1/buildings",
+                        web::get().to(building_http::list_buildings),
+                    )
+                    .route(
+                        "/v1/buildings",
                         web::post().to(building_http::create),
                     )
                     .route(

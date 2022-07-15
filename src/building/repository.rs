@@ -2,6 +2,8 @@ use async_trait::async_trait;
 use shaku::{Component, Interface};
 use sqlx::{Pool, Postgres};
 
+use super::domain::Building;
+
 pub struct InsertBuildingParams {
     pub name: String,
     pub color: String,
@@ -15,6 +17,7 @@ pub struct UpdateBuildingParams {
 
 #[async_trait]
 pub trait BuildingRepositoryInterface: Interface {
+    async fn find_buildings(&self) -> Result<Vec<Building>, sqlx::Error>;
     async fn create(&self, params: InsertBuildingParams) -> Result<i32, sqlx::Error>;
     async fn update(&self, params: UpdateBuildingParams) -> Result<i32, sqlx::Error>;
     async fn delete_by_id(&self, id: i32) -> Result<i32, sqlx::Error>;
@@ -28,6 +31,21 @@ pub struct BuildingRepository {
 
 #[async_trait]
 impl BuildingRepositoryInterface for BuildingRepository {
+    async fn find_buildings(&self) -> Result<Vec<Building>, sqlx::Error> {
+        let result = sqlx::query_as!(
+            Building,
+            r#"
+            select id, name, color
+            from "building"
+            order by id desc
+            "#,
+        )
+        .fetch_all(&self._db)
+        .await?;
+
+        Ok(result)
+    }
+
     async fn create(&self, params: InsertBuildingParams) -> Result<i32, sqlx::Error> {
         let result = sqlx::query!(
             r#"

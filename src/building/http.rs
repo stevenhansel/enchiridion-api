@@ -1,14 +1,55 @@
 use actix_web::{web, HttpResponse};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use shaku_actix::Inject;
 use validator::Validate;
 
 use crate::building::service::{CreateParams, UpdateParams};
 use crate::container::Container;
+
 use crate::http::{ApiValidationError, HttpErrorResponse};
 
 use super::service::BuildingServiceInterface;
 use super::{BuildingError, BuildingErrorCode};
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildingJson {
+    id: i32,
+    name: String,
+    color: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListBuildingsResponse {
+    contents: Vec<BuildingJson>, 
+}
+
+pub async fn list_buildings(
+    building_service: Inject<Container, dyn BuildingServiceInterface>,
+) -> HttpResponse {
+    let result = building_service
+        .get_buildings()
+        .await;
+
+    let result = match result {
+        Ok(buildings) => buildings,
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                BuildingErrorCode::InternalServerError.to_string(),
+                vec![BuildingError::InternalServerError.to_string()],
+            ))
+        }
+    };
+
+    HttpResponse::Ok()
+        .json(ListBuildingsResponse {
+            contents: result
+                .into_iter()
+                .map(| building | { BuildingJson { id: building.id, name: building.name, color: building.color } })
+                .collect(),
+        })
+}
 
 #[derive(Debug, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]

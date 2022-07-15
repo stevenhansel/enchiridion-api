@@ -6,7 +6,10 @@ use shaku::{Component, Interface};
 use crate::database::DatabaseError;
 use crate::building::{InsertBuildingParams, UpdateBuildingParams, BuildingRepositoryInterface};
 
-use super::BuildingError;
+use super::{
+    domain::Building,
+    BuildingError,
+};
 
 pub struct CreateParams {
     pub name: String,
@@ -21,6 +24,7 @@ pub struct UpdateParams {
 
 #[async_trait]
 pub trait BuildingServiceInterface: Interface {
+    async fn get_buildings(&self) -> Result<Vec<Building>, BuildingError>;
     async fn create(&self, params: CreateParams) -> Result<i32, BuildingError>;
     async fn update(&self, params: UpdateParams) -> Result<i32, BuildingError>;
     async fn delete_by_id(&self, id: i32) -> Result<i32, BuildingError>;
@@ -35,6 +39,23 @@ pub struct BuildingService {
 
 #[async_trait]
 impl BuildingServiceInterface for BuildingService {
+    async fn get_buildings(&self) -> Result<Vec<Building>, BuildingError> {
+        let buildings = match self
+            ._building_repository
+            .find_buildings()
+            .await
+        {
+            Ok(buildings) => buildings,
+            Err(e) => {
+                match e {
+                    _ => return Err(BuildingError::InternalServerError),
+                }
+            }
+        };
+
+        Ok(buildings)
+    }
+
     async fn create(&self, params: CreateParams) -> Result<i32, BuildingError> {
         let id = match self
             ._building_repository
