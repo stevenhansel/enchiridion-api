@@ -43,11 +43,11 @@ pub async fn register(
     }
 
     if let Err(e) = auth_service
-        .register(&RegisterParams {
+        .register(RegisterParams {
             name: body.name.to_string(),
             email: body.email.to_string(),
             password: body.password.to_string(),
-            reason: body.reason.as_ref(),
+            reason: body.reason.clone(),
             role_id: body.role_id,
         })
         .await

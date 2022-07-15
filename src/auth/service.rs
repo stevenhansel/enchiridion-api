@@ -12,17 +12,17 @@ use crate::user::{InsertUserParams, UserRepositoryInterface};
 
 use super::AuthError;
 
-pub struct RegisterParams<'a> {
+pub struct RegisterParams {
     pub name: String,
     pub email: String,
     pub password: String,
-    pub reason: Option<&'a String>,
+    pub reason: Option<String>,
     pub role_id: i32,
 }
 
 #[async_trait]
 pub trait AuthServiceInterface: Interface {
-    async fn register<'a>(&self, params: &'a RegisterParams<'a>) -> Result<(), AuthError>;
+    async fn register(&self, params: RegisterParams) -> Result<(), AuthError>;
 }
 
 #[derive(Component)]
@@ -36,7 +36,7 @@ pub struct AuthService {
 
 #[async_trait]
 impl AuthServiceInterface for AuthService {
-    async fn register<'a>(&self, params: &'a RegisterParams<'a>) -> Result<(), AuthError> {
+    async fn register(&self, params: RegisterParams) -> Result<(), AuthError> {
         let hash = match Argon2::default().hash_password(
             params.password.as_bytes(),
             self._configuration.password_secret.expose_secret(),
@@ -47,11 +47,11 @@ impl AuthServiceInterface for AuthService {
 
         match self
             ._user_repository
-            .create(&InsertUserParams {
+            .create(InsertUserParams {
                 name: params.name.to_string(),
                 email: params.email.to_string(),
                 registration_reason: params.reason,
-                password: hash.as_bytes(),
+                password: hash.to_string(),
                 role_id: params.role_id,
             })
             .await

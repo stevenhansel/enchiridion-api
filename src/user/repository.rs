@@ -4,17 +4,17 @@ use sqlx::{Pool, Postgres};
 
 use super::domain::User;
 
-pub struct InsertUserParams<'a> {
+pub struct InsertUserParams {
     pub name: String,
     pub email: String,
-    pub password: &'a [u8],
-    pub registration_reason: Option<&'a String>,
+    pub password: String,
+    pub registration_reason: Option<String>,
     pub role_id: i32,
 }
 
 #[async_trait]
 pub trait UserRepositoryInterface: Interface {
-    async fn create<'a>(&self, params: &'a InsertUserParams) -> Result<i32, sqlx::Error>;
+    async fn create(&self, params: InsertUserParams) -> Result<i32, sqlx::Error>;
     async fn find_one_by_id(&self, id: i32) -> Result<User, sqlx::Error>;
     async fn find_one_by_email(&self, email: String) -> Result<User, sqlx::Error>;
     async fn confirm_email(&self, email: String) -> Result<(), sqlx::Error>;
@@ -28,7 +28,7 @@ pub struct UserRepository {
 
 #[async_trait]
 impl UserRepositoryInterface for UserRepository {
-    async fn create<'a>(&self, params: &'a InsertUserParams) -> Result<i32, sqlx::Error> {
+    async fn create(&self, params: InsertUserParams) -> Result<i32, sqlx::Error> {
         let result = sqlx::query!(
             r#"
             insert into "user" (name, email, password, registration_reason, role_id)
@@ -37,7 +37,7 @@ impl UserRepositoryInterface for UserRepository {
             "#,
             params.name,
             params.email,
-            params.password,
+            params.password.as_bytes(),
             params.registration_reason,
             params.role_id,
         )
