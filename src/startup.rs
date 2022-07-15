@@ -41,7 +41,7 @@ pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::i
                         "/v1/auth/reset-password",
                         web::put().to(auth_http::reset_password),
                     )
-                    .route("/v1/role", web::get().to(role_http::list_role)),
+                    .route("/v1/roles", web::get().to(role_http::list_role)),
             )
     })
     .listen(listener)?

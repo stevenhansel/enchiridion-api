@@ -5,7 +5,7 @@ use validator::Validate;
 
 use crate::auth::service::RegisterParams;
 use crate::container::Container;
-use crate::http::{HttpErrorResponse, ApiValidationError};
+use crate::http::{ApiValidationError, HttpErrorResponse};
 
 use super::service::AuthServiceInterface;
 use super::{AuthError, AuthErrorCode};
@@ -17,7 +17,10 @@ pub struct RegisterBody {
     name: String,
     #[validate(email(message = "email: Must be a valid email address"))]
     email: String,
-    #[validate(length(min = 8, message = "password: Password must have at least 8 characters"))]
+    #[validate(length(
+        min = 8,
+        message = "password: Password must have at least 8 characters"
+    ))]
     password: String,
     reason: Option<String>,
     role_id: i32,
@@ -36,22 +39,20 @@ pub async fn register(
     if let Err(e) = body.validate() {
         let e = ApiValidationError::new(e);
 
-        return HttpResponse::BadRequest().json(HttpErrorResponse::new(
-            e.code(),
-            e.messages(),
-        ));
+        return HttpResponse::BadRequest().json(HttpErrorResponse::new(e.code(), e.messages()));
     }
 
-    let params = RegisterParams {
-        name: body.name.to_string(),
-        email: body.email.to_string(),
-        password: body.password.to_string(),
-        reason: body.reason.as_ref(),
-        role_id: body.role_id,
-    };
-    match auth_service.register(params).await {
-        Ok(user) => user,
-        Err(e) => match e {
+    if let Err(e) = auth_service
+        .register(&RegisterParams {
+            name: body.name.to_string(),
+            email: body.email.to_string(),
+            password: body.password.to_string(),
+            reason: body.reason.as_ref(),
+            role_id: body.role_id,
+        })
+        .await
+    {
+        match e {
             AuthError::EmailAlreadyExists(message) => {
                 return HttpResponse::Conflict().json(HttpErrorResponse::new(
                     AuthErrorCode::EmailAlreadyExists.to_string(),
@@ -70,8 +71,8 @@ pub async fn register(
                     vec![message],
                 ))
             }
-        },
-    };
+        }
+    }
 
     HttpResponse::NoContent().finish()
 }

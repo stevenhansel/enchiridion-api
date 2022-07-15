@@ -21,7 +21,7 @@ pub struct RegisterParams<'a> {
 
 #[async_trait]
 pub trait AuthServiceInterface: Interface {
-    async fn register<'a>(&self, params: RegisterParams<'a>) -> Result<(), AuthError>;
+    async fn register<'a>(&self, params: &'a RegisterParams<'a>) -> Result<(), AuthError>;
 }
 
 #[derive(Component)]
@@ -34,7 +34,7 @@ pub struct AuthService {
 
 #[async_trait]
 impl AuthServiceInterface for AuthService {
-    async fn register<'a>(&self, params: RegisterParams<'a>) -> Result<(), AuthError> {
+    async fn register<'a>(&self, params: &'a RegisterParams<'a>) -> Result<(), AuthError> {
         let hash = match Argon2::default().hash_password(
             params.password.as_bytes(),
             self._configuration.password_secret.expose_secret(),
@@ -46,8 +46,8 @@ impl AuthServiceInterface for AuthService {
         match self
             ._user_repository
             .create(&InsertUserParams {
-                name: params.name,
-                email: params.email,
+                name: params.name.to_string(),
+                email: params.email.to_string(),
                 registration_reason: params.reason,
                 password: hash.as_bytes(),
                 role_id: params.role_id,
@@ -60,11 +60,11 @@ impl AuthServiceInterface for AuthService {
                     if let Some(raw_code) = db_error.code() {
                         let code = raw_code.to_string();
                         if code == DatabaseError::UniqueConstraintError.to_string() {
-                            return Err(AuthError::EmailAlreadyExists(String::from(
-                                "Email is already registered in our system",
-                            )));
+                            return Err(AuthError::EmailAlreadyExists(
+                                "Email is already registered in our system".into(),
+                            ));
                         } else if code == DatabaseError::ForeignKeyError.to_string() {
-                                return Err(AuthError::RoleNotFound(String::from("Role not found")))
+                            return Err(AuthError::RoleNotFound("Role not found".into()));
                         }
                     }
 
