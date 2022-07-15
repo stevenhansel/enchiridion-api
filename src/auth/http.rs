@@ -1,28 +1,26 @@
 use actix_web::{web::Json, HttpResponse};
 use serde::{Deserialize, Serialize};
 use shaku_actix::Inject;
+use validator::Validate;
 
 use crate::auth::service::RegisterParams;
 use crate::container::Container;
+use crate::http::HttpErrorResponse;
 
 use super::service::AuthServiceInterface;
+use super::{AuthError, AuthErrorCode};
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct RegisterBody {
+    #[validate(length(min = 1, message = "name: Name must not be empty"))]
     name: String,
+    #[validate(email(message = "email: Must be a valid email address"))]
     email: String,
+    #[validate(length(min = 8, message = "password: Password must have at least 8 characters"))]
     password: String,
-    reason: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RegisterResponse {
-    id: i32,
-    name: String,
-    email: String,
-    registration_reason: String,
+    reason: Option<String>,
+    role_id: i32,
 }
 
 #[derive(Serialize)]
@@ -35,19 +33,54 @@ pub async fn register(
     body: Json<RegisterBody>,
     auth_service: Inject<Container, dyn AuthServiceInterface>,
 ) -> HttpResponse {
+    if let Err(e) = body.validate() {
+        let mut messages: Vec<String> = vec![];
+
+        for (_, v) in e.field_errors() {
+            if v.len() == 0 {
+                continue;
+            }
+
+            if let Some(msg) = &v[0].message {
+                messages.push(msg.to_string());
+            }
+        }
+
+        return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+            "API_VALIDATION_ERROR".into(),
+            messages,
+        ));
+    }
+
     let params = RegisterParams {
         name: body.name.to_string(),
         email: body.email.to_string(),
         password: body.password.to_string(),
-        reason: body.reason.to_string(),
+        reason: body.reason.as_ref(),
+        role_id: body.role_id,
     };
     match auth_service.register(params).await {
         Ok(user) => user,
-        Err(e) => {
-            return HttpResponse::InternalServerError().json(ErrorResponse {
-                message: e.to_string(),
-            });
-        }
+        Err(e) => match e {
+            AuthError::EmailAlreadyExists(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    AuthErrorCode::EmailAlreadyExists.to_string(),
+                    vec![message],
+                ))
+            }
+            AuthError::RoleNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AuthErrorCode::RoleNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            AuthError::InternalServerError(message) => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AuthErrorCode::InternalServerError.to_string(),
+                    vec![message],
+                ))
+            }
+        },
     };
 
     HttpResponse::NoContent().finish()

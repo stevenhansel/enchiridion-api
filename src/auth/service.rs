@@ -2,65 +2,78 @@ use std::sync::Arc;
 
 use argon2::{password_hash::PasswordHasher, Argon2};
 use async_trait::async_trait;
+use secrecy::ExposeSecret;
 use shaku::{Component, Interface};
 
-use crate::user::{domain::User, repository::InsertUserParams, service::UserServiceInterface};
+use crate::config::Configuration;
+use crate::shared::DatabaseError;
+use crate::user::{InsertUserParams, UserRepositoryInterface};
 
-pub struct RegisterParams {
+use super::AuthError;
+
+pub struct RegisterParams<'a> {
     pub name: String,
     pub email: String,
     pub password: String,
-    pub reason: String,
+    pub reason: Option<&'a String>,
+    pub role_id: i32,
 }
 
 #[async_trait]
 pub trait AuthServiceInterface: Interface {
-    async fn register(&self, params: RegisterParams) -> Result<User, String>;
+    async fn register<'a>(&self, params: RegisterParams<'a>) -> Result<(), AuthError>;
 }
 
 #[derive(Component)]
 #[shaku(interface = AuthServiceInterface)]
 pub struct AuthService {
     #[shaku(inject)]
-    _user_service: Arc<dyn UserServiceInterface>,
+    _user_repository: Arc<dyn UserRepositoryInterface>,
+    _configuration: Configuration,
 }
 
 #[async_trait]
 impl AuthServiceInterface for AuthService {
-    async fn register(&self, params: RegisterParams) -> Result<User, String> {
+    async fn register<'a>(&self, params: RegisterParams<'a>) -> Result<(), AuthError> {
+        let hash = match Argon2::default().hash_password(
+            params.password.as_bytes(),
+            self._configuration.password_secret.expose_secret(),
+        ) {
+            Ok(p) => p.serialize(),
+            Err(e) => return Err(AuthError::InternalServerError(e.to_string())),
+        };
+
         match self
-            ._user_service
-            .get_user_by_email(params.email.clone())
+            ._user_repository
+            .create(&InsertUserParams {
+                name: params.name,
+                email: params.email,
+                registration_reason: params.reason,
+                password: hash.as_bytes(),
+                role_id: params.role_id,
+            })
             .await
         {
-            Ok(_) => return Err(String::from("Email already exists")),
-            _ => (),
-        };
-
-        let hash = match Argon2::default()
-            .hash_password(params.password.as_bytes(), "secretsecretsecretsecret")
-        {
-            Ok(p) => p.serialize(),
-            Err(e) => return Err(e.to_string()),
-        };
-        let password = hash.as_bytes();
-
-        let params = InsertUserParams {
-            name: params.name,
-            email: params.email,
-            registration_reason: params.reason,
-            password,
-        };
-
-        let user_id = match self._user_service.create(&params).await {
             Ok(id) => id,
-            Err(e) => return Err(e.to_string()),
-        };
-        let user = match self._user_service.get_user_by_id(user_id).await {
-            Ok(user) => user,
-            Err(e) => return Err(e.to_string()),
+            Err(e) => match e {
+                sqlx::Error::Database(db_error) => {
+                    if let Some(raw_code) = db_error.code() {
+                        let code = raw_code.to_string();
+                        if code == DatabaseError::UniqueConstraintError.to_string() {
+                            return Err(AuthError::EmailAlreadyExists(String::from(
+                                "Email is already registered in our system",
+                            )));
+                        } else if code == DatabaseError::ForeignKeyError.to_string() {
+                                return Err(AuthError::RoleNotFound(String::from("Role not found")))
+                        }
+                    }
+
+                    return Err(AuthError::InternalServerError(db_error.to_string()));
+                }
+                e => return Err(AuthError::InternalServerError(e.to_string())),
+            },
         };
 
-        Ok(user)
+        Ok(())
     }
 }

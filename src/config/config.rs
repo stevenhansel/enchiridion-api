@@ -35,8 +35,10 @@ impl From<env::VarError> for ConfigError {
     }
 }
 
+#[derive(Clone)]
 pub struct Configuration {
     pub address: String,
+    pub password_secret: Secret<String>,
     pub database_url: Secret<String>,
 }
 
@@ -44,6 +46,7 @@ impl Configuration {
     pub fn for_development() -> Result<Configuration, ConfigError> {
         Ok(Configuration {
             address: dotenvy::var("ADDRESS")?,
+            password_secret: Secret::new(dotenvy::var("PASSWORD_SECRET")?),
             database_url: Secret::new(dotenvy::var("DATABASE_URL")?),
         })
     }
@@ -51,6 +54,7 @@ impl Configuration {
     pub fn for_deployment() -> Result<Configuration, ConfigError> {
         Ok(Configuration {
             address: env::var("ADDRESS")?,
+            password_secret: Secret::new(env::var("PASSWORD_SECRET")?),
             database_url: Secret::new(env::var("DATABASE_URL")?),
         })
     }

@@ -3,5 +3,5 @@ pub struct User {
     pub name: String,
     pub email: String,
     pub password: Vec<u8>,
-    pub registration_reason: String,
+    pub registration_reason: Option<String>,
 }

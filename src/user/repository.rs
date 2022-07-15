@@ -8,7 +8,8 @@ pub struct InsertUserParams<'a> {
     pub name: String,
     pub email: String,
     pub password: &'a [u8],
-    pub registration_reason: String,
+    pub registration_reason: Option<&'a String>,
+    pub role_id: i32,
 }
 
 #[async_trait]
@@ -29,14 +30,15 @@ impl UserRepositoryInterface for UserRepository {
     async fn create<'a>(&self, params: &'a InsertUserParams) -> Result<i32, sqlx::Error> {
         let result = sqlx::query!(
             r#"
-            insert into "user" (name, email, password, registration_reason)
-            values($1, $2, $3, $4)
+            insert into "user" (name, email, password, registration_reason, role_id)
+            values($1, $2, $3, $4, $5)
             returning id
             "#,
             params.name,
             params.email,
             params.password,
             params.registration_reason,
+            params.role_id,
         )
         .fetch_one(&self._db)
         .await?;
