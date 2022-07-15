@@ -38,4 +38,4 @@ RUN apt-get update -y \
 
 COPY --from=builder /app/target/release/enchiridion_api enchiridion_api
 
-ENTRYPOINT ["./api"]
+ENTRYPOINT ["./enchiridion_api"]
