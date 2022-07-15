@@ -23,7 +23,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v3
       with:
-        images: ghcr.io/stevenhansel/coerhat-api
+        images: ghcr.io/stevenhansel/enchiridion-api
         flavor: |
           latest=true
         tags: |
