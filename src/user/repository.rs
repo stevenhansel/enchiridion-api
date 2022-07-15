@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use shaku::{Component, Interface};
 use sqlx::{Pool, Postgres};
 
-use super::domain::User;
+use super::domain::{User, UserStatus};
 
 pub struct InsertUserParams {
     pub name: String,
@@ -51,7 +51,15 @@ impl UserRepositoryInterface for UserRepository {
         let user = sqlx::query_as!(
             User,
             r#"
-            select id, name, email, password, registration_reason, is_email_confirmed from "user"
+            select 
+                id,
+                name,
+                email,
+                password,
+                registration_reason,
+                is_email_confirmed,
+                status as "status: UserStatus" 
+            from "user"
             where id = $1
             "#,
             id
@@ -66,7 +74,15 @@ impl UserRepositoryInterface for UserRepository {
         let user = sqlx::query_as!(
             User,
             r#"
-            select id, name, email, password, registration_reason, is_email_confirmed from "user"
+            select 
+                id,
+                name,
+                email,
+                password,
+                registration_reason,
+                is_email_confirmed,
+                status as "status: UserStatus"
+            from "user"
             where email = $1
             "#,
             email,

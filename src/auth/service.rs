@@ -1,7 +1,11 @@
 use std::collections::BTreeMap;
+use std::str;
 use std::sync::Arc;
 
-use argon2::{password_hash::PasswordHasher, Argon2};
+use argon2::{
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier},
+    Argon2,
+};
 use async_trait::async_trait;
 use hmac::{Hmac, Mac};
 use jwt::{SignWithKey, VerifyWithKey};
@@ -12,9 +16,9 @@ use shaku::{Component, Interface};
 use crate::config::Configuration;
 use crate::database::DatabaseError;
 use crate::email::{self, EmailParams};
-use crate::user::{InsertUserParams, UserRepositoryInterface};
+use crate::user::{InsertUserParams, UserRepositoryInterface, UserStatus};
 
-use super::AuthError;
+use super::{AuthError, AuthRepositoryInterface, UserAuthEntity};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -26,6 +30,11 @@ pub struct RegisterParams {
     pub role_id: i32,
 }
 
+pub struct LoginParams {
+    pub email: String,
+    pub password: String,
+}
+
 #[async_trait]
 pub trait AuthServiceInterface: Interface {
     async fn register(&self, params: RegisterParams) -> Result<(), AuthError>;
@@ -35,6 +44,7 @@ pub trait AuthServiceInterface: Interface {
         token: String,
     ) -> Result<BTreeMap<String, String>, AuthError>;
     async fn confirm_email(&self, token: String) -> Result<(), AuthError>;
+    async fn login(&self, params: LoginParams) -> Result<UserAuthEntity, AuthError>;
 }
 
 #[derive(Component)]
@@ -42,6 +52,8 @@ pub trait AuthServiceInterface: Interface {
 pub struct AuthService {
     #[shaku(inject)]
     _user_repository: Arc<dyn UserRepositoryInterface>,
+    #[shaku(inject)]
+    _auth_repository: Arc<dyn AuthRepositoryInterface>,
     _email: email::Client,
     _configuration: Configuration,
 }
@@ -221,14 +233,66 @@ impl AuthServiceInterface for AuthService {
         if let Err(e) = self._user_repository.confirm_email(user_id).await {
             match e {
                 sqlx::Error::RowNotFound => {
-                    return Err(AuthError::UserNotFound(
-                        "User not found".into(),
-                    ))
+                    return Err(AuthError::UserNotFound("User not found".into()))
                 }
                 _ => return Err(AuthError::InternalServerError),
             }
         }
 
         Ok(())
+    }
+
+    async fn login(&self, params: LoginParams) -> Result<UserAuthEntity, AuthError> {
+        let user = match self._user_repository.find_one_by_email(params.email).await {
+            Ok(user) => user,
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(AuthError::UserNotFound("User not found".into()))
+                }
+                _ => return Err(AuthError::InternalServerError),
+            },
+        };
+
+        if user.is_email_confirmed == false {
+            return Err(AuthError::UserNotVerified(
+                "Email is not confirmed yet".into(),
+            ));
+        }
+        if user.status == UserStatus::WaitingForApproval {
+            return Err(AuthError::UserNotVerified(
+                "User is not approved yet by admin".into(),
+            ));
+        }
+        if user.status == UserStatus::Rejected {
+            return Err(AuthError::UserNotVerified(
+                "User registration is rejected by admin".into(),
+            ));
+        }
+
+        let password_str = match str::from_utf8(&user.password) {
+            Ok(v) => v,
+            _ => return Err(AuthError::InternalServerError),
+        };
+        let parsed_hash = match PasswordHash::new(password_str) {
+            Ok(hash) => hash,
+            _ => return Err(AuthError::InternalServerError),
+        };
+        let is_password_match = Argon2::default()
+            .verify_password(params.password.as_bytes(), &parsed_hash)
+            .is_ok();
+        if is_password_match == false {}
+
+        let entity = match self
+            ._auth_repository
+            .find_one_auth_entity_by_email(user.email)
+            .await
+        {
+            Ok(entity) => entity,
+            Err(e) => match e {
+                _ => return Err(AuthError::InternalServerError),
+            },
+        };
+
+        Ok(entity)
     }
 }

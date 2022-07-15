@@ -44,7 +44,6 @@ impl From<num::ParseIntError> for ConfigError {
     fn from(_: num::ParseIntError) -> Self {
         ConfigError::ParsingError
     }
-
 }
 
 #[derive(Clone)]
@@ -54,9 +53,13 @@ pub struct Configuration {
     pub password_secret: Secret<String>,
     pub email_confirmation_secret: Secret<String>,
     pub forgot_password_secret: Secret<String>,
+    pub access_token_secret: Secret<String>,
+    pub refresh_token_secret: Secret<String>,
 
     pub email_confirmation_expiration_seconds: i64,
     pub forgot_password_expiration_seconds: i64,
+    pub access_token_expiration_seconds: i64,
+    pub refresh_token_expiration_seconds: i64,
 
     pub database_url: Secret<String>,
 
@@ -75,9 +78,13 @@ impl Configuration {
             password_secret: Secret::new(dotenvy::var("PASSWORD_SECRET")?),
             email_confirmation_secret: Secret::new(dotenvy::var("EMAIL_CONFIRMATION_SECRET")?),
             forgot_password_secret: Secret::new(dotenvy::var("FORGOT_PASSWORD_SECRET")?),
+            access_token_secret: Secret::new(dotenvy::var("ACCESS_TOKEN_SECRET")?),
+            refresh_token_secret: Secret::new(dotenvy::var("REFRESH_TOKEN_SECRET")?),
 
             email_confirmation_expiration_seconds: dotenvy::var("EMAIL_CONFIRMATION_EXPIRATION_SECONDS")?.parse()?,
             forgot_password_expiration_seconds: dotenvy::var("FORGOT_PASSWORD_EXPIRATION_SECONDS")?.parse()?,
+            access_token_expiration_seconds: dotenvy::var("ACCESS_TOKEN_EXPIRATION_SECONDS")?.parse()?,
+            refresh_token_expiration_seconds: dotenvy::var("REFRESH_TOKEN_EXPIRATION_SECONDS")?.parse()?,
 
             database_url: Secret::new(dotenvy::var("DATABASE_URL")?),
 
@@ -96,9 +103,13 @@ impl Configuration {
             password_secret: Secret::new(env::var("PASSWORD_SECRET")?),
             email_confirmation_secret: Secret::new(env::var("EMAIL_CONFIRMATION_SECRET")?),
             forgot_password_secret: Secret::new(env::var("FORGOT_PASSWORD_SECRET")?),
+            access_token_secret: Secret::new(env::var("ACCESS_TOKEN_SECRET")?),
+            refresh_token_secret: Secret::new(env::var("REFRESH_TOKEN_SECRET")?),
 
             email_confirmation_expiration_seconds: env::var("EMAIL_CONFIRMATION_EXPIRATION_SECONDS")?.parse()?,
             forgot_password_expiration_seconds: env::var("FORGOT_PASSWORD_EXPIRATION_SECONDS")?.parse()?,
+            access_token_expiration_seconds: env::var("ACCESS_TOKEN_EXPIRATION_SECONDS")?.parse()?,
+            refresh_token_expiration_seconds: env::var("REFRESH_TOKEN_EXPIRATION_SECONDS")?.parse()?,
 
             database_url: Secret::new(env::var("DATABASE_URL")?),
 
