@@ -7,6 +7,7 @@ use shaku::{Component, Interface};
 
 use crate::config::Configuration;
 use crate::database::DatabaseError;
+use crate::email;
 use crate::user::{InsertUserParams, UserRepositoryInterface};
 
 use super::AuthError;
@@ -29,6 +30,7 @@ pub trait AuthServiceInterface: Interface {
 pub struct AuthService {
     #[shaku(inject)]
     _user_repository: Arc<dyn UserRepositoryInterface>,
+    _email: email::Client,
     _configuration: Configuration,
 }
 
