@@ -7,12 +7,12 @@ create table "user" (
   name varchar(255) not null,
   email varchar(255) unique not null,
   password bytea not null,
-  registration_reason text not null,
+  registration_reason text,
 
   profile_picture text,
 
-  is_email_confirmed boolean default false,
-  status user_status default 'waiting_for_approval',
+  is_email_confirmed boolean not null default false,
+  status user_status not null default 'waiting_for_approval',
 
   role_id integer not null references role(id),
 

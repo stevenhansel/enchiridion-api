@@ -1,66 +1,298 @@
+use std::collections::BTreeMap;
+use std::str;
 use std::sync::Arc;
 
-use argon2::{password_hash::PasswordHasher, Argon2};
+use argon2::{
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier},
+    Argon2,
+};
 use async_trait::async_trait;
+use hmac::{Hmac, Mac};
+use jwt::{SignWithKey, VerifyWithKey};
+use secrecy::ExposeSecret;
+use sha2::Sha256;
 use shaku::{Component, Interface};
 
-use crate::user::{domain::User, repository::InsertUserParams, service::UserServiceInterface};
+use crate::config::Configuration;
+use crate::database::DatabaseError;
+use crate::email::{self, EmailParams};
+use crate::user::{InsertUserParams, UserRepositoryInterface, UserStatus};
+
+use super::{AuthError, AuthRepositoryInterface, UserAuthEntity};
+
+type HmacSha256 = Hmac<Sha256>;
 
 pub struct RegisterParams {
     pub name: String,
     pub email: String,
     pub password: String,
-    pub reason: String,
+    pub reason: Option<String>,
+    pub role_id: i32,
+}
+
+pub struct LoginParams {
+    pub email: String,
+    pub password: String,
 }
 
 #[async_trait]
 pub trait AuthServiceInterface: Interface {
-    async fn register(&self, params: RegisterParams) -> Result<User, String>;
+    async fn register(&self, params: RegisterParams) -> Result<(), AuthError>;
+    async fn send_email_confirmation(&self, email: String) -> Result<(), AuthError>;
+    async fn verify_email_confirmation_token(
+        &self,
+        token: String,
+    ) -> Result<BTreeMap<String, String>, AuthError>;
+    async fn confirm_email(&self, token: String) -> Result<(), AuthError>;
+    async fn login(&self, params: LoginParams) -> Result<UserAuthEntity, AuthError>;
 }
 
 #[derive(Component)]
 #[shaku(interface = AuthServiceInterface)]
 pub struct AuthService {
     #[shaku(inject)]
-    _user_service: Arc<dyn UserServiceInterface>,
+    _user_repository: Arc<dyn UserRepositoryInterface>,
+    #[shaku(inject)]
+    _auth_repository: Arc<dyn AuthRepositoryInterface>,
+    _email: email::Client,
+    _configuration: Configuration,
 }
 
 #[async_trait]
 impl AuthServiceInterface for AuthService {
-    async fn register(&self, params: RegisterParams) -> Result<User, String> {
+    async fn register(&self, params: RegisterParams) -> Result<(), AuthError> {
+        let hash = match Argon2::default().hash_password(
+            params.password.as_bytes(),
+            self._configuration.password_secret.expose_secret(),
+        ) {
+            Ok(p) => p.serialize(),
+            Err(_) => return Err(AuthError::InternalServerError),
+        };
+
         match self
-            ._user_service
-            .get_user_by_email(params.email.clone())
+            ._user_repository
+            .create(InsertUserParams {
+                name: params.name.to_string(),
+                email: params.email.to_string(),
+                registration_reason: params.reason,
+                password: hash.to_string(),
+                role_id: params.role_id,
+            })
             .await
         {
-            Ok(_) => return Err(String::from("Email already exists")),
-            _ => (),
-        };
-
-        let hash = match Argon2::default()
-            .hash_password(params.password.as_bytes(), "secretsecretsecretsecret")
-        {
-            Ok(p) => p.serialize(),
-            Err(e) => return Err(e.to_string()),
-        };
-        let password = hash.as_bytes();
-
-        let params = InsertUserParams {
-            name: params.name,
-            email: params.email,
-            registration_reason: params.reason,
-            password,
-        };
-
-        let user_id = match self._user_service.create(&params).await {
             Ok(id) => id,
-            Err(e) => return Err(e.to_string()),
-        };
-        let user = match self._user_service.get_user_by_id(user_id).await {
-            Ok(user) => user,
-            Err(e) => return Err(e.to_string()),
+            Err(e) => match e {
+                sqlx::Error::Database(db_error) => {
+                    if let Some(code) = db_error.code() {
+                        let code = code.to_string();
+                        if code == DatabaseError::UniqueConstraintError.to_string() {
+                            return Err(AuthError::EmailAlreadyExists(
+                                "Email is already registered in our system".into(),
+                            ));
+                        } else if code == DatabaseError::ForeignKeyError.to_string() {
+                            return Err(AuthError::RoleNotFound("Role not found".into()));
+                        }
+                    }
+
+                    return Err(AuthError::InternalServerError);
+                }
+                _ => return Err(AuthError::InternalServerError),
+            },
         };
 
-        Ok(user)
+        Ok(())
+    }
+
+    async fn send_email_confirmation(&self, email: String) -> Result<(), AuthError> {
+        let user = match self._user_repository.find_one_by_email(email).await {
+            Ok(user) => user,
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(AuthError::UserNotFound(
+                        "User with the given email was not found".into(),
+                    ))
+                }
+                _ => return Err(AuthError::InternalServerError),
+            },
+        };
+
+        if user.is_email_confirmed == true {
+            return Err(AuthError::EmailAlreadyConfirmed(
+                "The email is already confirmed".into(),
+            ));
+        }
+
+        let key = match HmacSha256::new_from_slice(
+            self._configuration
+                .email_confirmation_secret
+                .expose_secret()
+                .as_bytes(),
+        ) {
+            Ok(key) => key,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let mut claims = BTreeMap::new();
+        claims.insert("user_id", user.id.to_string());
+        claims.insert("iat", chrono::Utc::now().timestamp().to_string());
+        claims.insert(
+            "exp",
+            (chrono::Utc::now()
+                + chrono::Duration::seconds(
+                    self._configuration.email_confirmation_expiration_seconds,
+                ))
+            .timestamp()
+            .to_string(),
+        );
+
+        let token = match claims.sign_with_key(&key) {
+            Ok(token) => token,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let confirmation_link = format!(
+            "{}/verification?token={}",
+            self._configuration.dashboard_baseurl, token,
+        );
+
+        let html = format!(
+            "<p>Please confirm your email address by clicking this <a href=\"{}\">link</a>",
+            confirmation_link
+        )
+        .to_string();
+
+        let email_params = EmailParams {
+            from: "Enchiridion <noreply@stevenhansel.com>".into(),
+            to: user.email,
+            subject: "[Enchiridion] Please confirm your email address".into(),
+            html,
+        };
+        if let Err(_) = self._email.send(email_params).await {
+            return Err(AuthError::InternalServerError);
+        }
+
+        Ok(())
+    }
+
+    async fn verify_email_confirmation_token(
+        &self,
+        token: String,
+    ) -> Result<BTreeMap<String, String>, AuthError> {
+        let key = match HmacSha256::new_from_slice(
+            self._configuration
+                .email_confirmation_secret
+                .expose_secret()
+                .as_bytes(),
+        ) {
+            Ok(key) => key,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let claims: BTreeMap<String, String> = match token.verify_with_key(&key) {
+            Ok(claims) => claims,
+            Err(_) => {
+                return Err(AuthError::TokenInvalid(
+                    "Authorization failed, token is invalid".into(),
+                ))
+            }
+        };
+
+        let expired_at: i64 = match claims["exp"].parse() {
+            Ok(timestamp) => timestamp,
+            _ => {
+                return Err(AuthError::TokenInvalid(
+                    "Authorization failed, token is invalid".into(),
+                ))
+            }
+        };
+
+        let now = chrono::Utc::now();
+        let expired_at = chrono::DateTime::<chrono::Utc>::from_utc(
+            chrono::NaiveDateTime::from_timestamp(expired_at, 0),
+            chrono::Utc,
+        );
+        if now >= expired_at {
+            return Err(AuthError::TokenExpired(
+                "Token is already expired, please send a new confirmation email".into(),
+            ));
+        }
+
+        Ok(claims)
+    }
+
+    async fn confirm_email(&self, token: String) -> Result<(), AuthError> {
+        let claims = match self.verify_email_confirmation_token(token).await {
+            Ok(claims) => claims,
+            Err(e) => return Err(e),
+        };
+
+        let user_id: i32 = match claims["user_id"].parse() {
+            Ok(id) => id,
+            Err(_) => return Err(AuthError::InternalServerError),
+        };
+        if let Err(e) = self._user_repository.confirm_email(user_id).await {
+            match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(AuthError::UserNotFound("User not found".into()))
+                }
+                _ => return Err(AuthError::InternalServerError),
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn login(&self, params: LoginParams) -> Result<UserAuthEntity, AuthError> {
+        let user = match self._user_repository.find_one_by_email(params.email).await {
+            Ok(user) => user,
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(AuthError::UserNotFound("User not found".into()))
+                }
+                _ => return Err(AuthError::InternalServerError),
+            },
+        };
+
+        if user.is_email_confirmed == false {
+            return Err(AuthError::UserNotVerified(
+                "Email is not confirmed yet".into(),
+            ));
+        }
+        if user.status == UserStatus::WaitingForApproval {
+            return Err(AuthError::UserNotVerified(
+                "User is not approved yet by admin".into(),
+            ));
+        }
+        if user.status == UserStatus::Rejected {
+            return Err(AuthError::UserNotVerified(
+                "User registration is rejected by admin".into(),
+            ));
+        }
+
+        let password_str = match str::from_utf8(&user.password) {
+            Ok(v) => v,
+            _ => return Err(AuthError::InternalServerError),
+        };
+        let parsed_hash = match PasswordHash::new(password_str) {
+            Ok(hash) => hash,
+            _ => return Err(AuthError::InternalServerError),
+        };
+        let is_password_match = Argon2::default()
+            .verify_password(params.password.as_bytes(), &parsed_hash)
+            .is_ok();
+        if is_password_match == false {}
+
+        let entity = match self
+            ._auth_repository
+            .find_one_auth_entity_by_email(user.email)
+            .await
+        {
+            Ok(entity) => entity,
+            Err(e) => match e {
+                _ => return Err(AuthError::InternalServerError),
+            },
+        };
+
+        Ok(entity)
     }
 }
