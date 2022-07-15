@@ -24,7 +24,7 @@ COPY . .
 ENV SQLX_OFFLINE true
 
 # Build our project
-RUN cargo build --release --bin api
+RUN cargo build --release --bin enchiridion_api
 
 # Stage 4 
 FROM debian:bullseye-slim AS runtime
@@ -36,6 +36,6 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/api api
+COPY --from=builder /app/target/release/enchiridion_api enchiridion_api
 
 ENTRYPOINT ["./api"]
