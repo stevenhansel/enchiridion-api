@@ -1,11 +1,10 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use std::thread;
 
 use argon2::{password_hash::PasswordHasher, Argon2};
 use async_trait::async_trait;
 use hmac::{Hmac, Mac};
-use jwt::SignWithKey;
+use jwt::{SignWithKey, VerifyWithKey};
 use secrecy::ExposeSecret;
 use sha2::Sha256;
 use shaku::{Component, Interface};
@@ -31,6 +30,7 @@ pub struct RegisterParams {
 pub trait AuthServiceInterface: Interface {
     async fn register(&self, params: RegisterParams) -> Result<(), AuthError>;
     async fn send_email_confirmation(&self, email: String) -> Result<(), AuthError>;
+    async fn verify_email_confirmation_token(&self, token: String) -> Result<(), AuthError>;
 }
 
 #[derive(Component)]
@@ -118,13 +118,14 @@ impl AuthServiceInterface for AuthService {
 
         let mut claims = BTreeMap::new();
         claims.insert("user_id", user.id.to_string());
-        claims.insert("iat", chrono::Utc::now().to_string());
+        claims.insert("iat", chrono::Utc::now().timestamp().to_string());
         claims.insert(
             "exp",
             (chrono::Utc::now()
                 + chrono::Duration::seconds(
                     self._configuration.email_confirmation_expiration_seconds,
                 ))
+            .timestamp()
             .to_string(),
         );
 
@@ -152,6 +153,49 @@ impl AuthServiceInterface for AuthService {
         };
         if let Err(_) = self._email.send(email_params).await {
             return Err(AuthError::InternalServerError);
+        }
+
+        Ok(())
+    }
+
+    async fn verify_email_confirmation_token(&self, token: String) -> Result<(), AuthError> {
+        let key = match HmacSha256::new_from_slice(
+            self._configuration
+                .email_confirmation_secret
+                .expose_secret()
+                .as_bytes(),
+        ) {
+            Ok(key) => key,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let claims: BTreeMap<String, String> = match token.verify_with_key(&key) {
+            Ok(claims) => claims,
+            Err(_) => {
+                return Err(AuthError::TokenInvalid(
+                    "Authorization failed, token is invalid".into(),
+                ))
+            }
+        };
+
+        let expired_at: i64 = match claims["exp"].parse() {
+            Ok(timestamp) => timestamp,
+            _ => {
+                return Err(AuthError::TokenInvalid(
+                    "Authorization failed, token is invalid".into(),
+                ))
+            }
+        };
+
+        let now = chrono::Utc::now();
+        let expired_at = chrono::DateTime::<chrono::Utc>::from_utc(
+            chrono::NaiveDateTime::from_timestamp(expired_at, 0),
+            chrono::Utc,
+        );
+        if now >= expired_at {
+            return Err(AuthError::TokenExpired(
+                "Token is already expired, please send a new confirmation email".into(),
+            ));
         }
 
         Ok(())
