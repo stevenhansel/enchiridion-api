@@ -6,7 +6,7 @@ use secrecy::ExposeSecret;
 use shaku::{Component, Interface};
 
 use crate::config::Configuration;
-use crate::shared::DatabaseError;
+use crate::database::DatabaseError;
 use crate::user::{InsertUserParams, UserRepositoryInterface};
 
 use super::AuthError;
