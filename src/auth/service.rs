@@ -18,7 +18,7 @@ use crate::database::DatabaseError;
 use crate::email::{self, EmailParams};
 use crate::user::{InsertUserParams, UserRepositoryInterface, UserStatus};
 
-use super::{AuthError, AuthRepositoryInterface, UserAuthEntity};
+use super::{AuthError, AuthRepositoryInterface, LoginResult};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -44,7 +44,7 @@ pub trait AuthServiceInterface: Interface {
         token: String,
     ) -> Result<BTreeMap<String, String>, AuthError>;
     async fn confirm_email(&self, token: String) -> Result<(), AuthError>;
-    async fn login(&self, params: LoginParams) -> Result<UserAuthEntity, AuthError>;
+    async fn login(&self, params: LoginParams) -> Result<LoginResult, AuthError>;
 }
 
 #[derive(Component)]
@@ -242,12 +242,14 @@ impl AuthServiceInterface for AuthService {
         Ok(())
     }
 
-    async fn login(&self, params: LoginParams) -> Result<UserAuthEntity, AuthError> {
+    async fn login(&self, params: LoginParams) -> Result<LoginResult, AuthError> {
         let user = match self._user_repository.find_one_by_email(params.email).await {
             Ok(user) => user,
             Err(e) => match e {
                 sqlx::Error::RowNotFound => {
-                    return Err(AuthError::UserNotFound("User not found".into()))
+                    return Err(AuthError::AuthenticationFailed(
+                        "Authentication failed, Invalid email or password".into(),
+                    ))
                 }
                 _ => return Err(AuthError::InternalServerError),
             },
@@ -280,7 +282,11 @@ impl AuthServiceInterface for AuthService {
         let is_password_match = Argon2::default()
             .verify_password(params.password.as_bytes(), &parsed_hash)
             .is_ok();
-        if is_password_match == false {}
+        if is_password_match == false {
+            return Err(AuthError::AuthenticationFailed(
+                "Authentication failed, Invalid email or password".into(),
+            ));
+        }
 
         let entity = match self
             ._auth_repository
@@ -293,6 +299,62 @@ impl AuthServiceInterface for AuthService {
             },
         };
 
-        Ok(entity)
+        let access_token_key = match HmacSha256::new_from_slice(
+            self._configuration
+                .access_token_secret
+                .expose_secret()
+                .as_bytes(),
+        ) {
+            Ok(key) => key,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let mut access_token_claims = BTreeMap::new();
+        access_token_claims.insert("user_id", user.id.to_string());
+        access_token_claims.insert("iat", chrono::Utc::now().timestamp().to_string());
+        access_token_claims.insert(
+            "exp",
+            (chrono::Utc::now()
+                + chrono::Duration::seconds(self._configuration.access_token_expiration_seconds))
+            .timestamp()
+            .to_string(),
+        );
+
+        let refresh_token_key = match HmacSha256::new_from_slice(
+            self._configuration
+                .refresh_token_secret
+                .expose_secret()
+                .as_bytes(),
+        ) {
+            Ok(key) => key,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let mut refresh_token_claims = BTreeMap::new();
+        refresh_token_claims.insert("user_id", user.id.to_string());
+        refresh_token_claims.insert("iat", chrono::Utc::now().timestamp().to_string());
+        refresh_token_claims.insert(
+            "exp",
+            (chrono::Utc::now()
+                + chrono::Duration::seconds(self._configuration.access_token_expiration_seconds))
+            .timestamp()
+            .to_string(),
+        );
+
+        let access_token = match access_token_claims.sign_with_key(&access_token_key) {
+            Ok(token) => token,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let refresh_token = match refresh_token_claims.sign_with_key(&refresh_token_key) {
+            Ok(token) => token,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        Ok(LoginResult {
+            entity,
+            access_token,
+            refresh_token,
+        })
     }
 }

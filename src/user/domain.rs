@@ -1,4 +1,6 @@
-#[derive(Debug, sqlx::Type, PartialEq, Clone)]
+use serde::Serialize;
+
+#[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize)]
 #[sqlx(type_name = "user_status", rename_all = "snake_case")]
 pub enum UserStatus {
     WaitingForApproval,

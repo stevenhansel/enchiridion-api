@@ -5,6 +5,7 @@ use crate::user::UserStatus;
 
 #[derive(Debug)]
 pub enum AuthError {
+    AuthenticationFailed(String),
     TokenInvalid(String),
     TokenExpired(String),
     EmailAlreadyExists(String),
@@ -17,6 +18,7 @@ pub enum AuthError {
 
 #[derive(Debug)]
 pub enum AuthErrorCode {
+    AuthenticationFailed,
     TokenInvalid,
     TokenExpired,
     EmailAlreadyExists,
@@ -32,6 +34,7 @@ impl error::Error for AuthError {}
 impl fmt::Display for AuthError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            AuthError::AuthenticationFailed(message) => write!(f, "{}", message),
             AuthError::TokenInvalid(message) => write!(f, "{}", message),
             AuthError::TokenExpired(message) => write!(f, "{}", message),
             AuthError::EmailAlreadyExists(message) => write!(f, "{}", message),
@@ -47,6 +50,7 @@ impl fmt::Display for AuthError {
 impl fmt::Display for AuthErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            AuthErrorCode::AuthenticationFailed => write!(f, "AUTHENTICATION_FAILED"),
             AuthErrorCode::TokenInvalid => write!(f, "TOKEN_INVALID"),
             AuthErrorCode::TokenExpired => write!(f, "TOKEN_EXPIRED"),
             AuthErrorCode::EmailAlreadyExists => write!(f, "EMAIL_ALREADY_EXISTS"),
@@ -78,4 +82,10 @@ pub struct RoleAuthEntity {
 pub struct PermissionAuthEntity {
     pub id: i32,
     pub name: String,
+}
+
+pub struct LoginResult {
+    pub entity: UserAuthEntity,
+    pub access_token: String,
+    pub refresh_token: String,
 }
