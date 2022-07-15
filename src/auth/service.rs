@@ -30,7 +30,11 @@ pub struct RegisterParams {
 pub trait AuthServiceInterface: Interface {
     async fn register(&self, params: RegisterParams) -> Result<(), AuthError>;
     async fn send_email_confirmation(&self, email: String) -> Result<(), AuthError>;
-    async fn verify_email_confirmation_token(&self, token: String) -> Result<(), AuthError>;
+    async fn verify_email_confirmation_token(
+        &self,
+        token: String,
+    ) -> Result<BTreeMap<String, String>, AuthError>;
+    async fn confirm_email(&self, token: String) -> Result<(), AuthError>;
 }
 
 #[derive(Component)]
@@ -158,7 +162,10 @@ impl AuthServiceInterface for AuthService {
         Ok(())
     }
 
-    async fn verify_email_confirmation_token(&self, token: String) -> Result<(), AuthError> {
+    async fn verify_email_confirmation_token(
+        &self,
+        token: String,
+    ) -> Result<BTreeMap<String, String>, AuthError> {
         let key = match HmacSha256::new_from_slice(
             self._configuration
                 .email_confirmation_secret
@@ -196,6 +203,30 @@ impl AuthServiceInterface for AuthService {
             return Err(AuthError::TokenExpired(
                 "Token is already expired, please send a new confirmation email".into(),
             ));
+        }
+
+        Ok(claims)
+    }
+
+    async fn confirm_email(&self, token: String) -> Result<(), AuthError> {
+        let claims = match self.verify_email_confirmation_token(token).await {
+            Ok(claims) => claims,
+            Err(e) => return Err(e),
+        };
+
+        let user_id: i32 = match claims["user_id"].parse() {
+            Ok(id) => id,
+            Err(_) => return Err(AuthError::InternalServerError),
+        };
+        if let Err(e) = self._user_repository.confirm_email(user_id).await {
+            match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(AuthError::UserNotFound(
+                        "User not found".into(),
+                    ))
+                }
+                _ => return Err(AuthError::InternalServerError),
+            }
         }
 
         Ok(())

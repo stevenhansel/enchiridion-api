@@ -17,7 +17,7 @@ pub trait UserRepositoryInterface: Interface {
     async fn create(&self, params: InsertUserParams) -> Result<i32, sqlx::Error>;
     async fn find_one_by_id(&self, id: i32) -> Result<User, sqlx::Error>;
     async fn find_one_by_email(&self, email: String) -> Result<User, sqlx::Error>;
-    async fn confirm_email(&self, email: String) -> Result<(), sqlx::Error>;
+    async fn confirm_email(&self, id: i32) -> Result<(), sqlx::Error>;
 }
 
 #[derive(Component)]
@@ -77,14 +77,14 @@ impl UserRepositoryInterface for UserRepository {
         Ok(user)
     }
 
-    async fn confirm_email(&self, email: String) -> Result<(), sqlx::Error> {
+    async fn confirm_email(&self, id: i32) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"
             update "user"
             set is_email_confirmed = true
-            where email = $1
+            where id = $1
             "#,
-            email,
+            id,
         )
         .execute(&self._db)
         .await?;

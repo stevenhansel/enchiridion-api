@@ -103,7 +103,7 @@ pub async fn send_email_confirmation(
     HttpResponse::NoContent().finish()
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct VerifyEmailConfirmationTokenQueryParams {
     token: String,
 }
@@ -141,7 +141,52 @@ pub async fn verify_email_confirmation_token(
     HttpResponse::NoContent().finish()
 }
 
-pub async fn confirm_email() -> HttpResponse {
+#[derive(Debug, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfirmEmailBody {
+    #[validate(length(min = 1, message = "token: Token must be a valid string"))]
+    token: String,
+}
+
+pub async fn confirm_email(
+    auth_service: Inject<Container, dyn AuthServiceInterface>,
+    body: web::Json<ConfirmEmailBody>,
+) -> HttpResponse {
+    if let Err(e) = body.validate() {
+        let e = ApiValidationError::new(e);
+
+        return HttpResponse::BadRequest().json(HttpErrorResponse::new(e.code(), e.messages()));
+    }
+
+    if let Err(e) = auth_service.confirm_email(body.token.to_string()).await {
+        match e {
+            AuthError::TokenInvalid(message) => {
+                return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
+                    AuthErrorCode::TokenInvalid.to_string(),
+                    vec![message],
+                ))
+            }
+            AuthError::TokenExpired(message) => {
+                return HttpResponse::Gone().json(HttpErrorResponse::new(
+                    AuthErrorCode::TokenExpired.to_string(),
+                    vec![message],
+                ))
+            }
+            AuthError::UserNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AuthErrorCode::UserNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            _ => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AuthErrorCode::InternalServerError.to_string(),
+                    vec![AuthError::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
     HttpResponse::NoContent().finish()
 }
 
