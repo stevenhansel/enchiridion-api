@@ -30,4 +30,26 @@ cargo run
 
 ### Database Migrations
 
-Adding new migration file `sqlx migrate add <migration_name>`
+Adding new migration file `sqlx migrate add --source database/migrations <migration_name>`
+
+### Resetting the docker postgres volume
+
+1. Stop pg docker instance
+```
+docker stop enchiridion-postgres
+```
+
+2. Remove the pg docker volume
+```
+docker volume rm enchiridion-postgres
+```
+
+3. Run pg docker instance
+```
+./scripts/postgres.sh
+```
+
+4. Re-run the migration
+```
+sqlx migrate run --source database/migrations
+```
