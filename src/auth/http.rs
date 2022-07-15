@@ -5,7 +5,7 @@ use validator::Validate;
 
 use crate::auth::service::RegisterParams;
 use crate::container::Container;
-use crate::http::HttpErrorResponse;
+use crate::http::{HttpErrorResponse, ApiValidationError};
 
 use super::service::AuthServiceInterface;
 use super::{AuthError, AuthErrorCode};
@@ -34,21 +34,11 @@ pub async fn register(
     auth_service: Inject<Container, dyn AuthServiceInterface>,
 ) -> HttpResponse {
     if let Err(e) = body.validate() {
-        let mut messages: Vec<String> = vec![];
-
-        for (_, v) in e.field_errors() {
-            if v.len() == 0 {
-                continue;
-            }
-
-            if let Some(msg) = &v[0].message {
-                messages.push(msg.to_string());
-            }
-        }
+        let e = ApiValidationError::new(e);
 
         return HttpResponse::BadRequest().json(HttpErrorResponse::new(
-            "API_VALIDATION_ERROR".into(),
-            messages,
+            e.code(),
+            e.messages(),
         ));
     }
 
