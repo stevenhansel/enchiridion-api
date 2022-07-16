@@ -1,5 +1,5 @@
 use actix_web::cookie::Cookie;
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use shaku_actix::Inject;
 use validator::Validate;
@@ -345,7 +345,43 @@ pub async fn login(
         .json(response)
 }
 
-pub async fn refresh_token() -> HttpResponse {
+pub async fn refresh_token(
+    auth_service: Inject<Container, dyn AuthServiceInterface>,
+    req: HttpRequest,
+) -> HttpResponse {
+    let refresh_token = match req.cookie("refresh_token") {
+        Some(token) => token,
+        _ => {
+            return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
+                AuthErrorCode::AuthenticationFailed.to_string(),
+                vec!["Token not provided".into()],
+            ))
+        }
+    };
+
+    if let Err(e) = auth_service.refresh_token(refresh_token.value().to_string()).await {
+        match e {
+            AuthError::TokenInvalid(message) => {
+                return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
+                    AuthErrorCode::TokenInvalid.to_string(),
+                    vec![message],
+                ))
+            }
+            AuthError::TokenExpired(message) => {
+                return HttpResponse::Gone().json(HttpErrorResponse::new(
+                    AuthErrorCode::TokenExpired.to_string(),
+                    vec![message],
+                ))
+            }
+            _ => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AuthErrorCode::InternalServerError.to_string(),
+                    vec![AuthError::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
     HttpResponse::NoContent().finish()
 }
 
