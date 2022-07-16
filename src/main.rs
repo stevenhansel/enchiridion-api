@@ -7,6 +7,7 @@ use sqlx::PgPool;
 use enchiridion_api::auth::{
     AuthRepository, AuthRepositoryParameters, AuthService, AuthServiceParameters,
 };
+use enchiridion_api::building::{BuildingRepository, BuildingRepositoryParameters};
 use enchiridion_api::config::Configuration;
 use enchiridion_api::container::Container;
 use enchiridion_api::email;
@@ -46,6 +47,7 @@ async fn main() -> std::io::Result<()> {
             _configuration: config.clone(),
             _email: email_client,
         })
+        .with_component_parameters::<BuildingRepository>(BuildingRepositoryParameters { _db: pool.clone() })
         .build();
 
     let listener = TcpListener::bind(config.address)?;

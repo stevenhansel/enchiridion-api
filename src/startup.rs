@@ -3,12 +3,13 @@ use std::sync::Arc;
 
 use actix_cors::Cors;
 use actix_web::dev::Server;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpResponse, HttpServer};
 use serde::Serialize;
 
 use crate::container::Container;
 
 use crate::auth::http as auth_http;
+use crate::building::http as building_http;
 use crate::role::http as role_http;
 
 #[derive(Serialize)]
@@ -56,6 +57,22 @@ pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::i
                     .route(
                         "/v1/auth/reset-password",
                         web::put().to(auth_http::reset_password),
+                    )
+                    .route(
+                        "/v1/buildings",
+                        web::get().to(building_http::list_buildings),
+                    )
+                    .route(
+                        "/v1/buildings",
+                        web::post().to(building_http::create),
+                    )
+                    .route(
+                        "/v1/buildings",
+                        web::put().to(building_http::update),
+                    )
+                    .route(
+                        "/v1/buildings",
+                        web::delete().to(building_http::delete),
                     )
                     .route("/v1/roles", web::get().to(role_http::list_role)),
             )
