@@ -336,7 +336,7 @@ impl AuthServiceInterface for AuthService {
         refresh_token_claims.insert(
             "exp",
             (chrono::Utc::now()
-                + chrono::Duration::seconds(self._configuration.access_token_expiration_seconds))
+                + chrono::Duration::seconds(self._configuration.refresh_token_expiration_seconds))
             .timestamp()
             .to_string(),
         );
@@ -350,6 +350,14 @@ impl AuthServiceInterface for AuthService {
             Ok(token) => token,
             _ => return Err(AuthError::InternalServerError),
         };
+
+        if let Err(_) = self
+            ._auth_repository
+            .set_user_refresh_token(user.id, refresh_token.clone())
+            .await
+        {
+            return Err(AuthError::InternalServerError);
+        }
 
         Ok(LoginResult {
             entity,

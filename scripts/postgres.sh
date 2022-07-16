@@ -1,6 +1,7 @@
 #!/bin/sh
 docker run \
   --name enchiridion-postgres \
+  --network enchiridion \
   --volume enchiridion-postgres:/var/lib/postgresql/data \
   -p 5432:5432 \
   --rm \

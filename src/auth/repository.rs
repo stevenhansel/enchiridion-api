@@ -1,8 +1,11 @@
+use std::sync::{Arc, Mutex};
+
 use async_trait::async_trait;
+use redis::Commands;
 use shaku::{Component, Interface};
 use sqlx::{Pool, Postgres};
 
-use crate::user::UserStatus;
+use crate::{config::Configuration, user::UserStatus};
 
 use super::{PermissionAuthEntity, RoleAuthEntity, UserAuthEntity};
 
@@ -25,15 +28,26 @@ pub trait AuthRepositoryInterface: Interface {
         &self,
         email: String,
     ) -> Result<UserAuthEntity, sqlx::Error>;
+    async fn set_user_refresh_token(
+        &self,
+        user_id: i32,
+        refresh_token: String,
+    ) -> Result<(), redis::RedisError>;
 }
 
 #[derive(Component)]
 #[shaku(interface = AuthRepositoryInterface)]
 pub struct AuthRepository {
     _db: Pool<Postgres>,
+    _redis: Arc<Mutex<redis::Connection>>,
+    _configuration: Configuration,
 }
 
 impl AuthRepository {
+    fn refresh_token_key_builder(user_id: i32) -> String {
+        format!("refresh_token_{}", user_id)
+    }
+
     fn map_user_auth_entity(raw: &Vec<RawAuthEntity>) -> UserAuthEntity {
         let mut permissions: Vec<PermissionAuthEntity> = vec![];
         for data in raw {
@@ -95,5 +109,23 @@ impl AuthRepositoryInterface for AuthRepository {
         .await?;
 
         Ok(AuthRepository::map_user_auth_entity(&raw))
+    }
+
+    async fn set_user_refresh_token(
+        &self,
+        user_id: i32,
+        refresh_token: String,
+    ) -> Result<(), redis::RedisError> {
+        let mut redis = self._redis.lock().expect("Cannot get redis connection");
+
+        let key = AuthRepository::refresh_token_key_builder(user_id);
+        let expire_at = (chrono::Utc::now()
+            + chrono::Duration::seconds(self._configuration.email_confirmation_expiration_seconds))
+        .timestamp();
+
+        redis.set(key.clone(), refresh_token)?;
+        redis.expire_at(key.clone(), expire_at.try_into().unwrap())?;
+
+        Ok(())
     }
 }

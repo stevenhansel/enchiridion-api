@@ -62,6 +62,7 @@ pub struct Configuration {
     pub refresh_token_expiration_seconds: i64,
 
     pub database_url: Secret<String>,
+    pub redis_url: Secret<String>,
 
     pub mailgun_baseurl: String,
     pub mailgun_domain: Secret<String>,
@@ -87,6 +88,7 @@ impl Configuration {
             refresh_token_expiration_seconds: dotenvy::var("REFRESH_TOKEN_EXPIRATION_SECONDS")?.parse()?,
 
             database_url: Secret::new(dotenvy::var("DATABASE_URL")?),
+            redis_url: Secret::new(dotenvy::var("REDIS_URL")?),
 
             mailgun_baseurl: dotenvy::var("MAILGUN_BASEURL")?,
             mailgun_domain: Secret::new(dotenvy::var("MAILGUN_DOMAIN")?),
@@ -112,6 +114,7 @@ impl Configuration {
             refresh_token_expiration_seconds: env::var("REFRESH_TOKEN_EXPIRATION_SECONDS")?.parse()?,
 
             database_url: Secret::new(env::var("DATABASE_URL")?),
+            redis_url: Secret::new(env::var("REDIS_URL")?),
 
             mailgun_baseurl: env::var("MAILGUN_BASEURL")?,
             mailgun_domain: Secret::new(env::var("MAILGUN_DOMAIN")?),
