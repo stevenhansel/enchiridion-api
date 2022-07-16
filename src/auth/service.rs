@@ -18,7 +18,7 @@ use crate::database::DatabaseError;
 use crate::email::{self, EmailParams};
 use crate::user::{InsertUserParams, UserRepositoryInterface, UserStatus};
 
-use super::{AuthError, AuthRepositoryInterface, LoginResult};
+use super::{AuthEntity, AuthError, AuthRepositoryInterface, RefreshTokenResult};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -43,8 +43,9 @@ pub trait AuthServiceInterface: Interface {
         &self,
         token: String,
     ) -> Result<BTreeMap<String, String>, AuthError>;
-    async fn confirm_email(&self, token: String) -> Result<(), AuthError>;
-    async fn login(&self, params: LoginParams) -> Result<LoginResult, AuthError>;
+    async fn confirm_email(&self, token: String) -> Result<AuthEntity, AuthError>;
+    async fn login(&self, params: LoginParams) -> Result<AuthEntity, AuthError>;
+    async fn refresh_token(&self, refresh_token: String) -> Result<RefreshTokenResult, AuthError>;
 }
 
 #[derive(Component)]
@@ -56,6 +57,114 @@ pub struct AuthService {
     _auth_repository: Arc<dyn AuthRepositoryInterface>,
     _email: email::Client,
     _configuration: Configuration,
+}
+
+impl AuthService {
+    pub fn generate_access_token(&self, user_id: i32) -> Result<String, AuthError> {
+        let access_token_key = match HmacSha256::new_from_slice(
+            self._configuration
+                .access_token_secret
+                .expose_secret()
+                .as_bytes(),
+        ) {
+            Ok(key) => key,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let mut access_token_claims = BTreeMap::new();
+        access_token_claims.insert("user_id", user_id.to_string());
+        access_token_claims.insert("iat", chrono::Utc::now().timestamp().to_string());
+        access_token_claims.insert(
+            "exp",
+            (chrono::Utc::now()
+                + chrono::Duration::seconds(self._configuration.access_token_expiration_seconds))
+            .timestamp()
+            .to_string(),
+        );
+
+        let access_token = match access_token_claims.sign_with_key(&access_token_key) {
+            Ok(token) => token,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        Ok(access_token)
+    }
+
+    pub fn generate_refresh_token(&self, user_id: i32) -> Result<String, AuthError> {
+        let refresh_token_key = match HmacSha256::new_from_slice(
+            self._configuration
+                .refresh_token_secret
+                .expose_secret()
+                .as_bytes(),
+        ) {
+            Ok(key) => key,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let mut refresh_token_claims = BTreeMap::new();
+        refresh_token_claims.insert("user_id", user_id.to_string());
+        refresh_token_claims.insert("iat", chrono::Utc::now().timestamp().to_string());
+        refresh_token_claims.insert(
+            "exp",
+            (chrono::Utc::now()
+                + chrono::Duration::seconds(self._configuration.refresh_token_expiration_seconds))
+            .timestamp()
+            .to_string(),
+        );
+
+        let refresh_token = match refresh_token_claims.sign_with_key(&refresh_token_key) {
+            Ok(token) => token,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        Ok(refresh_token)
+    }
+
+    pub fn decode_refresh_token(
+        &self,
+        refresh_token: String,
+    ) -> Result<BTreeMap<String, String>, AuthError> {
+        let key = match HmacSha256::new_from_slice(
+            self._configuration
+                .refresh_token_secret
+                .expose_secret()
+                .as_bytes(),
+        ) {
+            Ok(key) => key,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let claims: BTreeMap<String, String> = match refresh_token.verify_with_key(&key) {
+            Ok(claims) => claims,
+            Err(_) => {
+                return Err(AuthError::TokenInvalid(
+                    "Authorization failed, token is invalid".into(),
+                ))
+            }
+        };
+
+        let expired_at: i64 = match claims["exp"].parse() {
+            Ok(timestamp) => timestamp,
+            _ => {
+                return Err(AuthError::TokenInvalid(
+                    "Authorization failed, token is invalid".into(),
+                ))
+            }
+        };
+
+        let now = chrono::Utc::now();
+        let expired_at = chrono::DateTime::<chrono::Utc>::from_utc(
+            chrono::NaiveDateTime::from_timestamp(expired_at, 0),
+            chrono::Utc,
+        );
+        if now >= expired_at {
+            return Err(AuthError::TokenExpired(
+                "Token is already expired, please send a new confirmation email".into(),
+            ));
+        }
+
+        Ok(claims)
+    }
 }
 
 #[async_trait]
@@ -220,7 +329,7 @@ impl AuthServiceInterface for AuthService {
         Ok(claims)
     }
 
-    async fn confirm_email(&self, token: String) -> Result<(), AuthError> {
+    async fn confirm_email(&self, token: String) -> Result<AuthEntity, AuthError> {
         let claims = match self.verify_email_confirmation_token(token).await {
             Ok(claims) => claims,
             Err(e) => return Err(e),
@@ -239,10 +348,36 @@ impl AuthServiceInterface for AuthService {
             }
         }
 
-        Ok(())
+        let entity = match self
+            ._auth_repository
+            .find_one_auth_entity_by_id(user_id)
+            .await
+        {
+            Ok(entity) => entity,
+            Err(e) => match e {
+                _ => return Err(AuthError::InternalServerError),
+            },
+        };
+
+        let access_token = self.generate_access_token(user_id)?;
+        let refresh_token = self.generate_refresh_token(user_id)?;
+
+        if let Err(_) = self
+            ._auth_repository
+            .set_user_refresh_token(user_id, refresh_token.clone())
+            .await
+        {
+            return Err(AuthError::InternalServerError);
+        }
+
+        Ok(AuthEntity {
+            entity,
+            access_token,
+            refresh_token,
+        })
     }
 
-    async fn login(&self, params: LoginParams) -> Result<LoginResult, AuthError> {
+    async fn login(&self, params: LoginParams) -> Result<AuthEntity, AuthError> {
         let user = match self._user_repository.find_one_by_email(params.email).await {
             Ok(user) => user,
             Err(e) => match e {
@@ -299,57 +434,8 @@ impl AuthServiceInterface for AuthService {
             },
         };
 
-        let access_token_key = match HmacSha256::new_from_slice(
-            self._configuration
-                .access_token_secret
-                .expose_secret()
-                .as_bytes(),
-        ) {
-            Ok(key) => key,
-            _ => return Err(AuthError::InternalServerError),
-        };
-
-        let mut access_token_claims = BTreeMap::new();
-        access_token_claims.insert("user_id", user.id.to_string());
-        access_token_claims.insert("iat", chrono::Utc::now().timestamp().to_string());
-        access_token_claims.insert(
-            "exp",
-            (chrono::Utc::now()
-                + chrono::Duration::seconds(self._configuration.access_token_expiration_seconds))
-            .timestamp()
-            .to_string(),
-        );
-
-        let refresh_token_key = match HmacSha256::new_from_slice(
-            self._configuration
-                .refresh_token_secret
-                .expose_secret()
-                .as_bytes(),
-        ) {
-            Ok(key) => key,
-            _ => return Err(AuthError::InternalServerError),
-        };
-
-        let mut refresh_token_claims = BTreeMap::new();
-        refresh_token_claims.insert("user_id", user.id.to_string());
-        refresh_token_claims.insert("iat", chrono::Utc::now().timestamp().to_string());
-        refresh_token_claims.insert(
-            "exp",
-            (chrono::Utc::now()
-                + chrono::Duration::seconds(self._configuration.refresh_token_expiration_seconds))
-            .timestamp()
-            .to_string(),
-        );
-
-        let access_token = match access_token_claims.sign_with_key(&access_token_key) {
-            Ok(token) => token,
-            _ => return Err(AuthError::InternalServerError),
-        };
-
-        let refresh_token = match refresh_token_claims.sign_with_key(&refresh_token_key) {
-            Ok(token) => token,
-            _ => return Err(AuthError::InternalServerError),
-        };
+        let access_token = self.generate_access_token(user.id)?;
+        let refresh_token = self.generate_refresh_token(user.id)?;
 
         if let Err(_) = self
             ._auth_repository
@@ -359,8 +445,24 @@ impl AuthServiceInterface for AuthService {
             return Err(AuthError::InternalServerError);
         }
 
-        Ok(LoginResult {
+        Ok(AuthEntity {
             entity,
+            access_token,
+            refresh_token,
+        })
+    }
+
+    async fn refresh_token(&self, refresh_token: String) -> Result<RefreshTokenResult, AuthError> {
+        let claims = self.decode_refresh_token(refresh_token)?;
+        let user_id: i32 = match claims["user_id"].parse() {
+            Ok(id) => id,
+            Err(_) => return Err(AuthError::InternalServerError),
+        };
+
+        let access_token = self.generate_access_token(user_id)?;
+        let refresh_token = self.generate_refresh_token(user_id)?;
+
+        Ok(RefreshTokenResult {
             access_token,
             refresh_token,
         })

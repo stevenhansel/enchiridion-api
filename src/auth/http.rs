@@ -86,6 +86,12 @@ pub async fn send_email_confirmation(
                     vec![message],
                 ))
             }
+            AuthError::EmailAlreadyConfirmed(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    AuthErrorCode::EmailAlreadyConfirmed.to_string(),
+                    vec![message],
+                ))
+            }
             _ => {
                 return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
                     AuthErrorCode::InternalServerError.to_string(),
@@ -153,8 +159,9 @@ pub async fn confirm_email(
         return HttpResponse::BadRequest().json(HttpErrorResponse::new(e.code(), e.messages()));
     }
 
-    if let Err(e) = auth_service.confirm_email(body.token.to_string()).await {
-        match e {
+    let result = match auth_service.confirm_email(body.token.to_string()).await {
+        Ok(res) => res,
+        Err(e) => match e {
             AuthError::TokenInvalid(message) => {
                 return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
                     AuthErrorCode::TokenInvalid.to_string(),
@@ -179,10 +186,48 @@ pub async fn confirm_email(
                     vec![AuthError::InternalServerError.to_string()],
                 ))
             }
-        }
+        },
+    };
+
+    let mut permissions: Vec<PermissionObject> = vec![];
+    for p in result.entity.role.permissions {
+        permissions.push(PermissionObject {
+            id: p.id,
+            name: p.name,
+        });
     }
 
-    HttpResponse::NoContent().finish()
+    let role = RoleObject {
+        id: result.entity.role.id,
+        name: result.entity.role.name,
+        permissions,
+    };
+
+    let response = LoginResponse {
+        id: result.entity.id,
+        name: result.entity.name,
+        email: result.entity.email,
+        profile_picture: result.entity.profile_picture,
+        is_email_confirmed: result.entity.is_email_confirmed,
+        user_status: result.entity.user_status,
+        role,
+    };
+
+    let access_token_cookie = Cookie::build("access_token", result.access_token)
+        .path("/")
+        .secure(true)
+        .http_only(true)
+        .finish();
+    let refresh_token_cookie = Cookie::build("refresh_token", result.refresh_token)
+        .path("/")
+        .secure(true)
+        .http_only(true)
+        .finish();
+
+    HttpResponse::Ok()
+        .cookie(access_token_cookie)
+        .cookie(refresh_token_cookie)
+        .json(response)
 }
 
 #[derive(Debug, Deserialize, Validate)]

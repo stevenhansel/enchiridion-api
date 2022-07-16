@@ -62,18 +62,9 @@ pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::i
                         "/v1/buildings",
                         web::get().to(building_http::list_buildings),
                     )
-                    .route(
-                        "/v1/buildings",
-                        web::post().to(building_http::create),
-                    )
-                    .route(
-                        "/v1/buildings",
-                        web::put().to(building_http::update),
-                    )
-                    .route(
-                        "/v1/buildings",
-                        web::delete().to(building_http::delete),
-                    )
+                    .route("/v1/buildings", web::post().to(building_http::create))
+                    .route("/v1/buildings", web::put().to(building_http::update))
+                    .route("/v1/buildings", web::delete().to(building_http::delete))
                     .route("/v1/roles", web::get().to(role_http::list_role)),
             )
     })
@@ -84,3 +75,4 @@ pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::i
 
     Ok(server)
 }
+

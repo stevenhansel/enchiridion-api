@@ -53,6 +53,7 @@ async fn main() -> std::io::Result<()> {
                     .get_connection()
                     .expect("Failed to open redis connection"),
             )),
+            _configuration: config.clone(),
         })
         .with_component_parameters::<AuthService>(AuthServiceParameters {
             _configuration: config.clone(),

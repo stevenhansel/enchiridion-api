@@ -63,6 +63,12 @@ impl fmt::Display for AuthErrorCode {
     }
 }
 
+pub struct AuthEntity {
+    pub entity: UserAuthEntity,
+    pub access_token: String,
+    pub refresh_token: String,
+}
+
 pub struct UserAuthEntity {
     pub id: i32,
     pub name: String,
@@ -84,8 +90,7 @@ pub struct PermissionAuthEntity {
     pub name: String,
 }
 
-pub struct LoginResult {
-    pub entity: UserAuthEntity,
+pub struct RefreshTokenResult {
     pub access_token: String,
     pub refresh_token: String,
 }
