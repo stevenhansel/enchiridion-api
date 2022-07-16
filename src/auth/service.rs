@@ -465,8 +465,6 @@ impl AuthServiceInterface for AuthService {
             Err(_) => return Err(AuthError::InternalServerError),
         };
 
-        println!("user_id: {}", user_id);
-
         let access_token = self.generate_access_token(user_id)?;
         let refresh_token = self.generate_refresh_token(user_id)?;
 

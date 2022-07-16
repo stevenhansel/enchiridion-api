@@ -113,7 +113,6 @@ impl AuthRepositoryInterface for AuthRepository {
     }
 
     async fn find_one_auth_entity_by_id(&self, id: i32) -> Result<UserAuthEntity, sqlx::Error> {
-        println!("user_id: {}", id);
         let raw = sqlx::query_as!(
             RawAuthEntity,
             r#"
