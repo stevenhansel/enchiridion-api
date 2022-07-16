@@ -67,6 +67,47 @@
     },
     "query": "\n            select \n                id,\n                name,\n                email,\n                password,\n                registration_reason,\n                is_email_confirmed,\n                status as \"status: UserStatus\"\n            from \"user\"\n            where email = $1\n            "
   },
+  "1e46a315037e9f3b964c68d540398bd62fad8e4bb482d9394d654a6dc9bd2661": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n            insert into \"building\" (name, color)\n            values($1, $2)\n            returning id\n            "
+  },
+  "321a391f4a5ae6fb5ccacd66aba1e6554948fc47657fcedec34768c1208dc3c6": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            delete from \"building\"\n            where id = $1\n            returning id\n            "
+  },
   "42b49a33def36e8baec37f9808e20ab37cae80c89bc70bbbf029b24f4299a15e": {
     "describe": {
       "columns": [
@@ -188,6 +229,28 @@
     },
     "query": "\n            update \"user\"\n            set is_email_confirmed = true\n            where id = $1\n            "
   },
+  "cdec90e6669804a0787f119b8112d877fb82c1b1cdd61d9a4b53f50f99be19b3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n            update \"building\"\n            set name=$2, color=$3\n            where id=$1\n            returning id\n            "
+  },
   "ce456b7a3f158f77131690bca37e3ee61d556179ec86755e8b4d25e0e6bdbd3b": {
     "describe": {
       "columns": [
@@ -254,6 +317,36 @@
       }
     },
     "query": "\n            select \n                id,\n                name,\n                email,\n                password,\n                registration_reason,\n                is_email_confirmed,\n                status as \"status: UserStatus\" \n            from \"user\"\n            where id = $1\n            "
+  },
+  "d84996587e4993b9283db69890d64871bcaae5aa7ea13c0d93db53f66b126832": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "color",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            select id, name, color\n            from \"building\"\n            order by id desc\n            "
   },
   "d9dd3209500e513e7ee40bc811e7b7a09af001629739ce30883a401cde6e6ea1": {
     "describe": {
