@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_cors::Cors;
 
 use crate::container::Container;
 
@@ -17,8 +18,11 @@ pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::i
     let container = Arc::new(container);
 
     let server = HttpServer::new(move || {
+        let cors = Cors::permissive();
+
         App::new()
             .app_data(container.clone())
+            .wrap(cors)
             .route("/health_check", web::get().to(health_check))
             .service(
                 web::scope("/dashboard")
