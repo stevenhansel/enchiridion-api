@@ -355,6 +355,9 @@ impl AuthServiceInterface for AuthService {
         {
             Ok(entity) => entity,
             Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(AuthError::UserNotFound("User not found".into()))
+                }
                 _ => return Err(AuthError::InternalServerError),
             },
         };
@@ -430,6 +433,9 @@ impl AuthServiceInterface for AuthService {
         {
             Ok(entity) => entity,
             Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(AuthError::UserNotFound("User not found".into()))
+                }
                 _ => return Err(AuthError::InternalServerError),
             },
         };

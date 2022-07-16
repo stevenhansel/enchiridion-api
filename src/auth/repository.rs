@@ -113,6 +113,7 @@ impl AuthRepositoryInterface for AuthRepository {
     }
 
     async fn find_one_auth_entity_by_id(&self, id: i32) -> Result<UserAuthEntity, sqlx::Error> {
+        println!("user_id: {}", id);
         let raw = sqlx::query_as!(
             RawAuthEntity,
             r#"
@@ -128,7 +129,7 @@ impl AuthRepositoryInterface for AuthRepository {
                 "permission"."id" as "permission_id",
                 "permission"."name" as "permission_name"
             from "user"
-            join "role" on "role"."id" = "user"."id"
+            join "role" on "role"."id" = "user"."role_id"
             join "role_permission" on "role_permission"."role_id" = "role"."id"
             join "permission" on "permission"."id" = "role_permission"."permission_id"
             where "user"."id" = $1
@@ -137,6 +138,10 @@ impl AuthRepositoryInterface for AuthRepository {
         )
         .fetch_all(&self._db)
         .await?;
+
+        if raw.len() == 0 {
+            return Err(sqlx::Error::RowNotFound)
+        }
 
         Ok(AuthRepository::map_user_auth_entity(&raw))
     }
