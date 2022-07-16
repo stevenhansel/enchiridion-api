@@ -1,14 +1,15 @@
 use shaku::module;
 
-use crate::auth::service::AuthService;
+use crate::auth::{AuthService, AuthRepository};
 use crate::building::{BuildingService, BuildingRepository};
-use crate::user::{repository::UserRepository, service::UserService};
+use crate::user::{UserRepository, UserService};
 use crate::role::{RoleService, RoleRepository};
 
 module! {
     pub Container {
         components = [
             AuthService,
+            AuthRepository,
             UserRepository,
             UserService,
             RoleService,

@@ -12,7 +12,7 @@ create table "user" (
   profile_picture text,
 
   is_email_confirmed boolean not null default false,
-  status user_status default 'waiting_for_approval',
+  status user_status not null default 'waiting_for_approval',
 
   role_id integer not null references role(id),
 

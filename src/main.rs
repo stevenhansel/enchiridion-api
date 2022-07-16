@@ -1,9 +1,12 @@
+use std::env;
 use std::net::TcpListener;
 
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
-use enchiridion_api::auth::{AuthService, AuthServiceParameters};
+use enchiridion_api::auth::{
+    AuthRepository, AuthRepositoryParameters, AuthService, AuthServiceParameters,
+};
 use enchiridion_api::building::{BuildingRepository, BuildingRepositoryParameters};
 use enchiridion_api::config::Configuration;
 use enchiridion_api::container::Container;
@@ -14,7 +17,16 @@ use enchiridion_api::user::{UserRepository, UserRepositoryParameters};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let config = Configuration::with_env_file().expect("Failed to read configuration");
+    let environment = match env::var("ENVIRONMENT") {
+        Ok(env) => env,
+        Err(_) => "development".into(),
+    };
+    let config = match environment.as_str() {
+        "production" => {
+            Configuration::with_os_environment_vars().expect("Failed to read configuration")
+        },
+        _ => Configuration::with_env_file().expect("Failed to read configuration"),
+    };
 
     let pool = PgPool::connect(config.database_url.expose_secret())
         .await
@@ -30,6 +42,7 @@ async fn main() -> std::io::Result<()> {
     let container = Container::builder()
         .with_component_parameters::<UserRepository>(UserRepositoryParameters { _db: pool.clone() })
         .with_component_parameters::<RoleRepository>(RoleRepositoryParameters { _db: pool.clone() })
+        .with_component_parameters::<AuthRepository>(AuthRepositoryParameters { _db: pool.clone() })
         .with_component_parameters::<AuthService>(AuthServiceParameters {
             _configuration: config.clone(),
             _email: email_client,

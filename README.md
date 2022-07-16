@@ -53,3 +53,7 @@ docker volume rm enchiridion-postgres
 ```
 sqlx migrate run --source database/migrations
 ```
+
+Prepare for deployment:
+
+cargo sqlx prepare -- --lib

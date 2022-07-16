@@ -1,8 +1,10 @@
 use std::net::TcpListener;
 use std::sync::Arc;
 
+use actix_cors::Cors;
 use actix_web::dev::Server;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpResponse, HttpServer};
+use serde::Serialize;
 
 use crate::container::Container;
 
@@ -10,17 +12,27 @@ use crate::auth::http as auth_http;
 use crate::building::http as building_http;
 use crate::role::http as role_http;
 
-async fn health_check() -> impl Responder {
-    HttpResponse::Ok()
+#[derive(Serialize)]
+struct HealthCheckResponse {
+    status: String,
+}
+
+async fn health_check() -> HttpResponse {
+    HttpResponse::Ok().json(HealthCheckResponse {
+        status: "healthy".into(),
+    })
 }
 
 pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::io::Error> {
     let container = Arc::new(container);
 
     let server = HttpServer::new(move || {
+        let cors = Cors::permissive();
+
         App::new()
             .app_data(container.clone())
-            .route("/health_check", web::get().to(health_check))
+            .wrap(cors)
+            .route("/", web::get().to(health_check))
             .service(
                 web::scope("/dashboard")
                     .route("/v1/auth/register", web::post().to(auth_http::register))
