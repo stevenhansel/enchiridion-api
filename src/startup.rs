@@ -82,9 +82,6 @@ pub struct Authentication;
 
 pub struct SayHi;
 
-// Middleware factory is `Transform` trait
-// `S` - type of the next service
-// `B` - type of response's body
 impl<S, B> Transform<S, ServiceRequest> for SayHi
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,

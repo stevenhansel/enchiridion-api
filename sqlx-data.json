@@ -88,6 +88,91 @@
     },
     "query": "\n            insert into \"building\" (name, color)\n            values($1, $2)\n            returning id\n            "
   },
+  "2705b12c74713b1d0ecca83bd70a43cc4046c961d3b994c482ebc4cf49dc0fd4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "user_name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "user_email",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "user_profile_picture",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "user_is_email_confirmed",
+          "ordinal": 4,
+          "type_info": "Bool"
+        },
+        {
+          "name": "user_status: UserStatus",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_for_approval",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "name": "user_status"
+            }
+          }
+        },
+        {
+          "name": "role_id",
+          "ordinal": 6,
+          "type_info": "Int4"
+        },
+        {
+          "name": "role_name",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "permission_id",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "permission_name",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            select \n                \"user\".\"id\" as \"user_id\",\n                \"user\".\"name\" as \"user_name\",\n                \"user\".\"email\" as \"user_email\",\n                \"user\".\"profile_picture\" as \"user_profile_picture\",\n                \"user\".\"is_email_confirmed\" as \"user_is_email_confirmed\",\n                \"user\".\"status\" as \"user_status: UserStatus\",\n                \"role\".\"id\" as \"role_id\",\n                \"role\".\"name\" as \"role_name\",\n                \"permission\".\"id\" as \"permission_id\",\n                \"permission\".\"name\" as \"permission_name\"\n            from \"user\"\n            join \"role\" on \"role\".\"id\" = \"user\".\"role_id\"\n            join \"role_permission\" on \"role_permission\".\"role_id\" = \"role\".\"id\"\n            join \"permission\" on \"permission\".\"id\" = \"role_permission\".\"permission_id\"\n            where \"user\".\"id\" = $1\n            "
+  },
   "321a391f4a5ae6fb5ccacd66aba1e6554948fc47657fcedec34768c1208dc3c6": {
     "describe": {
       "columns": [
@@ -317,91 +402,6 @@
       }
     },
     "query": "\n            select \n                id,\n                name,\n                email,\n                password,\n                registration_reason,\n                is_email_confirmed,\n                status as \"status: UserStatus\" \n            from \"user\"\n            where id = $1\n            "
-  },
-  "cfea2734003e6284fb2ed5aff5fa0504d03824935c0141697a97dfc5fa4f8a07": {
-    "describe": {
-      "columns": [
-        {
-          "name": "user_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "user_name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "user_email",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "user_profile_picture",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "user_is_email_confirmed",
-          "ordinal": 4,
-          "type_info": "Bool"
-        },
-        {
-          "name": "user_status: UserStatus",
-          "ordinal": 5,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "waiting_for_approval",
-                  "approved",
-                  "rejected"
-                ]
-              },
-              "name": "user_status"
-            }
-          }
-        },
-        {
-          "name": "role_id",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "role_name",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "permission_id",
-          "ordinal": 8,
-          "type_info": "Int4"
-        },
-        {
-          "name": "permission_name",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n            select \n                \"user\".\"id\" as \"user_id\",\n                \"user\".\"name\" as \"user_name\",\n                \"user\".\"email\" as \"user_email\",\n                \"user\".\"profile_picture\" as \"user_profile_picture\",\n                \"user\".\"is_email_confirmed\" as \"user_is_email_confirmed\",\n                \"user\".\"status\" as \"user_status: UserStatus\",\n                \"role\".\"id\" as \"role_id\",\n                \"role\".\"name\" as \"role_name\",\n                \"permission\".\"id\" as \"permission_id\",\n                \"permission\".\"name\" as \"permission_name\"\n            from \"user\"\n            join \"role\" on \"role\".\"id\" = \"user\".\"id\"\n            join \"role_permission\" on \"role_permission\".\"role_id\" = \"role\".\"id\"\n            join \"permission\" on \"permission\".\"id\" = \"role_permission\".\"permission_id\"\n            where \"user\".\"id\" = $1\n            "
   },
   "d84996587e4993b9283db69890d64871bcaae5aa7ea13c0d93db53f66b126832": {
     "describe": {
