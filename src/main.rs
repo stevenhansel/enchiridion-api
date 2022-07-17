@@ -33,7 +33,7 @@ async fn main() -> std::io::Result<()> {
         .unwrap();
 
     let redis_instance = redis::Client::open(config.redis_url.expose_secret().to_string())
-        .expect("Failed to create redis instance");
+        .expect("Failed to create redis nstance");
     let redis_connection = Arc::new(Mutex::new(
         redis_instance
             .get_connection()

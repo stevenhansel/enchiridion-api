@@ -20,10 +20,10 @@ impl Producer {
     }
 
     pub fn push(&self, payload: BTreeMap<String, String>) -> Result<(), ProducerError> {
-        let mut redis = self
-            .client
-            .lock()
-            .expect("Cannot get redis client connection");
+        let mut redis = match self.client.lock() {
+            Ok(redis) => redis,
+            Err(e) => return Err(ProducerError::RedisError(e.to_string())),
+        };
 
         if let Err(e) = redis.xadd_map::<String, String, BTreeMap<String, String>, ()>(
             self.queue_name.clone(),

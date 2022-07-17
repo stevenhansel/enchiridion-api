@@ -1,15 +1,18 @@
 use std::net::TcpListener;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use actix_cors::Cors;
-use actix_web::dev::Server;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::dev::{forward_ready, Server, Service, ServiceRequest, ServiceResponse};
+use actix_web::{web, App, Error, HttpResponse, HttpServer};
+use futures::FutureExt;
+use futures::future::LocalBoxFuture;
 use serde::Serialize;
 
 use crate::auth::{http as auth_http, AuthServiceInterface};
 use crate::building::{http as building_http, BuildingServiceInterface};
 use crate::role::{http as role_http, RoleServiceInterface};
-use crate::user::UserServiceInterface;
+use crate::user::{UserRepositoryInterface, UserServiceInterface};
 
 #[derive(Serialize)]
 struct HealthCheckResponse {
@@ -74,8 +77,14 @@ pub fn run(
                         web::get().to(building_http::list_buildings),
                     )
                     .route("/v1/buildings", web::post().to(building_http::create))
-                    .route("/v1/buildings/{buildingId}", web::put().to(building_http::update))
-                    .route("/v1/buildings/{buildingId}", web::delete().to(building_http::delete))
+                    .route(
+                        "/v1/buildings/{buildingId}",
+                        web::put().to(building_http::update),
+                    )
+                    .route(
+                        "/v1/buildings/{buildingId}",
+                        web::delete().to(building_http::delete),
+                    )
                     .route("/v1/roles", web::get().to(role_http::list_role)),
             )
     })
@@ -92,11 +101,35 @@ pub fn run(
 // - decode the token and check whether the token is valid or not / still expired (auth service)
 // - return user_id so that it can be accessed in the controller level
 
-// pub type AuthenticationInfo = Rc<i32>;
+pub type AuthenticationInfo = Rc<i32>;
 
-// pub trait AuthenticationMiddlewareInterface {}
+pub trait AuthenticationMiddlewareInterface {}
 
-// pub struct AuthenticationMiddleware<S> {
-//     auth_service: Arc<dyn UserRepositoryInterface>,
-//     service: Rc<S>,
-// }
+pub struct AuthenticationMiddleware<S> {
+    auth_service: Arc<dyn UserRepositoryInterface + Send + Sync + 'static>,
+    service: Rc<S>,
+}
+
+impl<S, B> Service<ServiceRequest> for AuthenticationMiddleware<S>
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+{
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
+
+    forward_ready!(service);
+
+    fn call(&self, req: ServiceRequest) -> Self::Future {
+        let service = self.service.clone();
+        let auth_service = self.auth_service.clone();
+
+        async move {
+            // let access_token = match req.cookie("access_token") {
+            //     Some(token) => token,
+            //     None => 
+            // };
+            Ok(service.call(req).await?)
+        }.boxed_local()
+    }
+}
