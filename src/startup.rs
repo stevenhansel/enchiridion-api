@@ -1,19 +1,16 @@
-use std::future::{ready, Ready};
 use std::net::TcpListener;
-use std::rc::Rc;
 use std::sync::Arc;
 
 use actix_cors::Cors;
-use actix_web::dev::{forward_ready, Server, Service, ServiceRequest, ServiceResponse, Transform};
+use actix_web::dev::Server;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use serde::Serialize;
 
 use crate::container::Container;
 
 use crate::auth::http as auth_http;
-use crate::building::http as building_http;
+use crate::building::{http as building_http, BuildingServiceInterface};
 use crate::role::{http as role_http, RoleServiceInterface};
-use crate::user::UserRepositoryInterface;
 
 #[derive(Serialize)]
 struct HealthCheckResponse {
@@ -30,9 +27,12 @@ pub fn run(
     listener: TcpListener,
     container: Container,
     role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
+    building_service: Arc<dyn BuildingServiceInterface + Send + Sync + 'static>,
 ) -> Result<Server, std::io::Error> {
     let container = Arc::new(container);
+
     let role_service = web::Data::new(role_service);
+    let building_service = web::Data::new(building_service);
 
     let server = HttpServer::new(move || {
         let cors = Cors::permissive();
@@ -40,6 +40,7 @@ pub fn run(
         App::new()
             .app_data(container.clone())
             .app_data(role_service.clone())
+            .app_data(building_service.clone())
             .wrap(cors)
             .route("/", web::get().to(health_check))
             .service(
@@ -72,8 +73,8 @@ pub fn run(
                         web::get().to(building_http::list_buildings),
                     )
                     .route("/v1/buildings", web::post().to(building_http::create))
-                    .route("/v1/buildings", web::put().to(building_http::update))
-                    .route("/v1/buildings", web::delete().to(building_http::delete))
+                    .route("/v1/buildings/{buildingId}", web::put().to(building_http::update))
+                    .route("/v1/buildings/{buildingId}", web::delete().to(building_http::delete))
                     .route("/v1/roles", web::get().to(role_http::list_role)),
             )
     })

@@ -5,15 +5,17 @@ use std::sync::{Arc, Mutex};
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
-use enchiridion_api::auth::{
-    AuthRepository, AuthRepositoryParameters, AuthService, AuthServiceParameters,
-};
-use enchiridion_api::building::{BuildingRepository, BuildingRepositoryParameters};
+use enchiridion_api::startup::run;
+
 use enchiridion_api::config::Configuration;
 use enchiridion_api::container::Container;
 use enchiridion_api::email;
+
+use enchiridion_api::auth::{
+    AuthRepository, AuthRepositoryParameters, AuthService, AuthServiceParameters,
+};
+use enchiridion_api::building::{BuildingRepository, BuildingService};
 use enchiridion_api::role::{RoleRepository, RoleService};
-use enchiridion_api::startup::run;
 use enchiridion_api::user::{UserRepository, UserRepositoryParameters};
 
 #[tokio::main]
@@ -44,7 +46,10 @@ async fn main() -> std::io::Result<()> {
     let email_client = email::Client::new(Box::new(mailgun_adapter));
 
     let role_repository = Arc::new(RoleRepository::new(pool.clone()));
+    let building_repository = Arc::new(BuildingRepository::new(pool.clone()));
+
     let role_service = Arc::new(RoleService::new(role_repository.clone()));
+    let building_service = Arc::new(BuildingService::new(building_repository.clone()));
 
     let container = Container::builder()
         .with_component_parameters::<UserRepository>(UserRepositoryParameters { _db: pool.clone() })
@@ -61,11 +66,14 @@ async fn main() -> std::io::Result<()> {
             _configuration: config.clone(),
             _email: email_client,
         })
-        .with_component_parameters::<BuildingRepository>(BuildingRepositoryParameters {
-            _db: pool.clone(),
-        })
         .build();
 
     let listener = TcpListener::bind(config.address)?;
-    run(listener, container, role_service.clone())?.await
+    run(
+        listener,
+        container,
+        role_service.clone(),
+        building_service.clone(),
+    )?
+    .await
 }

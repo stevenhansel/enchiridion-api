@@ -1,7 +1,6 @@
 use shaku::module;
 
 use crate::auth::{AuthService, AuthRepository};
-use crate::building::{BuildingService, BuildingRepository};
 use crate::user::{UserRepository, UserService};
 
 module! {
@@ -11,8 +10,6 @@ module! {
             AuthRepository,
             UserRepository,
             UserService,
-            BuildingService,
-            BuildingRepository,
         ],
         providers = []
     }

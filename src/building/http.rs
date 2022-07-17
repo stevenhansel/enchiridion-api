@@ -1,10 +1,10 @@
+use std::sync::Arc;
+
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
-use shaku_actix::Inject;
 use validator::Validate;
 
 use crate::building::service::{CreateParams, UpdateParams};
-use crate::container::Container;
 
 use crate::http::{ApiValidationError, HttpErrorResponse};
 
@@ -22,15 +22,14 @@ pub struct BuildingJson {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListBuildingsResponse {
-    contents: Vec<BuildingJson>, 
+    contents: Vec<BuildingJson>,
 }
 
 pub async fn list_buildings(
-    building_service: Inject<Container, dyn BuildingServiceInterface>,
+    building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
 ) -> HttpResponse {
-    let result = building_service
-        .get_buildings()
-        .await;
+    println!("start");
+    let result = building_service.get_buildings().await;
 
     let result = match result {
         Ok(buildings) => buildings,
@@ -42,13 +41,16 @@ pub async fn list_buildings(
         }
     };
 
-    HttpResponse::Ok()
-        .json(ListBuildingsResponse {
-            contents: result
-                .into_iter()
-                .map(| building | { BuildingJson { id: building.id, name: building.name, color: building.color } })
-                .collect(),
-        })
+    HttpResponse::Ok().json(ListBuildingsResponse {
+        contents: result
+            .into_iter()
+            .map(|building| BuildingJson {
+                id: building.id,
+                name: building.name,
+                color: building.color,
+            })
+            .collect(),
+    })
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -66,7 +68,7 @@ pub struct CreateBody {
 
 pub async fn create(
     body: web::Json<CreateBody>,
-    building_service: Inject<Container, dyn BuildingServiceInterface>,
+    building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
 ) -> HttpResponse {
     if let Err(e) = body.validate() {
         let e = ApiValidationError::new(e);
@@ -79,7 +81,8 @@ pub async fn create(
             name: body.name.to_string(),
             color: body.color.to_string(),
         })
-    .await {
+        .await
+    {
         match e {
             BuildingError::BuildingNameAlreadyExists(message) => {
                 return HttpResponse::Conflict().json(HttpErrorResponse::new(
@@ -87,10 +90,12 @@ pub async fn create(
                     vec![message],
                 ))
             }
-            _ => return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
-                BuildingErrorCode::InternalServerError.to_string(),
-                vec![BuildingError::InternalServerError.to_string()],
-            ))
+            _ => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    BuildingErrorCode::InternalServerError.to_string(),
+                    vec![BuildingError::InternalServerError.to_string()],
+                ))
+            }
         }
     };
 
@@ -100,7 +105,6 @@ pub async fn create(
 #[derive(Debug, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBody {
-    id: i32,
     #[validate(length(min = 1, message = "name: Name must not be empty"))]
     name: String,
     #[validate(length(
@@ -112,9 +116,12 @@ pub struct UpdateBody {
 }
 
 pub async fn update(
+    building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
+    path: web::Path<i32>,
     body: web::Json<UpdateBody>,
-    building_service: Inject<Container, dyn BuildingServiceInterface>,
 ) -> HttpResponse {
+    let building_id = path.into_inner();
+
     if let Err(e) = body.validate() {
         let e = ApiValidationError::new(e);
 
@@ -123,7 +130,7 @@ pub async fn update(
 
     if let Err(e) = building_service
         .update(UpdateParams {
-            id: body.id,
+            id: building_id,
             name: body.name.to_string(),
             color: body.color.to_string(),
         })
@@ -142,36 +149,25 @@ pub async fn update(
                     vec![message],
                 ))
             }
-            _ => return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
-                BuildingErrorCode::InternalServerError.to_string(),
-                vec![BuildingError::InternalServerError.to_string()],
-            ))
+            _ => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    BuildingErrorCode::InternalServerError.to_string(),
+                    vec![BuildingError::InternalServerError.to_string()],
+                ))
+            }
         }
     };
 
     HttpResponse::NoContent().finish()
 }
 
-#[derive(Debug, Deserialize, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct DeleteBody {
-    id: i32,
-}
-
 pub async fn delete(
-    body: web::Json<DeleteBody>,
-    building_service: Inject<Container, dyn BuildingServiceInterface>,
+    building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
+    path: web::Path<i32>,
 ) -> HttpResponse {
-    if let Err(e) = body.validate() {
-        let e = ApiValidationError::new(e);
+    let building_id = path.into_inner();
 
-        return HttpResponse::BadRequest().json(HttpErrorResponse::new(e.code(), e.messages()));
-    }
-
-    if let Err(e) = building_service
-        .delete_by_id(body.id)
-        .await
-    {
+    if let Err(e) = building_service.delete_by_id(building_id).await {
         match e {
             BuildingError::BuildingNotFound(message) => {
                 return HttpResponse::NotFound().json(HttpErrorResponse::new(
@@ -179,10 +175,12 @@ pub async fn delete(
                     vec![message],
                 ))
             }
-            _ => return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
-                BuildingErrorCode::InternalServerError.to_string(),
-                vec![BuildingError::InternalServerError.to_string()],
-            ))
+            _ => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    BuildingErrorCode::InternalServerError.to_string(),
+                    vec![BuildingError::InternalServerError.to_string()],
+                ))
+            }
         }
     };
 

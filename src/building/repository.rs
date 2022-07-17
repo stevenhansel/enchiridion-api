@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use shaku::{Component, Interface};
 use sqlx::{Pool, Postgres};
 
 use super::domain::Building;
@@ -16,17 +15,21 @@ pub struct UpdateBuildingParams {
 }
 
 #[async_trait]
-pub trait BuildingRepositoryInterface: Interface {
+pub trait BuildingRepositoryInterface {
     async fn find_buildings(&self) -> Result<Vec<Building>, sqlx::Error>;
     async fn create(&self, params: InsertBuildingParams) -> Result<i32, sqlx::Error>;
     async fn update(&self, params: UpdateBuildingParams) -> Result<i32, sqlx::Error>;
     async fn delete_by_id(&self, id: i32) -> Result<i32, sqlx::Error>;
 }
 
-#[derive(Component)]
-#[shaku(interface = BuildingRepositoryInterface)]
 pub struct BuildingRepository {
     _db: Pool<Postgres>,
+}
+
+impl BuildingRepository {
+    pub fn new(_db: Pool<Postgres>) -> BuildingRepository {
+        BuildingRepository { _db }
+    }
 }
 
 #[async_trait]
