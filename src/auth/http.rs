@@ -3,10 +3,8 @@ use std::sync::Arc;
 use actix_web::cookie::Cookie;
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
-use shaku_actix::Inject;
 use validator::Validate;
 
-use crate::container::Container;
 use crate::http::{ApiValidationError, HttpErrorResponse};
 use crate::user::UserStatus;
 
