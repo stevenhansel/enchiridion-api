@@ -1,18 +1,19 @@
-use std::future::{Ready, ready};
+use std::future::{ready, Ready};
 use std::net::TcpListener;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use actix_cors::Cors;
-use actix_web::dev::{forward_ready, Server, Transform, ServiceRequest, ServiceResponse, Service};
-use actix_web::{web, App, HttpResponse, HttpServer, Error};
+use actix_web::dev::{forward_ready, Server, Service, ServiceRequest, ServiceResponse, Transform};
+use actix_web::{web, App, HttpResponse, HttpServer};
 use serde::Serialize;
-use futures::future::LocalBoxFuture;
 
 use crate::container::Container;
 
 use crate::auth::http as auth_http;
 use crate::building::http as building_http;
-use crate::role::http as role_http;
+use crate::role::{http as role_http, RoleServiceInterface};
+use crate::user::UserRepositoryInterface;
 
 #[derive(Serialize)]
 struct HealthCheckResponse {
@@ -25,14 +26,20 @@ async fn health_check() -> HttpResponse {
     })
 }
 
-pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::io::Error> {
+pub fn run(
+    listener: TcpListener,
+    container: Container,
+    role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
+) -> Result<Server, std::io::Error> {
     let container = Arc::new(container);
+    let role_service = web::Data::new(role_service);
 
     let server = HttpServer::new(move || {
         let cors = Cors::permissive();
 
         App::new()
             .app_data(container.clone())
+            .app_data(role_service.clone())
             .wrap(cors)
             .route("/", web::get().to(health_check))
             .service(
@@ -78,50 +85,16 @@ pub fn run(listener: TcpListener, container: Container) -> Result<Server, std::i
     Ok(server)
 }
 
-pub struct Authentication;
+// the logic for the auth middleware
+// - get the access token jwt from bearer: Authorization
+// - decode the token and check whether the token is valid or not / still expired (auth service)
+// - return user_id so that it can be accessed in the controller level
 
-pub struct SayHi;
+// pub type AuthenticationInfo = Rc<i32>;
 
-impl<S, B> Transform<S, ServiceRequest> for SayHi
-where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
-    B: 'static,
-{
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type InitError = ();
-    type Transform = SayHiMiddleware<S>;
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+// pub trait AuthenticationMiddlewareInterface {}
 
-    fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(SayHiMiddleware { service }))
-    }
-}
-
-pub struct SayHiMiddleware<S> {
-    service: S,
-}
-
-impl<S, B> Service<ServiceRequest> for SayHiMiddleware<S>
-where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
-    B: 'static,
-{
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
-
-    forward_ready!(service);
-
-    fn call(&self, req: ServiceRequest) -> Self::Future {
-        let fut = self.service.call(req);
-
-        Box::pin(async move {
-            let res = fut.await?;
-
-            Ok(res)
-        })
-    }
-}
+// pub struct AuthenticationMiddleware<S> {
+//     auth_service: Arc<dyn UserRepositoryInterface>,
+//     service: Rc<S>,
+// }

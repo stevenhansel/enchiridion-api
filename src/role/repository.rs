@@ -1,18 +1,23 @@
 use async_trait::async_trait;
-use shaku::{Component, Interface};
 use sqlx::{Pool, Postgres};
 
 use super::Role;
 
 #[async_trait]
-pub trait RoleRepositoryInterface: Interface {
+pub trait RoleRepositoryInterface {
     async fn find(&self) -> Result<Vec<Role>, sqlx::Error>;
 }
 
-#[derive(Component)]
-#[shaku(interface = RoleRepositoryInterface)]
 pub struct RoleRepository {
     _db: Pool<Postgres>,
+}
+
+impl RoleRepository {
+    pub fn new(db: Pool<Postgres>) -> RoleRepository {
+        RoleRepository {
+            _db: db,
+        }
+    }
 }
 
 #[async_trait]

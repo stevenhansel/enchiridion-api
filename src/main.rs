@@ -12,7 +12,7 @@ use enchiridion_api::building::{BuildingRepository, BuildingRepositoryParameters
 use enchiridion_api::config::Configuration;
 use enchiridion_api::container::Container;
 use enchiridion_api::email;
-use enchiridion_api::role::{RoleRepository, RoleRepositoryParameters};
+use enchiridion_api::role::{RoleRepository, RoleService};
 use enchiridion_api::startup::run;
 use enchiridion_api::user::{UserRepository, UserRepositoryParameters};
 
@@ -43,9 +43,11 @@ async fn main() -> std::io::Result<()> {
     );
     let email_client = email::Client::new(Box::new(mailgun_adapter));
 
+    let role_repository = Arc::new(RoleRepository::new(pool.clone()));
+    let role_service = Arc::new(RoleService::new(role_repository.clone()));
+
     let container = Container::builder()
         .with_component_parameters::<UserRepository>(UserRepositoryParameters { _db: pool.clone() })
-        .with_component_parameters::<RoleRepository>(RoleRepositoryParameters { _db: pool.clone() })
         .with_component_parameters::<AuthRepository>(AuthRepositoryParameters {
             _db: pool.clone(),
             _redis: Arc::new(Mutex::new(
@@ -65,5 +67,5 @@ async fn main() -> std::io::Result<()> {
         .build();
 
     let listener = TcpListener::bind(config.address)?;
-    run(listener, container)?.await
+    run(listener, container, role_service.clone())?.await
 }

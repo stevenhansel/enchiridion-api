@@ -1,9 +1,9 @@
-use actix_web::HttpResponse;
+use std::sync::Arc;
+
+use actix_web::{HttpResponse, web};
 use serde::Serialize;
-use shaku_actix::Inject;
 
 use super::{RoleError, RoleServiceInterface};
-use crate::container::Container;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -25,7 +25,7 @@ pub struct ErrorResponse {
     message: String,
 }
 
-pub async fn list_role(role_service: Inject<Container, dyn RoleServiceInterface>) -> HttpResponse {
+pub async fn list_role(role_service: web::Data<Arc<dyn RoleServiceInterface + Send + Sync + 'static>>) -> HttpResponse {
     let roles = match role_service.get_list_role().await {
         Ok(roles) => roles,
         Err(e) => {
@@ -36,6 +36,7 @@ pub async fn list_role(role_service: Inject<Container, dyn RoleServiceInterface>
             };
         }
     };
+
     let mut contents: Vec<ListRoleContent> = vec![];
     for role in roles {
         contents.push(ListRoleContent {
