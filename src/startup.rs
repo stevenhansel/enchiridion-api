@@ -74,7 +74,6 @@ pub fn run(
                         "/v1/auth/reset-password",
                         web::put().to(auth_http::reset_password),
                     )
-                    .route("/v1/me", web::get().to(auth_http::me))
                     .route(
                         "/v1/buildings",
                         web::get().to(building_http::list_buildings),
@@ -89,10 +88,10 @@ pub fn run(
                         web::delete().to(building_http::delete),
                     )
                     .service(
-                        web::scope("/test")
+                        web::scope("/v1/me")
                             .wrap(AuthenticationMiddlewareFactory::new(auth_service.clone()))
-                            .route("/me", web::get().to(auth_http::me)),
-                    ),
+                            .route("", web::get().to(auth_http::me)),
+                    )
             )
     })
     .listen(listener)?
@@ -130,11 +129,15 @@ where
         let auth_service = self.auth_service.clone();
 
         async move {
+            println!("a");
             if let Some(access_token) = req.cookie("access_token") {
+                println!("b");
                 if let Ok(claims) =
                     auth_service.decode_access_token(access_token.value().to_string())
                 {
+                        println!("c");
                     if let Ok(user_id) = claims["user_id"].parse::<i32>() {
+                            println!("d");
                         req.extensions_mut()
                             .insert::<AuthenticationInfo>(Rc::new(user_id));
                     }

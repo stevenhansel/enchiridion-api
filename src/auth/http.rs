@@ -387,6 +387,7 @@ pub async fn refresh_token(
 }
 
 pub async fn me(auth: AuthenticationContext) -> HttpResponse {
+    println!("entered the stuff");
     if let Some(user_id) = auth.0 {
         println!("user_id: {}", user_id);
     }
