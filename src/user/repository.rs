@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use shaku::{Component, Interface};
 use sqlx::{Pool, Postgres};
 
 use super::domain::{User, UserStatus};
@@ -13,17 +12,21 @@ pub struct InsertUserParams {
 }
 
 #[async_trait]
-pub trait UserRepositoryInterface: Interface {
+pub trait UserRepositoryInterface {
     async fn create(&self, params: InsertUserParams) -> Result<i32, sqlx::Error>;
     async fn find_one_by_id(&self, id: i32) -> Result<User, sqlx::Error>;
     async fn find_one_by_email(&self, email: String) -> Result<User, sqlx::Error>;
     async fn confirm_email(&self, id: i32) -> Result<(), sqlx::Error>;
 }
 
-#[derive(Component)]
-#[shaku(interface = UserRepositoryInterface)]
 pub struct UserRepository {
     _db: Pool<Postgres>,
+}
+
+impl UserRepository {
+    pub fn new(_db: Pool<Postgres>) -> UserRepository {
+        UserRepository { _db }
+    }
 }
 
 #[async_trait]

@@ -11,7 +11,6 @@ use hmac::{Hmac, Mac};
 use jwt::{SignWithKey, VerifyWithKey};
 use secrecy::ExposeSecret;
 use sha2::Sha256;
-use shaku::{Component, Interface};
 
 use crate::config::Configuration;
 use crate::database::DatabaseError;
@@ -36,7 +35,7 @@ pub struct LoginParams {
 }
 
 #[async_trait]
-pub trait AuthServiceInterface: Interface {
+pub trait AuthServiceInterface {
     async fn register(&self, params: RegisterParams) -> Result<(), AuthError>;
     async fn send_email_confirmation(&self, email: String) -> Result<(), AuthError>;
     async fn verify_email_confirmation_token(
@@ -48,18 +47,28 @@ pub trait AuthServiceInterface: Interface {
     async fn refresh_token(&self, refresh_token: String) -> Result<RefreshTokenResult, AuthError>;
 }
 
-#[derive(Component)]
-#[shaku(interface = AuthServiceInterface)]
 pub struct AuthService {
-    #[shaku(inject)]
-    _user_repository: Arc<dyn UserRepositoryInterface>,
-    #[shaku(inject)]
-    _auth_repository: Arc<dyn AuthRepositoryInterface>,
+    _user_repository: Arc<dyn UserRepositoryInterface + Send + Sync + 'static>,
+    _auth_repository: Arc<dyn AuthRepositoryInterface + Send + Sync + 'static>,
     _email: email::Client,
     _configuration: Configuration,
 }
 
 impl AuthService {
+    pub fn new(
+        _user_repository: Arc<dyn UserRepositoryInterface + Send + Sync + 'static>,
+        _auth_repository: Arc<dyn AuthRepositoryInterface + Send + Sync + 'static>,
+        _email: email::Client,
+        _configuration: Configuration,
+    ) -> AuthService {
+        AuthService {
+            _user_repository,
+            _auth_repository,
+            _email,
+            _configuration,
+        }
+    }
+
     pub fn generate_access_token(&self, user_id: i32) -> Result<String, AuthError> {
         let access_token_key = match HmacSha256::new_from_slice(
             self._configuration

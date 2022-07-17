@@ -1,24 +1,25 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use shaku::{Component, Interface};
 
-use super::{
-    domain::User,
-    repository::UserRepositoryInterface,
-};
+use super::{domain::User, repository::UserRepositoryInterface};
 
 #[async_trait]
-pub trait UserServiceInterface: Interface {
+pub trait UserServiceInterface {
     async fn get_user_by_id(&self, id: i32) -> Result<User, String>;
     async fn get_user_by_email(&self, email: String) -> Result<User, String>;
 }
 
-#[derive(Component)]
-#[shaku(interface = UserServiceInterface)]
 pub struct UserService {
-    #[shaku(inject)]
-    _user_repository: Arc<dyn UserRepositoryInterface>,
+    _user_repository: Arc<dyn UserRepositoryInterface + Send + Sync + 'static>,
+}
+
+impl UserService {
+    pub fn new(
+        _user_repository: Arc<dyn UserRepositoryInterface + Send + Sync + 'static>,
+    ) -> UserService {
+        UserService { _user_repository }
+    }
 }
 
 #[async_trait]

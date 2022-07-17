@@ -2,7 +2,6 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use redis::Commands;
-use shaku::{Component, Interface};
 use sqlx::{Pool, Postgres};
 
 use crate::{config::Configuration, user::UserStatus};
@@ -23,7 +22,7 @@ pub struct RawAuthEntity {
 }
 
 #[async_trait]
-pub trait AuthRepositoryInterface: Interface {
+pub trait AuthRepositoryInterface {
     async fn find_one_auth_entity_by_email(
         &self,
         email: String,
@@ -36,8 +35,6 @@ pub trait AuthRepositoryInterface: Interface {
     ) -> Result<(), redis::RedisError>;
 }
 
-#[derive(Component)]
-#[shaku(interface = AuthRepositoryInterface)]
 pub struct AuthRepository {
     _db: Pool<Postgres>,
     _redis: Arc<Mutex<redis::Connection>>,
@@ -45,6 +42,18 @@ pub struct AuthRepository {
 }
 
 impl AuthRepository {
+    pub fn new(
+        _db: Pool<Postgres>,
+        _redis: Arc<Mutex<redis::Connection>>,
+        _configuration: Configuration,
+    ) -> AuthRepository {
+        AuthRepository {
+            _db,
+            _redis,
+            _configuration,
+        }
+    }
+
     fn refresh_token_key_builder(user_id: i32) -> String {
         format!("refresh_token_{}", user_id)
     }
@@ -139,7 +148,7 @@ impl AuthRepositoryInterface for AuthRepository {
         .await?;
 
         if raw.len() == 0 {
-            return Err(sqlx::Error::RowNotFound)
+            return Err(sqlx::Error::RowNotFound);
         }
 
         Ok(AuthRepository::map_user_auth_entity(&raw))

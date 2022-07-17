@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use actix_web::cookie::Cookie;
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
@@ -28,7 +30,7 @@ pub struct RegisterBody {
 }
 
 pub async fn register(
-    auth_service: Inject<Container, dyn AuthServiceInterface>,
+    auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
     body: web::Json<RegisterBody>,
 ) -> HttpResponse {
     if let Err(e) = body.validate() {
@@ -73,7 +75,7 @@ pub async fn register(
 }
 
 pub async fn send_email_confirmation(
-    auth_service: Inject<Container, dyn AuthServiceInterface>,
+    auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
     path: web::Path<String>,
 ) -> HttpResponse {
     let email = path.into_inner();
@@ -110,7 +112,7 @@ pub struct VerifyEmailConfirmationTokenQueryParams {
 }
 
 pub async fn verify_email_confirmation_token(
-    auth_service: Inject<Container, dyn AuthServiceInterface>,
+    auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
     query_params: web::Query<VerifyEmailConfirmationTokenQueryParams>,
 ) -> HttpResponse {
     if let Err(e) = auth_service
@@ -150,7 +152,7 @@ pub struct ConfirmEmailBody {
 }
 
 pub async fn confirm_email(
-    auth_service: Inject<Container, dyn AuthServiceInterface>,
+    auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
     body: web::Json<ConfirmEmailBody>,
 ) -> HttpResponse {
     if let Err(e) = body.validate() {
@@ -265,7 +267,7 @@ pub struct PermissionObject {
 }
 
 pub async fn login(
-    auth_service: Inject<Container, dyn AuthServiceInterface>,
+    auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
     body: web::Json<LoginBody>,
 ) -> HttpResponse {
     if let Err(e) = body.validate() {
@@ -346,7 +348,7 @@ pub async fn login(
 }
 
 pub async fn refresh_token(
-    auth_service: Inject<Container, dyn AuthServiceInterface>,
+    auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
     req: HttpRequest,
 ) -> HttpResponse {
     let refresh_token = match req.cookie("refresh_token") {

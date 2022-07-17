@@ -6,11 +6,10 @@ use actix_web::dev::Server;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use serde::Serialize;
 
-use crate::container::Container;
-
-use crate::auth::http as auth_http;
+use crate::auth::{http as auth_http, AuthServiceInterface};
 use crate::building::{http as building_http, BuildingServiceInterface};
 use crate::role::{http as role_http, RoleServiceInterface};
+use crate::user::UserServiceInterface;
 
 #[derive(Serialize)]
 struct HealthCheckResponse {
@@ -25,22 +24,24 @@ async fn health_check() -> HttpResponse {
 
 pub fn run(
     listener: TcpListener,
-    container: Container,
     role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
     building_service: Arc<dyn BuildingServiceInterface + Send + Sync + 'static>,
+    user_service: Arc<dyn UserServiceInterface + Send + Sync + 'static>,
+    auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
 ) -> Result<Server, std::io::Error> {
-    let container = Arc::new(container);
-
     let role_service = web::Data::new(role_service);
     let building_service = web::Data::new(building_service);
+    let user_service = web::Data::new(user_service);
+    let auth_service = web::Data::new(auth_service);
 
     let server = HttpServer::new(move || {
         let cors = Cors::permissive();
 
         App::new()
-            .app_data(container.clone())
             .app_data(role_service.clone())
             .app_data(building_service.clone())
+            .app_data(user_service.clone())
+            .app_data(auth_service.clone())
             .wrap(cors)
             .route("/", web::get().to(health_check))
             .service(

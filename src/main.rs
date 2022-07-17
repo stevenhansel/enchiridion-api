@@ -8,15 +8,12 @@ use sqlx::PgPool;
 use enchiridion_api::startup::run;
 
 use enchiridion_api::config::Configuration;
-use enchiridion_api::container::Container;
 use enchiridion_api::email;
 
-use enchiridion_api::auth::{
-    AuthRepository, AuthRepositoryParameters, AuthService, AuthServiceParameters,
-};
+use enchiridion_api::auth::{AuthRepository, AuthService};
 use enchiridion_api::building::{BuildingRepository, BuildingService};
 use enchiridion_api::role::{RoleRepository, RoleService};
-use enchiridion_api::user::{UserRepository, UserRepositoryParameters};
+use enchiridion_api::user::{UserService, UserRepository};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -37,6 +34,11 @@ async fn main() -> std::io::Result<()> {
 
     let redis_instance = redis::Client::open(config.redis_url.expose_secret().to_string())
         .expect("Failed to create redis instance");
+    let redis_connection = Arc::new(Mutex::new(
+        redis_instance
+            .get_connection()
+            .expect("Failed to open redis connection"),
+    ));
 
     let mailgun_adapter = email::MailgunAdapter::new(
         config.mailgun_baseurl.clone(),
@@ -47,33 +49,30 @@ async fn main() -> std::io::Result<()> {
 
     let role_repository = Arc::new(RoleRepository::new(pool.clone()));
     let building_repository = Arc::new(BuildingRepository::new(pool.clone()));
+    let user_repository = Arc::new(UserRepository::new(pool.clone()));
+    let auth_repository = Arc::new(AuthRepository::new(
+        pool.clone(),
+        redis_connection.clone(),
+        config.clone(),
+    ));
 
     let role_service = Arc::new(RoleService::new(role_repository.clone()));
     let building_service = Arc::new(BuildingService::new(building_repository.clone()));
-
-    let container = Container::builder()
-        .with_component_parameters::<UserRepository>(UserRepositoryParameters { _db: pool.clone() })
-        .with_component_parameters::<AuthRepository>(AuthRepositoryParameters {
-            _db: pool.clone(),
-            _redis: Arc::new(Mutex::new(
-                redis_instance
-                    .get_connection()
-                    .expect("Failed to open redis connection"),
-            )),
-            _configuration: config.clone(),
-        })
-        .with_component_parameters::<AuthService>(AuthServiceParameters {
-            _configuration: config.clone(),
-            _email: email_client,
-        })
-        .build();
+    let user_service = Arc::new(UserService::new(user_repository.clone()));
+    let auth_service = Arc::new(AuthService::new(
+        user_repository.clone(),
+        auth_repository.clone(),
+        email_client,
+        config.clone(),
+    ));
 
     let listener = TcpListener::bind(config.address)?;
     run(
         listener,
-        container,
         role_service.clone(),
         building_service.clone(),
+        user_service.clone(),
+        auth_service.clone(),
     )?
     .await
 }
