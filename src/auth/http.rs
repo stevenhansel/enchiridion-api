@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use crate::http::{ApiValidationError, HttpErrorResponse};
+use crate::startup::AuthenticationContext;
 use crate::user::UserStatus;
 
 use super::service::AuthServiceInterface;
@@ -383,6 +384,13 @@ pub async fn refresh_token(
     }
 
     HttpResponse::NoContent().finish()
+}
+
+pub async fn me(auth: AuthenticationContext) -> HttpResponse {
+    if let Some(user_id) = auth.0 {
+        println!("user_id: {}", user_id);
+    }
+    HttpResponse::Ok().finish()
 }
 
 pub async fn forgot_password() -> HttpResponse {

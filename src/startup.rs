@@ -1,18 +1,19 @@
+use std::future::{ready, Ready};
 use std::net::TcpListener;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use actix_cors::Cors;
-use actix_web::dev::{forward_ready, Server, Service, ServiceRequest, ServiceResponse};
-use actix_web::{web, App, Error, HttpResponse, HttpServer};
-use futures::FutureExt;
+use actix_web::dev::{forward_ready, Server, Service, ServiceRequest, ServiceResponse, Transform};
+use actix_web::{web, App, Error, FromRequest, HttpMessage, HttpResponse, HttpServer};
 use futures::future::LocalBoxFuture;
+use futures::FutureExt;
 use serde::Serialize;
 
 use crate::auth::{http as auth_http, AuthServiceInterface};
 use crate::building::{http as building_http, BuildingServiceInterface};
 use crate::role::{http as role_http, RoleServiceInterface};
-use crate::user::{UserRepositoryInterface, UserServiceInterface};
+use crate::user::UserServiceInterface;
 
 #[derive(Serialize)]
 struct HealthCheckResponse {
@@ -32,20 +33,20 @@ pub fn run(
     user_service: Arc<dyn UserServiceInterface + Send + Sync + 'static>,
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
 ) -> Result<Server, std::io::Error> {
-    let role_service = web::Data::new(role_service);
-    let building_service = web::Data::new(building_service);
-    let user_service = web::Data::new(user_service);
-    let auth_service = web::Data::new(auth_service);
+    let role_svc = web::Data::new(role_service.clone());
+    let building_svc = web::Data::new(building_service.clone());
+    let user_svc = web::Data::new(user_service.clone());
+    let auth_svc = web::Data::new(auth_service.clone());
 
     let server = HttpServer::new(move || {
         let cors = Cors::permissive();
 
         App::new()
-            .app_data(role_service.clone())
-            .app_data(building_service.clone())
-            .app_data(user_service.clone())
-            .app_data(auth_service.clone())
             .wrap(cors)
+            .app_data(role_svc.clone())
+            .app_data(building_svc.clone())
+            .app_data(user_svc.clone())
+            .app_data(auth_svc.clone())
             .route("/", web::get().to(health_check))
             .service(
                 web::scope("/dashboard")
@@ -64,6 +65,7 @@ pub fn run(
                     )
                     .route("/v1/auth/login", web::post().to(auth_http::login))
                     .route("/v1/auth/refresh", web::put().to(auth_http::refresh_token))
+                    .route("/v1/roles", web::get().to(role_http::list_role))
                     .route(
                         "/v1/auth/forgot-password",
                         web::get().to(auth_http::forgot_password),
@@ -72,6 +74,7 @@ pub fn run(
                         "/v1/auth/reset-password",
                         web::put().to(auth_http::reset_password),
                     )
+                    .route("/v1/me", web::get().to(auth_http::me))
                     .route(
                         "/v1/buildings",
                         web::get().to(building_http::list_buildings),
@@ -85,7 +88,11 @@ pub fn run(
                         "/v1/buildings/{buildingId}",
                         web::delete().to(building_http::delete),
                     )
-                    .route("/v1/roles", web::get().to(role_http::list_role)),
+                    .service(
+                        web::scope("/test")
+                            .wrap(AuthenticationMiddlewareFactory::new(auth_service.clone()))
+                            .route("/me", web::get().to(auth_http::me)),
+                    ),
             )
     })
     .listen(listener)?
@@ -103,10 +110,8 @@ pub fn run(
 
 pub type AuthenticationInfo = Rc<i32>;
 
-pub trait AuthenticationMiddlewareInterface {}
-
 pub struct AuthenticationMiddleware<S> {
-    auth_service: Arc<dyn UserRepositoryInterface + Send + Sync + 'static>,
+    auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
     service: Rc<S>,
 }
 
@@ -125,11 +130,70 @@ where
         let auth_service = self.auth_service.clone();
 
         async move {
-            // let access_token = match req.cookie("access_token") {
-            //     Some(token) => token,
-            //     None => 
-            // };
+            if let Some(access_token) = req.cookie("access_token") {
+                if let Ok(claims) =
+                    auth_service.decode_access_token(access_token.value().to_string())
+                {
+                    if let Ok(user_id) = claims["user_id"].parse::<i32>() {
+                        req.extensions_mut()
+                            .insert::<AuthenticationInfo>(Rc::new(user_id));
+                    }
+                }
+            }
+
             Ok(service.call(req).await?)
-        }.boxed_local()
+        }
+        .boxed_local()
+    }
+}
+
+pub struct AuthenticationMiddlewareFactory {
+    auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
+}
+
+impl AuthenticationMiddlewareFactory {
+    pub fn new(auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>) -> Self {
+        AuthenticationMiddlewareFactory { auth_service }
+    }
+}
+
+impl<S, B> Transform<S, ServiceRequest> for AuthenticationMiddlewareFactory
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+{
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Transform = AuthenticationMiddleware<S>;
+    type InitError = ();
+    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+
+    fn new_transform(&self, service: S) -> Self::Future {
+        ready(Ok(AuthenticationMiddleware {
+            auth_service: self.auth_service.clone(),
+            service: Rc::new(service),
+        }))
+    }
+}
+
+pub struct AuthenticationContext(pub Option<AuthenticationInfo>);
+
+impl FromRequest for AuthenticationContext {
+    type Error = Error;
+    type Future = Ready<Result<Self, Self::Error>>;
+
+    fn from_request(
+        req: &actix_web::HttpRequest,
+        _payload: &mut actix_web::dev::Payload,
+    ) -> Self::Future {
+        let value = req.extensions().get::<AuthenticationInfo>().cloned();
+        ready(Ok(AuthenticationContext(value)))
+    }
+}
+
+impl std::ops::Deref for AuthenticationContext {
+    type Target = Option<AuthenticationInfo>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

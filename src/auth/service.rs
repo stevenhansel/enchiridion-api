@@ -36,6 +36,16 @@ pub struct LoginParams {
 
 #[async_trait]
 pub trait AuthServiceInterface {
+    fn generate_access_token(&self, user_id: i32) -> Result<String, AuthError>;
+    fn generate_refresh_token(&self, user_id: i32) -> Result<String, AuthError>;
+    fn decode_access_token(
+        &self,
+        access_token: String,
+    ) -> Result<BTreeMap<String, String>, AuthError>;
+    fn decode_refresh_token(
+        &self,
+        refresh_token: String,
+    ) -> Result<BTreeMap<String, String>, AuthError>;
     async fn register(&self, params: RegisterParams) -> Result<(), AuthError>;
     async fn send_email_confirmation(&self, email: String) -> Result<(), AuthError>;
     async fn verify_email_confirmation_token(
@@ -68,8 +78,11 @@ impl AuthService {
             _configuration,
         }
     }
+}
 
-    pub fn generate_access_token(&self, user_id: i32) -> Result<String, AuthError> {
+#[async_trait]
+impl AuthServiceInterface for AuthService {
+    fn generate_access_token(&self, user_id: i32) -> Result<String, AuthError> {
         let access_token_key = match HmacSha256::new_from_slice(
             self._configuration
                 .access_token_secret
@@ -99,7 +112,7 @@ impl AuthService {
         Ok(access_token)
     }
 
-    pub fn generate_refresh_token(&self, user_id: i32) -> Result<String, AuthError> {
+    fn generate_refresh_token(&self, user_id: i32) -> Result<String, AuthError> {
         let refresh_token_key = match HmacSha256::new_from_slice(
             self._configuration
                 .refresh_token_secret
@@ -129,7 +142,53 @@ impl AuthService {
         Ok(refresh_token)
     }
 
-    pub fn decode_refresh_token(
+    fn decode_access_token(
+        &self,
+        access_token: String,
+    ) -> Result<BTreeMap<String, String>, AuthError> {
+        let key = match HmacSha256::new_from_slice(
+            self._configuration
+                .access_token_secret
+                .expose_secret()
+                .as_bytes(),
+        ) {
+            Ok(key) => key,
+            _ => return Err(AuthError::InternalServerError),
+        };
+
+        let claims: BTreeMap<String, String> = match access_token.verify_with_key(&key) {
+            Ok(claims) => claims,
+            Err(_) => {
+                return Err(AuthError::TokenInvalid(
+                    "Authorization failed, token is invalid".into(),
+                ))
+            }
+        };
+
+        let expired_at: i64 = match claims["exp"].parse() {
+            Ok(timestamp) => timestamp,
+            _ => {
+                return Err(AuthError::TokenInvalid(
+                    "Authorization failed, token is invalid".into(),
+                ))
+            }
+        };
+
+        let now = chrono::Utc::now();
+        let expired_at = chrono::DateTime::<chrono::Utc>::from_utc(
+            chrono::NaiveDateTime::from_timestamp(expired_at, 0),
+            chrono::Utc,
+        );
+        if now >= expired_at {
+            return Err(AuthError::TokenExpired(
+                "Token is already expired, please send a new confirmation email".into(),
+            ));
+        }
+
+        Ok(claims)
+    }
+
+    fn decode_refresh_token(
         &self,
         refresh_token: String,
     ) -> Result<BTreeMap<String, String>, AuthError> {
@@ -174,10 +233,7 @@ impl AuthService {
 
         Ok(claims)
     }
-}
 
-#[async_trait]
-impl AuthServiceInterface for AuthService {
     async fn register(&self, params: RegisterParams) -> Result<(), AuthError> {
         let hash = match Argon2::default().hash_password(
             params.password.as_bytes(),
