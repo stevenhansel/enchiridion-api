@@ -3,30 +3,74 @@
 // - decode the token and check whether the token is valid or not / still expired (auth service)
 // - return user_id so that it can be accessed in the controller level
 
+use core::fmt;
 use std::{
+    error,
     future::{ready, Ready},
     rc::Rc,
     sync::Arc,
 };
 
 use actix_web::{
-    cookie::Cookie,
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     Error, FromRequest, HttpMessage,
 };
 use futures::future::LocalBoxFuture;
 use futures::FutureExt;
 
-use crate::{auth::AuthServiceInterface, role::RoleServiceInterface};
+use crate::{
+    auth::{AuthError, AuthServiceInterface},
+    role::RoleServiceInterface,
+};
 
-pub enum AuthenticationMiddlewareError {
-    AuthenticationFailed(String),
-    ForbiddenPermission(String),
+#[derive(Debug, Clone, Copy)]
+pub enum AuthenticationMiddlewareError<'a> {
+    AuthenticationFailed(&'a str),
+    ForbiddenPermission(&'a str),
     InternalServerError,
 }
 
-pub type AuthenticationInfoResult = Result<i32, AuthenticationMiddlewareError>;
-pub type AuthenticationInfo = Rc<AuthenticationInfoResult>;
+#[derive(Debug)]
+pub enum AuthenticationMiddlewareErrorCode {
+    AuthenticationFailed,
+    ForbiddenPermission,
+    InternalServerError,
+}
+
+impl<'a> error::Error for AuthenticationMiddlewareError<'a> {}
+
+impl<'a> fmt::Display for AuthenticationMiddlewareError<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AuthenticationMiddlewareError::AuthenticationFailed(message) => {
+                write!(f, "{}", message)
+            }
+            AuthenticationMiddlewareError::ForbiddenPermission(message) => write!(f, "{}", message),
+            AuthenticationMiddlewareError::InternalServerError => {
+                write!(f, "Internal Server Error")
+            }
+        }
+    }
+}
+
+impl fmt::Display for AuthenticationMiddlewareErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AuthenticationMiddlewareErrorCode::AuthenticationFailed => {
+                write!(f, "AUTHENTICATION_FAILED")
+            }
+            AuthenticationMiddlewareErrorCode::ForbiddenPermission => {
+                write!(f, "FORBIDDEN_PERMISSION")
+            }
+            AuthenticationMiddlewareErrorCode::InternalServerError => {
+                write!(f, "INTERNAL_SERVER_ERROR")
+            }
+        }
+    }
+}
+
+pub type AuthenticationInfoResult<'a> = Result<i32, AuthenticationMiddlewareError<'a>>;
+pub type AuthenticationInfo<'a> = Rc<AuthenticationInfoResult<'a>>;
 
 pub struct AuthenticationMiddleware<S> {
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
@@ -50,23 +94,48 @@ where
         let auth_service = self.auth_service.clone();
 
         async move {
-            let result: Result<String, AuthenticationMiddlewareError> =
-                match req.cookie("access_token") {
-                    Some(cookie) => Ok(cookie.value().to_string()),
-                    None => Err(AuthenticationMiddlewareError::AuthenticationFailed(
-                        "Authentication Failed, Token expired or invalid".to_string(),
-                    )),
+            let func = || {
+                let access_token = match req.cookie("access_token") {
+                    Some(cookie) => cookie.value().to_string(),
+                    None => {
+                        return Err(AuthenticationMiddlewareError::AuthenticationFailed(
+                            "Authentication failed, Token expired or invalid",
+                        ))
+                    }
                 };
-            // let access_token = result.unwrap_or_else(|_| {
-            //     req.extensions_mut()
-            //         .insert::<AuthenticationInfoResult>(Err(e))
-            // });
-            if let Ok(access_token) = result {
-                let result = auth_service.decode_access_token(access_token);
-            } else if let Err(e) = result {
-                req.extensions_mut()
-                    .insert::<AuthenticationInfoResult>(Err(e));
-            }
+
+                let claims = match auth_service.decode_access_token(access_token) {
+                    Ok(claims) => claims,
+                    Err(e) => match e {
+                        AuthError::TokenInvalid(_) => {
+                            return Err(AuthenticationMiddlewareError::AuthenticationFailed(
+                                "Authentication failed, Token expired or invalid",
+                            ))
+                        }
+                        AuthError::TokenExpired(_) => {
+                            return Err(AuthenticationMiddlewareError::AuthenticationFailed(
+                                "Authentication failed, Token expired or invalid",
+                            ))
+                        }
+                        _ => return Err(AuthenticationMiddlewareError::InternalServerError),
+                    },
+                };
+
+                let user_id = match claims["user_id"].parse::<i32>() {
+                    Ok(id) => id,
+                    Err(e) => {
+                        return Err(AuthenticationMiddlewareError::AuthenticationFailed(
+                            "Authentication failed, Token expired or invalid",
+                        ))
+                    }
+                };
+
+                Ok(user_id)
+            };
+
+            let result = func();
+            req.extensions_mut()
+                .insert::<AuthenticationInfo>(Rc::new(result));
 
             Ok(service.call(req).await?)
         }
@@ -118,9 +187,9 @@ where
     }
 }
 
-pub struct AuthenticationContext(pub Option<AuthenticationInfo>);
+pub struct AuthenticationContext<'a>(pub Option<AuthenticationInfo<'a>>);
 
-impl FromRequest for AuthenticationContext {
+impl FromRequest for AuthenticationContext<'_> {
     type Error = Error;
     type Future = Ready<Result<Self, Self::Error>>;
 
@@ -133,10 +202,23 @@ impl FromRequest for AuthenticationContext {
     }
 }
 
-impl std::ops::Deref for AuthenticationContext {
-    type Target = Option<AuthenticationInfo>;
+impl<'a> std::ops::Deref for AuthenticationContext<'a> {
+    type Target = Option<AuthenticationInfo<'a>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+pub fn get_user_id_from_auth_context(
+    auth: AuthenticationContext,
+) -> Result<i32, AuthenticationMiddlewareError> {
+    if let Some(context) = auth.0 {
+        return match *context {
+            Ok(user_id) => Ok(user_id),
+            Err(e) => Err(e),
+        };
+    } else {
+        return Err(AuthenticationMiddlewareError::InternalServerError);
     }
 }

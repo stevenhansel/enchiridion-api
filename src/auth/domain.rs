@@ -69,6 +69,11 @@ pub struct AuthEntity {
     pub refresh_token: String,
 }
 
+pub struct UserStatusObject {
+    pub label: String,
+    pub value: UserStatus,
+}
+
 pub struct UserAuthEntity {
     pub id: i32,
     pub name: String,
@@ -82,7 +87,7 @@ pub struct UserAuthEntity {
 pub struct RoleAuthEntity {
     pub id: i32,
     pub name: String,
-    pub permissions: Vec<PermissionAuthEntity>
+    pub permissions: Vec<PermissionAuthEntity>,
 }
 
 pub struct PermissionAuthEntity {

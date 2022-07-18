@@ -8,6 +8,24 @@ pub enum UserStatus {
     Rejected,
 }
 
+impl UserStatus {
+    pub fn label(self) -> &'static str {
+        match self {
+            UserStatus::WaitingForApproval => "Waiting For Approval",
+            UserStatus::Approved => "Approved",
+            UserStatus::Rejected => "Rejected",
+        }
+    }
+
+    pub fn value(self) -> &'static str {
+        match self {
+            UserStatus::WaitingForApproval => "waiting_for_approval",
+            UserStatus::Approved => "approved",
+            UserStatus::Rejected => "rejected",
+        }
+    }
+}
+
 pub struct User {
     pub id: i32,
 

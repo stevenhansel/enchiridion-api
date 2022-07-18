@@ -5,8 +5,10 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::http::{ApiValidationError, HttpErrorResponse, AuthenticationContext};
-use crate::user::UserStatus;
+use crate::http::{
+    get_user_id_from_auth_context, ApiValidationError, AuthenticationContext,
+    AuthenticationMiddlewareError, AuthenticationMiddlewareErrorCode, HttpErrorResponse,
+};
 
 use super::service::AuthServiceInterface;
 use super::{AuthError, AuthErrorCode, LoginParams, RegisterParams};
@@ -209,7 +211,10 @@ pub async fn confirm_email(
         email: result.entity.email,
         profile_picture: result.entity.profile_picture,
         is_email_confirmed: result.entity.is_email_confirmed,
-        user_status: result.entity.user_status,
+        user_status: UserStatusObject {
+            value: result.entity.user_status.clone().value().to_string(),
+            label: result.entity.user_status.clone().label().to_string(),
+        },
         role,
     };
 
@@ -245,8 +250,15 @@ pub struct LoginResponse {
     pub email: String,
     pub profile_picture: Option<String>,
     pub is_email_confirmed: bool,
-    pub user_status: UserStatus,
+    pub user_status: UserStatusObject,
     pub role: RoleObject,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserStatusObject {
+    label: String,
+    value: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -324,7 +336,10 @@ pub async fn login(
         email: result.entity.email,
         profile_picture: result.entity.profile_picture,
         is_email_confirmed: result.entity.is_email_confirmed,
-        user_status: result.entity.user_status,
+        user_status: UserStatusObject {
+            value: result.entity.user_status.clone().value().to_string(),
+            label: result.entity.user_status.clone().label().to_string(),
+        },
         role,
     };
 
@@ -359,7 +374,10 @@ pub async fn refresh_token(
         }
     };
 
-    if let Err(e) = auth_service.refresh_token(refresh_token.value().to_string()).await {
+    if let Err(e) = auth_service
+        .refresh_token(refresh_token.value().to_string())
+        .await
+    {
         match e {
             AuthError::TokenInvalid(message) => {
                 return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
@@ -385,7 +403,33 @@ pub async fn refresh_token(
     HttpResponse::NoContent().finish()
 }
 
-pub async fn me(auth: AuthenticationContext) -> HttpResponse {
+pub async fn me(auth: AuthenticationContext<'_>) -> HttpResponse {
+    let user_id = match get_user_id_from_auth_context(auth) {
+        Ok(id) => id,
+        Err(e) => match e {
+            AuthenticationMiddlewareError::AuthenticationFailed(message) => {
+                return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
+                    AuthenticationMiddlewareErrorCode::AuthenticationFailed.to_string(),
+                    vec![message.to_string()],
+                ))
+            }
+            AuthenticationMiddlewareError::ForbiddenPermission(message) => {
+                return HttpResponse::Forbidden().json(HttpErrorResponse::new(
+                    AuthenticationMiddlewareErrorCode::ForbiddenPermission.to_string(),
+                    vec![message.to_string()],
+                ))
+            }
+            AuthenticationMiddlewareError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AuthenticationMiddlewareErrorCode::InternalServerError.to_string(),
+                    vec![AuthenticationMiddlewareError::InternalServerError.to_string()],
+                ))
+            }
+        },
+    };
+    println!("user_id: {}", user_id);
+
+
     HttpResponse::Ok().finish()
 }
 
