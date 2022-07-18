@@ -57,8 +57,12 @@ where
                         "Authentication Failed, Token expired or invalid".to_string(),
                     )),
                 };
+            // let access_token = result.unwrap_or_else(|_| {
+            //     req.extensions_mut()
+            //         .insert::<AuthenticationInfoResult>(Err(e))
+            // });
             if let Ok(access_token) = result {
-                // let result = auth_service.decode_access_token(access_token);
+                let result = auth_service.decode_access_token(access_token);
             } else if let Err(e) = result {
                 req.extensions_mut()
                     .insert::<AuthenticationInfoResult>(Err(e));

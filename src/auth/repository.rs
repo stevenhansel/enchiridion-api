@@ -108,7 +108,7 @@ impl AuthRepositoryInterface for AuthRepository {
                 "permission"."id" as "permission_id",
                 "permission"."name" as "permission_name"
             from "user"
-            join "role" on "role"."id" = "user"."id"
+            join "role" on "role"."id" = "user"."role_id"
             join "role_permission" on "role_permission"."role_id" = "role"."id"
             join "permission" on "permission"."id" = "role_permission"."permission_id"
             where email = $1
@@ -117,6 +117,10 @@ impl AuthRepositoryInterface for AuthRepository {
         )
         .fetch_all(&self._db)
         .await?;
+
+        if raw.len() == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
 
         Ok(AuthRepository::map_user_auth_entity(&raw))
     }
