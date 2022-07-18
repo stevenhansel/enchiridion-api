@@ -427,8 +427,8 @@ pub async fn me(auth: AuthenticationContext<'_>) -> HttpResponse {
             }
         },
     };
-    println!("user_id: {}", user_id);
 
+    println!("user_id: {}", user_id);
 
     HttpResponse::Ok().finish()
 }

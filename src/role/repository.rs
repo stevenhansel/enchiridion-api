@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use redis::Commands;
+use redis::{Commands, RedisError};
 use sqlx::{Pool, Postgres};
 
 use super::{Permission, Role};
@@ -21,7 +21,7 @@ pub trait RoleRepositoryInterface {
     fn set_role_permission_cache(
         &self,
         role_id: i32,
-        permissions: Vec<Permission>,
+        permissions: &Vec<Permission>,
     ) -> Result<(), redis::RedisError>;
     async fn find_permissions_by_role_id(
         &self,
@@ -43,7 +43,7 @@ impl RoleRepository {
 #[async_trait]
 impl RoleRepositoryInterface for RoleRepository {
     fn role_permission_cache_key_builder(&self, role_id: i32) -> String {
-        format!("role_cache_{}", role_id)
+        format!("role-cache-{}", role_id)
     }
 
     async fn find(&self) -> Result<Vec<Role>, sqlx::Error> {
@@ -99,11 +99,15 @@ impl RoleRepositoryInterface for RoleRepository {
     ) -> Result<Vec<Permission>, redis::RedisError> {
         let mut redis = self._redis.lock().expect("Cannot get redis connection");
 
-        let cache = redis.hget::<String, String, String>(
+        let cache = redis.hget::<String, String, Option<String>>(
             self.role_permission_cache_key_builder(role_id),
             "cache".into(),
         )?;
-        let permissions = serde_json::from_str::<Vec<Permission>>(cache.as_str())
+        let value = match cache {
+            Some(val) => val,
+            _ => return Ok(vec![]),
+        };
+        let permissions = serde_json::from_str::<Vec<Permission>>(value.as_str())
             .expect("Failed to deserialize cache");
 
         Ok(permissions)
@@ -112,17 +116,19 @@ impl RoleRepositoryInterface for RoleRepository {
     fn set_role_permission_cache(
         &self,
         role_id: i32,
-        permissions: Vec<Permission>,
+        permissions: &Vec<Permission>,
     ) -> Result<(), redis::RedisError> {
         let mut redis = self._redis.lock().expect("Cannot get redis connection");
 
-        let cache = serde_json::to_string::<Vec<Permission>>(&permissions)
+        let cache = serde_json::to_string::<Vec<Permission>>(permissions)
             .expect("Failed to stringify cache data");
         redis.hset::<String, String, String, ()>(
             self.role_permission_cache_key_builder(role_id),
             "cache".into(),
             cache,
         )?;
+
+        // TODO: set the expiration time for the role cache
 
         Ok(())
     }

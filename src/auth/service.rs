@@ -36,7 +36,12 @@ pub struct LoginParams {
 
 #[async_trait]
 pub trait AuthServiceInterface {
-    fn generate_access_token(&self, user_id: i32) -> Result<String, AuthError>;
+    fn generate_access_token(
+        &self,
+        user_id: i32,
+        role_id: i32,
+        status: UserStatus,
+    ) -> Result<String, AuthError>;
     fn generate_refresh_token(&self, user_id: i32) -> Result<String, AuthError>;
     fn decode_access_token(
         &self,
@@ -82,7 +87,12 @@ impl AuthService {
 
 #[async_trait]
 impl AuthServiceInterface for AuthService {
-    fn generate_access_token(&self, user_id: i32) -> Result<String, AuthError> {
+    fn generate_access_token(
+        &self,
+        user_id: i32,
+        role_id: i32,
+        status: UserStatus,
+    ) -> Result<String, AuthError> {
         let access_token_key = match HmacSha256::new_from_slice(
             self._configuration
                 .access_token_secret
@@ -95,6 +105,8 @@ impl AuthServiceInterface for AuthService {
 
         let mut access_token_claims = BTreeMap::new();
         access_token_claims.insert("user_id", user_id.to_string());
+        access_token_claims.insert("role_id", role_id.to_string());
+        access_token_claims.insert("status", status.value().to_string());
         access_token_claims.insert("iat", chrono::Utc::now().timestamp().to_string());
         access_token_claims.insert(
             "exp",
@@ -427,8 +439,9 @@ impl AuthServiceInterface for AuthService {
             },
         };
 
-        let access_token = self.generate_access_token(user_id)?;
-        let refresh_token = self.generate_refresh_token(user_id)?;
+        let access_token =
+            self.generate_access_token(entity.id, entity.role.id, entity.user_status.clone())?;
+        let refresh_token = self.generate_refresh_token(entity.id)?;
 
         if let Err(_) = self
             ._auth_repository
@@ -500,7 +513,8 @@ impl AuthServiceInterface for AuthService {
             },
         };
 
-        let access_token = self.generate_access_token(user.id)?;
+        let access_token =
+            self.generate_access_token(entity.id, entity.role.id, entity.user_status.clone())?;
         let refresh_token = self.generate_refresh_token(user.id)?;
 
         if let Err(_) = self
@@ -525,7 +539,22 @@ impl AuthServiceInterface for AuthService {
             Err(_) => return Err(AuthError::InternalServerError),
         };
 
-        let access_token = self.generate_access_token(user_id)?;
+        let entity = match self
+            ._auth_repository
+            .find_one_auth_entity_by_id(user_id)
+            .await
+        {
+            Ok(entity) => entity,
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(AuthError::UserNotFound("User not found".into()))
+                }
+                _ => return Err(AuthError::InternalServerError),
+            },
+        };
+
+        let access_token =
+            self.generate_access_token(entity.id, entity.role.id, entity.user_status.clone())?;
         let refresh_token = self.generate_refresh_token(user_id)?;
 
         Ok(RefreshTokenResult {

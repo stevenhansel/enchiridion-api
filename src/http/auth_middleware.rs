@@ -2,7 +2,6 @@
 // - get the access token jwt from bearer: Authorization
 // - decode the token and check whether the token is valid or not / still expired (auth service)
 // - return user_id so that it can be accessed in the controller level
-
 use core::fmt;
 use std::{
     error,
@@ -92,8 +91,11 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let service = self.service.clone();
         let auth_service = self.auth_service.clone();
+        // let role_service = self.role_service.clone();
+        // let permission = self.permission.clone();
 
         async move {
+            // TOOD: move the func to the service
             let func = || {
                 let access_token = match req.cookie("access_token") {
                     Some(cookie) => cookie.value().to_string(),
@@ -123,7 +125,7 @@ where
 
                 let user_id = match claims["user_id"].parse::<i32>() {
                     Ok(id) => id,
-                    Err(e) => {
+                    Err(_) => {
                         return Err(AuthenticationMiddlewareError::AuthenticationFailed(
                             "Authentication failed, Token expired or invalid",
                         ))
@@ -132,6 +134,31 @@ where
 
                 Ok(user_id)
             };
+
+                // if let Some(permission) = permission {
+                //     let role_id = match claims["role_id"].parse::<i32>() {
+                //         Ok(id) => id,
+                //         Err(_) => {
+                //             return Err(AuthenticationMiddlewareError::AuthenticationFailed(
+                //                 "Authentication failed, Token expired or invalid",
+                //             ))
+                //         }
+                //     };
+
+                //     let permissions: Vec<String> = match role_service
+                //         .get_permissions_by_role_id(role_id).await
+                //     {
+                //         Ok(permissions) => permissions.into_iter().map(|p| p.name).collect(),
+                //         Err(_) => return Err(AuthenticationMiddlewareError::InternalServerError),
+                //     };
+
+                //     if !permissions.contains(&permission) {
+                //         return Err(AuthenticationMiddlewareError::ForbiddenPermission(
+                //             "User doesn't have the permission to access the designated route",
+                //         ));
+                //     }
+                // }
+
 
             let result = func();
             req.extensions_mut()
