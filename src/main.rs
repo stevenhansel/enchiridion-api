@@ -13,7 +13,7 @@ use enchiridion_api::email;
 use enchiridion_api::auth::{AuthRepository, AuthService};
 use enchiridion_api::building::{BuildingRepository, BuildingService};
 use enchiridion_api::role::{RoleRepository, RoleService};
-use enchiridion_api::user::{UserService, UserRepository};
+use enchiridion_api::user::{UserRepository, UserService};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -47,7 +47,7 @@ async fn main() -> std::io::Result<()> {
     );
     let email_client = email::Client::new(Box::new(mailgun_adapter));
 
-    let role_repository = Arc::new(RoleRepository::new(pool.clone()));
+    let role_repository = Arc::new(RoleRepository::new(pool.clone(), redis_connection.clone()));
     let building_repository = Arc::new(BuildingRepository::new(pool.clone()));
     let user_repository = Arc::new(UserRepository::new(pool.clone()));
     let auth_repository = Arc::new(AuthRepository::new(

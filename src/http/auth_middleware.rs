@@ -10,6 +10,7 @@ use std::{
 };
 
 use actix_web::{
+    cookie::Cookie,
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     Error, FromRequest, HttpMessage,
 };
@@ -29,6 +30,8 @@ pub type AuthenticationInfo = Rc<AuthenticationInfoResult>;
 
 pub struct AuthenticationMiddleware<S> {
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
+    role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
+    permission: Option<String>,
     service: Rc<S>,
 }
 
@@ -47,19 +50,18 @@ where
         let auth_service = self.auth_service.clone();
 
         async move {
-            // let access_token = match req.cookie("access_token") {
-            //     Some(token) => token,
-            //     Err(e) =>  req.extensions_mut().insert::<AuthenticationInfoResult>(Rc::new())
-            // };
-            if let Some(access_token) = req.cookie("access_token") {
-                if let Ok(claims) =
-                    auth_service.decode_access_token(access_token.value().to_string())
-                {
-                    if let Ok(user_id) = claims["user_id"].parse::<i32>() {
-                        req.extensions_mut()
-                            .insert::<AuthenticationInfo>(Rc::new(Ok(user_id)));
-                    }
-                }
+            let result: Result<String, AuthenticationMiddlewareError> =
+                match req.cookie("access_token") {
+                    Some(cookie) => Ok(cookie.value().to_string()),
+                    None => Err(AuthenticationMiddlewareError::AuthenticationFailed(
+                        "Authentication Failed, Token expired or invalid".to_string(),
+                    )),
+                };
+            if let Ok(access_token) = result {
+                // let result = auth_service.decode_access_token(access_token);
+            } else if let Err(e) = result {
+                req.extensions_mut()
+                    .insert::<AuthenticationInfoResult>(Err(e));
             }
 
             Ok(service.call(req).await?)
@@ -105,6 +107,8 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(AuthenticationMiddleware {
             auth_service: self.auth_service.clone(),
+            role_service: self.role_service.clone(),
+            permission: self.permission.clone(),
             service: Rc::new(service),
         }))
     }
