@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_web::cookie::Cookie;
+use actix_web::cookie::{Cookie, SameSite};
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
@@ -222,11 +222,13 @@ pub async fn confirm_email(
         .path("/")
         .secure(true)
         .http_only(true)
+        .same_site(SameSite::None)
         .finish();
     let refresh_token_cookie = Cookie::build("refresh_token", result.refresh_token)
         .path("/")
         .secure(true)
         .http_only(true)
+        .same_site(SameSite::None)
         .finish();
 
     HttpResponse::Ok()
@@ -347,11 +349,13 @@ pub async fn login(
         .path("/")
         .secure(true)
         .http_only(true)
+        .same_site(SameSite::None)
         .finish();
     let refresh_token_cookie = Cookie::build("refresh_token", result.refresh_token)
         .path("/")
         .secure(true)
         .http_only(true)
+        .same_site(SameSite::None)
         .finish();
 
     HttpResponse::Ok()
