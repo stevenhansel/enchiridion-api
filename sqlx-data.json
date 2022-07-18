@@ -314,6 +314,38 @@
     },
     "query": "\n            update \"user\"\n            set is_email_confirmed = true\n            where id = $1\n            "
   },
+  "c9095d2c9da1d413c963c2021aab7e23b1087b2367630f3b5eecada2ff31984e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "permission_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "permission_name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "permission_label",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                select\n                    \"permission\".\"id\" as \"permission_id\",\n                    \"permission\".\"name\" as \"permission_name\",\n                    \"permission\".\"label\" as \"permission_label\"\n                from \"role\"\n                join \"role_permission\" on \"role_permission\".\"role_id\" = \"role\".\"id\"\n                join \"permission\" on \"permission\".\"id\" = \"role_permission\".\"permission_id\"\n                where \"role\".\"id\" = $1\n            "
+  },
   "cdec90e6669804a0787f119b8112d877fb82c1b1cdd61d9a4b53f50f99be19b3": {
     "describe": {
       "columns": [

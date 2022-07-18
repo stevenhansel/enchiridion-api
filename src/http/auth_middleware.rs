@@ -16,9 +16,16 @@ use actix_web::{
 use futures::future::LocalBoxFuture;
 use futures::FutureExt;
 
-use crate::auth::AuthServiceInterface;
+use crate::{auth::AuthServiceInterface, role::RoleServiceInterface};
 
-pub type AuthenticationInfo = Rc<i32>;
+pub enum AuthenticationMiddlewareError {
+    AuthenticationFailed(String),
+    ForbiddenPermission(String),
+    InternalServerError,
+}
+
+pub type AuthenticationInfoResult = Result<i32, AuthenticationMiddlewareError>;
+pub type AuthenticationInfo = Rc<AuthenticationInfoResult>;
 
 pub struct AuthenticationMiddleware<S> {
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
@@ -40,13 +47,17 @@ where
         let auth_service = self.auth_service.clone();
 
         async move {
+            // let access_token = match req.cookie("access_token") {
+            //     Some(token) => token,
+            //     Err(e) =>  req.extensions_mut().insert::<AuthenticationInfoResult>(Rc::new())
+            // };
             if let Some(access_token) = req.cookie("access_token") {
                 if let Ok(claims) =
                     auth_service.decode_access_token(access_token.value().to_string())
                 {
                     if let Ok(user_id) = claims["user_id"].parse::<i32>() {
                         req.extensions_mut()
-                            .insert::<AuthenticationInfo>(Rc::new(user_id));
+                            .insert::<AuthenticationInfo>(Rc::new(Ok(user_id)));
                     }
                 }
             }
@@ -59,11 +70,25 @@ where
 
 pub struct AuthenticationMiddlewareFactory {
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
+    role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
+    permission: Option<String>,
 }
 
 impl AuthenticationMiddlewareFactory {
-    pub fn new(auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>) -> Self {
-        AuthenticationMiddlewareFactory { auth_service }
+    pub fn new(
+        auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
+        role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
+    ) -> Self {
+        AuthenticationMiddlewareFactory {
+            auth_service,
+            role_service,
+            permission: None,
+        }
+    }
+
+    pub fn with_permission(mut self, permission: &str) -> Self {
+        self.permission = Some(permission.to_string());
+        self
     }
 }
 

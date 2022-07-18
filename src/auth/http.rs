@@ -5,8 +5,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::http::{ApiValidationError, HttpErrorResponse};
-use crate::startup::AuthenticationContext;
+use crate::http::{ApiValidationError, HttpErrorResponse, AuthenticationContext};
 use crate::user::UserStatus;
 
 use super::service::AuthServiceInterface;
@@ -387,10 +386,6 @@ pub async fn refresh_token(
 }
 
 pub async fn me(auth: AuthenticationContext) -> HttpResponse {
-    println!("entered the stuff");
-    if let Some(user_id) = auth.0 {
-        println!("user_id: {}", user_id);
-    }
     HttpResponse::Ok().finish()
 }
 

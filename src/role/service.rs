@@ -40,18 +40,23 @@ impl RoleServiceInterface for RoleService {
         &self,
         role_id: i32,
     ) -> Result<Vec<Permission>, GetPermissionByUserIdError> {
-        let permissions = match self
-            ._role_repository
-            .find_permissions_by_role_id(role_id)
-            .await
-        {
-            Ok(p) => p,
-            Err(e) => {
-                return Err(GetPermissionByUserIdError::InternalServerError(
-                    e.to_string(),
-                ))
-            }
+        let permissions = match self._role_repository.get_role_permission_cache(role_id) {
+            Ok(permissions) => permissions,
+            Err(e) => return Err(GetPermissionByUserIdError::InternalServerError(e.to_string()))
         };
+
+        // let permissions = match self
+        //     ._role_repository
+        //     .find_permissions_by_role_id(role_id)
+        //     .await
+        // {
+        //     Ok(p) => p,
+        //     Err(e) => {
+        //         return Err(GetPermissionByUserIdError::InternalServerError(
+        //             e.to_string(),
+        //         ))
+        //     }
+        // };
 
         Ok(permissions)
     }

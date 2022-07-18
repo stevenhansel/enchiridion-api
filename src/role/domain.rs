@@ -1,12 +1,16 @@
 use std::error;
 use std::fmt;
 
+use serde::Deserialize;
+use serde::Serialize;
+
 pub struct Role {
     pub id: i32,
     pub name: String,
     pub description: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Permission {
     pub id: i32,
     pub name: String,
