@@ -378,11 +378,12 @@ pub async fn refresh_token(
         }
     };
 
-    if let Err(e) = auth_service
+    let result = match auth_service
         .refresh_token(refresh_token.value().to_string())
         .await
     {
-        match e {
+        Ok(result) => result,
+        Err(e) => match e {
             AuthError::TokenInvalid(message) => {
                 return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
                     AuthErrorCode::TokenInvalid.to_string(),
@@ -401,10 +402,26 @@ pub async fn refresh_token(
                     vec![AuthError::InternalServerError.to_string()],
                 ))
             }
-        }
-    }
+        },
+    };
 
-    HttpResponse::NoContent().finish()
+    let access_token_cookie = Cookie::build("access_token", result.access_token)
+        .path("/")
+        .secure(true)
+        .http_only(true)
+        .same_site(SameSite::None)
+        .finish();
+    let refresh_token_cookie = Cookie::build("refresh_token", result.refresh_token)
+        .path("/")
+        .secure(true)
+        .http_only(true)
+        .same_site(SameSite::None)
+        .finish();
+
+    HttpResponse::NoContent()
+        .cookie(access_token_cookie)
+        .cookie(refresh_token_cookie)
+        .finish()
 }
 
 pub async fn me(auth: AuthenticationContext<'_>) -> HttpResponse {
