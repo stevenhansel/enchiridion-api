@@ -6,10 +6,12 @@ use actix_web::dev::Server;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use serde::Serialize;
 
+use crate::floor::FloorServiceInterface;
 use crate::http::AuthenticationMiddlewareFactory;
 
 use crate::auth::{http as auth_http, AuthServiceInterface};
 use crate::building::{http as building_http, BuildingServiceInterface};
+use crate::floor::http as floor_http;
 use crate::role::{http as role_http, RoleServiceInterface};
 use crate::user::UserServiceInterface;
 
@@ -30,11 +32,13 @@ pub fn run(
     building_service: Arc<dyn BuildingServiceInterface + Send + Sync + 'static>,
     user_service: Arc<dyn UserServiceInterface + Send + Sync + 'static>,
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
+    floor_service: Arc<dyn FloorServiceInterface + Send + Sync + 'static>,
 ) -> Result<Server, std::io::Error> {
     let role_svc = web::Data::new(role_service.clone());
     let building_svc = web::Data::new(building_service.clone());
     let user_svc = web::Data::new(user_service.clone());
     let auth_svc = web::Data::new(auth_service.clone());
+    let floor_svc = web::Data::new(floor_service.clone());
 
     let server = HttpServer::new(move || {
         let cors = Cors::permissive();
@@ -45,6 +49,7 @@ pub fn run(
             .app_data(building_svc.clone())
             .app_data(user_svc.clone())
             .app_data(auth_svc.clone())
+            .app_data(floor_svc.clone())
             .route("/", web::get().to(health_check))
             .service(
                 web::scope("/dashboard")
@@ -95,6 +100,14 @@ pub fn run(
                                 .with_permission("view_list_announcement"),
                             )
                             .route("", web::get().to(auth_http::me)),
+                    )
+                    .service(
+                        web::scope("/v1/floor")
+                            .wrap(AuthenticationMiddlewareFactory::new(
+                                auth_service.clone(),
+                                role_service.clone(),
+                            ))
+                            .route("", web::post().to(floor_http::create_floor)),
                     ),
             )
     })

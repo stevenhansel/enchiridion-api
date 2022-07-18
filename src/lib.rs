@@ -8,3 +8,5 @@ pub mod http;
 pub mod email;
 pub mod building;
 pub mod queue;
+pub mod floor;
+pub mod device;

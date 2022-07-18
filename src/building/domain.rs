@@ -1,6 +1,7 @@
 use std::error;
 use std::fmt;
 
+#[derive(Debug)]
 pub struct Building {
     pub id: i32,
     pub name: String,
