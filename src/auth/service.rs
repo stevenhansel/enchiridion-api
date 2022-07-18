@@ -463,11 +463,6 @@ impl AuthServiceInterface for AuthService {
                 "Email is not confirmed yet".into(),
             ));
         }
-        if user.status == UserStatus::WaitingForApproval {
-            return Err(AuthError::UserNotVerified(
-                "User is not approved yet by admin".into(),
-            ));
-        }
         if user.status == UserStatus::Rejected {
             return Err(AuthError::UserNotVerified(
                 "User registration is rejected by admin".into(),
