@@ -92,13 +92,10 @@ pub fn run(
                     )
                     .service(
                         web::scope("/v1/me")
-                            .wrap(
-                                AuthenticationMiddlewareFactory::new(
-                                    auth_service.clone(),
-                                    role_service.clone(),
-                                )
-                                .with_permission("view_list_announcement"),
-                            )
+                            .wrap(AuthenticationMiddlewareFactory::new(
+                                auth_service.clone(),
+                                role_service.clone(),
+                            ))
                             .route("", web::get().to(auth_http::me)),
                     )
                     .service(

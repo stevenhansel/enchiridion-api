@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use crate::http::{
-    get_user_id_from_auth_context, ApiValidationError, AuthenticationContext,
-    AuthenticationMiddlewareError, AuthenticationMiddlewareErrorCode, HttpErrorResponse,
+    derive_authentication_middleware_error, derive_user_id, ApiValidationError,
+    AuthenticationContext, HttpErrorResponse,
 };
 
 use super::service::AuthServiceInterface;
@@ -425,28 +425,9 @@ pub async fn refresh_token(
 }
 
 pub async fn me(auth: AuthenticationContext<'_>) -> HttpResponse {
-    let user_id = match get_user_id_from_auth_context(auth) {
+    let user_id = match derive_user_id(auth) {
         Ok(id) => id,
-        Err(e) => match e {
-            AuthenticationMiddlewareError::AuthenticationFailed(message) => {
-                return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
-                    AuthenticationMiddlewareErrorCode::AuthenticationFailed.to_string(),
-                    vec![message.to_string()],
-                ))
-            }
-            AuthenticationMiddlewareError::ForbiddenPermission(message) => {
-                return HttpResponse::Forbidden().json(HttpErrorResponse::new(
-                    AuthenticationMiddlewareErrorCode::ForbiddenPermission.to_string(),
-                    vec![message.to_string()],
-                ))
-            }
-            AuthenticationMiddlewareError::InternalServerError => {
-                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
-                    AuthenticationMiddlewareErrorCode::InternalServerError.to_string(),
-                    vec![AuthenticationMiddlewareError::InternalServerError.to_string()],
-                ))
-            }
-        },
+        Err(e) => return derive_authentication_middleware_error(e),
     };
 
     println!("user_id: {}", user_id);

@@ -12,13 +12,14 @@ use std::{
 
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    Error, FromRequest, HttpMessage,
+    Error, FromRequest, HttpMessage, HttpResponse,
 };
 use futures::future::LocalBoxFuture;
 use futures::FutureExt;
 
 use crate::{
     auth::{AuthError, AuthServiceInterface},
+    http::HttpErrorResponse,
     role::RoleServiceInterface,
 };
 
@@ -135,30 +136,29 @@ where
                 Ok(user_id)
             };
 
-                // if let Some(permission) = permission {
-                //     let role_id = match claims["role_id"].parse::<i32>() {
-                //         Ok(id) => id,
-                //         Err(_) => {
-                //             return Err(AuthenticationMiddlewareError::AuthenticationFailed(
-                //                 "Authentication failed, Token expired or invalid",
-                //             ))
-                //         }
-                //     };
+            // if let Some(permission) = permission {
+            //     let role_id = match claims["role_id"].parse::<i32>() {
+            //         Ok(id) => id,
+            //         Err(_) => {
+            //             return Err(AuthenticationMiddlewareError::AuthenticationFailed(
+            //                 "Authentication failed, Token expired or invalid",
+            //             ))
+            //         }
+            //     };
 
-                //     let permissions: Vec<String> = match role_service
-                //         .get_permissions_by_role_id(role_id).await
-                //     {
-                //         Ok(permissions) => permissions.into_iter().map(|p| p.name).collect(),
-                //         Err(_) => return Err(AuthenticationMiddlewareError::InternalServerError),
-                //     };
+            //     let permissions: Vec<String> = match role_service
+            //         .get_permissions_by_role_id(role_id).await
+            //     {
+            //         Ok(permissions) => permissions.into_iter().map(|p| p.name).collect(),
+            //         Err(_) => return Err(AuthenticationMiddlewareError::InternalServerError),
+            //     };
 
-                //     if !permissions.contains(&permission) {
-                //         return Err(AuthenticationMiddlewareError::ForbiddenPermission(
-                //             "User doesn't have the permission to access the designated route",
-                //         ));
-                //     }
-                // }
-
+            //     if !permissions.contains(&permission) {
+            //         return Err(AuthenticationMiddlewareError::ForbiddenPermission(
+            //             "User doesn't have the permission to access the designated route",
+            //         ));
+            //     }
+            // }
 
             let result = func();
             req.extensions_mut()
@@ -237,7 +237,7 @@ impl<'a> std::ops::Deref for AuthenticationContext<'a> {
     }
 }
 
-pub fn get_user_id_from_auth_context(
+pub fn derive_user_id(
     auth: AuthenticationContext,
 ) -> Result<i32, AuthenticationMiddlewareError> {
     if let Some(context) = auth.0 {
@@ -247,5 +247,28 @@ pub fn get_user_id_from_auth_context(
         };
     } else {
         return Err(AuthenticationMiddlewareError::InternalServerError);
+    }
+}
+
+pub fn derive_authentication_middleware_error(e: AuthenticationMiddlewareError) -> HttpResponse {
+    match e {
+        AuthenticationMiddlewareError::AuthenticationFailed(message) => {
+            return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
+                AuthenticationMiddlewareErrorCode::AuthenticationFailed.to_string(),
+                vec![message.to_string()],
+            ))
+        }
+        AuthenticationMiddlewareError::ForbiddenPermission(message) => {
+            return HttpResponse::Forbidden().json(HttpErrorResponse::new(
+                AuthenticationMiddlewareErrorCode::ForbiddenPermission.to_string(),
+                vec![message.to_string()],
+            ))
+        }
+        AuthenticationMiddlewareError::InternalServerError => {
+            return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                AuthenticationMiddlewareErrorCode::InternalServerError.to_string(),
+                vec![AuthenticationMiddlewareError::InternalServerError.to_string()],
+            ))
+        }
     }
 }
