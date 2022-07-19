@@ -1,12 +1,97 @@
 use std::sync::Arc;
 
 use actix_web::{web, HttpResponse};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use crate::http::{ApiValidationError, HttpErrorResponse};
 
-use super::{CreateDeviceParams, DeviceServiceInterface, CreateDeviceError, DeviceErrorCode};
+use super::{
+    CreateDeviceError, CreateDeviceParams, DeviceErrorCode, DeviceServiceInterface,
+    ListDeviceError, ListDeviceParams,
+};
+
+#[derive(Debug, Deserialize)]
+pub struct ListDeviceQueryParams {
+    pub page: Option<i32>,
+    pub limit: Option<i32>,
+    pub query: Option<String>,
+    pub building_id: Option<i32>,
+    pub floor_id: Option<i32>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListDeviceResponse {
+    count: i32,
+    total_pages: i32,
+    has_next: bool,
+    contents: Vec<ListDeviceContent>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListDeviceContent {
+    pub id: i32,
+    pub name: String,
+    pub location: String,
+    // pub active_announcements: i32,
+    pub description: String,
+}
+
+pub async fn list_device(
+    device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
+    query_params: web::Query<ListDeviceQueryParams>,
+) -> HttpResponse {
+    let mut page = 1;
+    if let Some(raw_page) = query_params.page {
+        println!("got in");
+        page = raw_page;
+    }
+
+    let mut limit = 25;
+    if let Some(raw_limit) = query_params.limit {
+        limit = raw_limit;
+    }
+
+    let result = match device_service
+        .list_device(ListDeviceParams {
+            page,
+            limit,
+            query: query_params.query.clone(),
+            building_id: query_params.building_id.clone(),
+            floor_id: query_params.floor_id.clone(),
+        })
+        .await
+    {
+        Ok(res) => res,
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                ListDeviceError::InternalServerError.to_string(),
+                vec![ListDeviceError::InternalServerError.to_string()],
+            ))
+        }
+    };
+
+    let contents = result
+        .contents
+        .iter()
+        .map(|c| ListDeviceContent {
+            id: c.id,
+            name: c.name.to_string(),
+            location: c.location.to_string(),
+            // active_announcements: c.active_announcements,
+            description: c.description.to_string(),
+        })
+        .collect();
+
+    HttpResponse::Ok().json(ListDeviceResponse {
+        count: result.count,
+        total_pages: result.total_pages,
+        has_next: result.has_next,
+        contents,
+    })
+}
 
 #[derive(Debug, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]

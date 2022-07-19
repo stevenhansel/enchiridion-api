@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use actix_cors::Cors;
 use actix_web::dev::Server;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{guard, web, App, HttpResponse, HttpServer};
 use serde::Serialize;
 
 use crate::floor::FloorServiceInterface;
@@ -11,9 +11,9 @@ use crate::http::AuthenticationMiddlewareFactory;
 
 use crate::auth::{http as auth_http, AuthServiceInterface};
 use crate::building::{http as building_http, BuildingServiceInterface};
+use crate::device::{http as device_http, DeviceServiceInterface};
 use crate::floor::http as floor_http;
 use crate::role::{http as role_http, RoleServiceInterface};
-use crate::device::{http as device_http, DeviceServiceInterface};
 use crate::user::UserServiceInterface;
 
 #[derive(Serialize)]
@@ -108,13 +108,26 @@ pub fn run(
                                 auth_service.clone(),
                                 role_service.clone(),
                             ))
-                            .route("", web::post().to(floor_http::create_floor)),
+                            .route("", web::post().to(floor_http::create_floor))
+                            .guard(guard::Post()),
                     )
                     .service(
-                        web::scope("/v1/devices").wrap(AuthenticationMiddlewareFactory::new(
-                            auth_service.clone(),
-                            role_service.clone(),
-                        )).route("", web::post().to(device_http::create_device)),
+                        web::scope("/v1/devices")
+                            .wrap(AuthenticationMiddlewareFactory::new(
+                                auth_service.clone(),
+                                role_service.clone(),
+                            ))
+                            .route("", web::get().to(device_http::list_device))
+                            .guard(guard::Get()),
+                    )
+                    .service(
+                        web::scope("/v1/devices")
+                            .wrap(AuthenticationMiddlewareFactory::new(
+                                auth_service.clone(),
+                                role_service.clone(),
+                            ))
+                            .route("", web::post().to(device_http::create_device))
+                            .guard(guard::Post()),
                     ),
             )
     })

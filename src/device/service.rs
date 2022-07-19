@@ -2,9 +2,12 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::database::DatabaseError;
+use crate::database::{DatabaseError, PaginationResult};
 
-use super::{CreateDeviceError, DeviceRepositoryInterface, InsertDeviceParams};
+use super::{
+    CreateDeviceError, Device, DeviceRepositoryInterface, InsertDeviceParams, ListDeviceError,
+    ListDeviceParams,
+};
 
 pub struct CreateDeviceParams {
     pub name: String,
@@ -15,6 +18,10 @@ pub struct CreateDeviceParams {
 
 #[async_trait]
 pub trait DeviceServiceInterface {
+    async fn list_device(
+        &self,
+        params: ListDeviceParams,
+    ) -> Result<PaginationResult<Device>, ListDeviceError>;
     async fn create_device(&self, params: CreateDeviceParams) -> Result<(), CreateDeviceError>;
 }
 
@@ -32,6 +39,20 @@ impl DeviceService {
 
 #[async_trait]
 impl DeviceServiceInterface for DeviceService {
+    async fn list_device(
+        &self,
+        params: ListDeviceParams,
+    ) -> Result<PaginationResult<Device>, ListDeviceError> {
+        println!("params.page: {}", params.page);
+        match self._device_repository.find(params).await {
+            Ok(result) => Ok(result),
+            Err(e) => {
+                println!("e: {:?}", e);
+                Err(ListDeviceError::InternalServerError)
+            }
+        }
+    }
+
     async fn create_device(&self, params: CreateDeviceParams) -> Result<(), CreateDeviceError> {
         if let Err(e) = self
             ._device_repository
