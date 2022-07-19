@@ -17,7 +17,7 @@ use crate::database::DatabaseError;
 use crate::email::{self, EmailParams};
 use crate::user::{InsertUserParams, UserRepositoryInterface, UserStatus};
 
-use super::{AuthEntity, AuthError, AuthRepositoryInterface, RefreshTokenResult};
+use super::{AuthEntity, AuthError, AuthRepositoryInterface, RefreshTokenResult, UserAuthEntity};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -60,6 +60,7 @@ pub trait AuthServiceInterface {
     async fn confirm_email(&self, token: String) -> Result<AuthEntity, AuthError>;
     async fn login(&self, params: LoginParams) -> Result<AuthEntity, AuthError>;
     async fn refresh_token(&self, refresh_token: String) -> Result<RefreshTokenResult, AuthError>;
+    async fn me(&self, user_id: i32) -> Result<UserAuthEntity, AuthError>;
 }
 
 pub struct AuthService {
@@ -561,5 +562,23 @@ impl AuthServiceInterface for AuthService {
             access_token,
             refresh_token,
         })
+    }
+
+    async fn me(&self, user_id: i32) -> Result<UserAuthEntity, AuthError> {
+        let entity = match self
+            ._auth_repository
+            .find_one_auth_entity_by_id(user_id)
+            .await
+        {
+            Ok(entity) => entity,
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(AuthError::UserNotFound("User not found".into()))
+                }
+                _ => return Err(AuthError::InternalServerError),
+            },
+        };
+
+        Ok(entity)
     }
 }

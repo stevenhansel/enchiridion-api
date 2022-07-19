@@ -45,7 +45,11 @@ impl FloorServiceInterface for FloorService {
                         let code = code.to_string();
                         if code == DatabaseError::UniqueConstraintError.to_string() {
                             return Err(CreateFloorError::FloorAlreadyExists(
-                                "Email is already registered in our system".into(),
+                                format!(
+                                    "Floor with the name of {} already exists",
+                                    params.name.clone()
+                                )
+                                .into(),
                             ));
                         } else if code == DatabaseError::ForeignKeyError.to_string() {
                             return Err(CreateFloorError::BuildingNotFound(

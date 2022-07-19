@@ -8,10 +8,18 @@ use super::{CreateFloorError, FloorErrorCode, FloorServiceInterface};
 
 use crate::http::{ApiValidationError, HttpErrorResponse};
 
+pub async fn list_floor() -> HttpResponse {
+    HttpResponse::Ok().finish()
+}
+
+pub async fn get_floor_detail() -> HttpResponse {
+    HttpResponse::Ok().finish()
+}
+
 #[derive(Debug, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateFloorBody {
-    #[validate(length(min = 1, message = "name: Name must not be empty"))]
+    #[validate(length(min = 1, message = "name: name must not be empty"))]
     name: String,
     #[validate(range(min = 1, message = "buildingId: id must be greater than 1"))]
     building_id: i32,
@@ -21,7 +29,6 @@ pub async fn create_floor(
     floor_service: web::Data<Arc<dyn FloorServiceInterface + Send + Sync + 'static>>,
     body: web::Json<CreateFloorBody>,
 ) -> HttpResponse {
-    println!("start");
     if let Err(e) = body.validate() {
         let e = ApiValidationError::new(e);
 
@@ -57,5 +64,13 @@ pub async fn create_floor(
         }
     }
 
+    HttpResponse::NoContent().finish()
+}
+
+pub async fn update_floor() -> HttpResponse {
+    HttpResponse::NoContent().finish()
+}
+
+pub async fn delete_floor() -> HttpResponse {
     HttpResponse::NoContent().finish()
 }

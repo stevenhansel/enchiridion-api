@@ -2,6 +2,7 @@ use std::env;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 
+use enchiridion_api::device::{DeviceRepository, DeviceService};
 use enchiridion_api::floor::{FloorRepository, FloorService};
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
@@ -57,6 +58,7 @@ async fn main() -> std::io::Result<()> {
         config.clone(),
     ));
     let floor_repository = Arc::new(FloorRepository::new(pool.clone()));
+    let device_repository = Arc::new(DeviceRepository::new(pool.clone()));
 
     let role_service = Arc::new(RoleService::new(role_repository.clone()));
     let building_service = Arc::new(BuildingService::new(building_repository.clone()));
@@ -68,6 +70,7 @@ async fn main() -> std::io::Result<()> {
         config.clone(),
     ));
     let floor_service = Arc::new(FloorService::new(floor_repository.clone()));
+    let device_service = Arc::new(DeviceService::new(device_repository.clone()));
 
     let listener = TcpListener::bind(config.address)?;
     run(
@@ -77,6 +80,7 @@ async fn main() -> std::io::Result<()> {
         user_service.clone(),
         auth_service.clone(),
         floor_service.clone(),
+        device_service.clone(),
     )?
     .await
 }

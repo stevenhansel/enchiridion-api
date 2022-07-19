@@ -205,7 +205,7 @@ pub async fn confirm_email(
         permissions,
     };
 
-    let response = LoginResponse {
+    let response = AuthEntityObject {
         id: result.entity.id,
         name: result.entity.name,
         email: result.entity.email,
@@ -246,7 +246,7 @@ pub struct LoginBody {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LoginResponse {
+pub struct AuthEntityObject {
     pub id: i32,
     pub name: String,
     pub email: String,
@@ -332,7 +332,7 @@ pub async fn login(
         permissions,
     };
 
-    let response = LoginResponse {
+    let response = AuthEntityObject {
         id: result.entity.id,
         name: result.entity.name,
         email: result.entity.email,
@@ -424,15 +424,61 @@ pub async fn refresh_token(
         .finish()
 }
 
-pub async fn me(auth: AuthenticationContext<'_>) -> HttpResponse {
+pub async fn me(
+    auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
+) -> HttpResponse {
     let user_id = match derive_user_id(auth) {
         Ok(id) => id,
         Err(e) => return derive_authentication_middleware_error(e),
     };
 
-    println!("user_id: {}", user_id);
+    let entity = match auth_service.me(user_id).await {
+        Ok(entity) => entity,
+        Err(e) => match e {
+            AuthError::UserNotFound(e) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AuthErrorCode::UserNotFound.to_string(),
+                    vec![e.to_string()],
+                ))
+            }
+            _ => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AuthErrorCode::InternalServerError.to_string(),
+                    vec![AuthError::InternalServerError.to_string()],
+                ))
+            }
+        },
+    };
 
-    HttpResponse::Ok().finish()
+    let mut permissions: Vec<PermissionObject> = vec![];
+    for p in entity.role.permissions {
+        permissions.push(PermissionObject {
+            id: p.id,
+            name: p.name,
+        });
+    }
+
+    let role = RoleObject {
+        id: entity.role.id,
+        name: entity.role.name,
+        permissions,
+    };
+
+    let response = AuthEntityObject {
+        id: entity.id,
+        name: entity.name,
+        email: entity.email,
+        profile_picture: entity.profile_picture,
+        is_email_confirmed: entity.is_email_confirmed,
+        user_status: UserStatusObject {
+            value: entity.user_status.clone().value().to_string(),
+            label: entity.user_status.clone().label().to_string(),
+        },
+        role,
+    };
+
+    HttpResponse::Ok().json(response)
 }
 
 pub async fn forgot_password() -> HttpResponse {

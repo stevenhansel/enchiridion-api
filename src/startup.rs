@@ -13,6 +13,7 @@ use crate::auth::{http as auth_http, AuthServiceInterface};
 use crate::building::{http as building_http, BuildingServiceInterface};
 use crate::floor::http as floor_http;
 use crate::role::{http as role_http, RoleServiceInterface};
+use crate::device::{http as device_http, DeviceServiceInterface};
 use crate::user::UserServiceInterface;
 
 #[derive(Serialize)]
@@ -33,12 +34,14 @@ pub fn run(
     user_service: Arc<dyn UserServiceInterface + Send + Sync + 'static>,
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
     floor_service: Arc<dyn FloorServiceInterface + Send + Sync + 'static>,
+    device_service: Arc<dyn DeviceServiceInterface + Send + Sync + 'static>,
 ) -> Result<Server, std::io::Error> {
     let role_svc = web::Data::new(role_service.clone());
     let building_svc = web::Data::new(building_service.clone());
     let user_svc = web::Data::new(user_service.clone());
     let auth_svc = web::Data::new(auth_service.clone());
     let floor_svc = web::Data::new(floor_service.clone());
+    let device_svc = web::Data::new(device_service.clone());
 
     let server = HttpServer::new(move || {
         let cors = Cors::permissive();
@@ -50,6 +53,7 @@ pub fn run(
             .app_data(user_svc.clone())
             .app_data(auth_svc.clone())
             .app_data(floor_svc.clone())
+            .app_data(device_svc.clone())
             .route("/", web::get().to(health_check))
             .service(
                 web::scope("/dashboard")
@@ -99,12 +103,18 @@ pub fn run(
                             .route("", web::get().to(auth_http::me)),
                     )
                     .service(
-                        web::scope("/v1/floor")
+                        web::scope("/v1/floors")
                             .wrap(AuthenticationMiddlewareFactory::new(
                                 auth_service.clone(),
                                 role_service.clone(),
                             ))
                             .route("", web::post().to(floor_http::create_floor)),
+                    )
+                    .service(
+                        web::scope("/v1/devices").wrap(AuthenticationMiddlewareFactory::new(
+                            auth_service.clone(),
+                            role_service.clone(),
+                        )).route("", web::post().to(device_http::create_device)),
                     ),
             )
     })
