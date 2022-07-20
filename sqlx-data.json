@@ -240,6 +240,20 @@
     },
     "query": "\n            insert into \"user\" (name, email, password, registration_reason, role_id)\n            values($1, $2, $3, $4, $5)\n            returning id\n            "
   },
+  "6a2123012a4cef962441b6d47e9c0002a2d701f01ca6e423c146a2f7ccc886e5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                update \"floor\"\n                set\n                    \"name\" = $2,\n                    \"building_id\" = $3\n                where \"id\" = $1\n            "
+  },
   "8d6c820297baa2e1eb9cb53d687e634f70eaaa3585d2c09812e1592bd019b82d": {
     "describe": {
       "columns": [],
@@ -263,6 +277,18 @@
       }
     },
     "query": "\n                delete from \"device\"\n                where \"id\" = $1\n            "
+  },
+  "9ee4bd8ab3cd652765a83bc850be6d3f53e67d59f040adfdff052826ee19af26": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                delete from \"floor\"\n                where \"id\" = $1\n            "
   },
   "b9c20a54d894511f510fa4aaf2206836523510f94a85c0979b71da1bcdff04bc": {
     "describe": {
