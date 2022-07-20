@@ -10,3 +10,4 @@ pub mod building;
 pub mod queue;
 pub mod floor;
 pub mod device;
+pub mod announcement;
