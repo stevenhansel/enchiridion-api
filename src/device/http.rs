@@ -16,6 +16,7 @@ use super::{
 };
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListDeviceQueryParams {
     pub page: Option<i32>,
     pub limit: Option<i32>,
@@ -54,7 +55,6 @@ pub async fn list_device(
 
     let mut page = 1;
     if let Some(raw_page) = query_params.page {
-        println!("got in");
         page = raw_page;
     }
 

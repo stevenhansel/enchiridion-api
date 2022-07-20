@@ -93,6 +93,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
             count = result[0].count;
         }
         let total_pages = (count as f64 / params.limit as f64).ceil() as i32;
+        let has_next = (params.page as f64 * params.limit as f64) < 1.0;
         let contents = result
             .iter()
             .map(|item| Device {
@@ -105,7 +106,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
 
         Ok(PaginationResult::<Device> {
             total_pages,
-            has_next: false,
+            has_next,
             count,
             contents,
         })

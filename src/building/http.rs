@@ -28,7 +28,6 @@ pub struct ListBuildingsResponse {
 pub async fn list_buildings(
     building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
 ) -> HttpResponse {
-    println!("start");
     let result = building_service.get_buildings().await;
 
     let result = match result {

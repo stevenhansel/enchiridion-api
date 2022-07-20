@@ -1,13 +1,26 @@
 use core::fmt;
 
-use crate::{building::Building, device::Device};
-
 #[derive(Debug)]
 pub struct Floor {
     pub id: i32,
     pub name: String,
-    pub building: Building,
-    pub devices: Option<Vec<Device>>,
+    pub building: BuildingFloorContent,
+    pub devices: Vec<DeviceFloorContent>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BuildingFloorContent {
+    pub id: i32,
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct DeviceFloorContent {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+    // pub total_announcements: i32,
 }
 
 pub enum FloorErrorCode {
@@ -38,6 +51,18 @@ impl std::fmt::Display for CreateFloorError {
             CreateFloorError::FloorAlreadyExists(message) => write!(f, "{}", message),
             CreateFloorError::BuildingNotFound(message) => write!(f, "{}", message),
             CreateFloorError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}
+
+pub enum ListFloorError {
+    InternalServerError,
+}
+
+impl std::fmt::Display for ListFloorError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ListFloorError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
 }

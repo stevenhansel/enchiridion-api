@@ -2,9 +2,19 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use super::{CreateFloorError, FloorRepositoryInterface, InsertFloorParams};
+use super::{
+    CreateFloorError, FindFloorParams, Floor, FloorRepositoryInterface, InsertFloorParams,
+    ListFloorError,
+};
 
-use crate::database::DatabaseError;
+use crate::database::{DatabaseError, PaginationResult};
+
+pub struct ListFloorParams {
+    pub page: i32,
+    pub limit: i32,
+    pub building_id: Option<i32>,
+    pub query: Option<String>,
+}
 
 pub struct CreateFloorParams {
     pub name: String,
@@ -13,6 +23,10 @@ pub struct CreateFloorParams {
 
 #[async_trait]
 pub trait FloorServiceInterface {
+    async fn list_floor(
+        &self,
+        params: ListFloorParams,
+    ) -> Result<PaginationResult<Floor>, ListFloorError>;
     async fn create_floor(&self, params: CreateFloorParams) -> Result<(), CreateFloorError>;
 }
 
@@ -30,6 +44,30 @@ impl FloorService {
 
 #[async_trait]
 impl FloorServiceInterface for FloorService {
+    async fn list_floor(
+        &self,
+        params: ListFloorParams,
+    ) -> Result<PaginationResult<Floor>, ListFloorError> {
+        match self
+            ._floor_repository
+            .find(FindFloorParams {
+                page: params.page,
+                limit: params.limit,
+                building_id: params.building_id.clone(),
+                query: params.query.clone(),
+            })
+            .await
+        {
+            Ok(result) => Ok(result),
+            Err(e) => match e {
+                _ => {
+                    println!("{:?}", e);
+                    return Err(ListFloorError::InternalServerError);
+                }
+            },
+        }
+    }
+
     async fn create_floor(&self, params: CreateFloorParams) -> Result<(), CreateFloorError> {
         if let Err(e) = self
             ._floor_repository
