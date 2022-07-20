@@ -108,8 +108,8 @@ pub fn run(
                                 auth_service.clone(),
                                 role_service.clone(),
                             ))
-                            // .route("/{floor_id}", web::put().to(floor_http::update_floor))
-                            // .route("/{floor_id}", web::delete().to(floor_http::delete_floor))
+                            .route("/{floor_id}", web::put().to(floor_http::update_floor))
+                            .route("/{floor_id}", web::delete().to(floor_http::delete_floor))
                             .route("", web::get().to(floor_http::list_floor))
                             .route("", web::post().to(floor_http::create_floor))
                     )

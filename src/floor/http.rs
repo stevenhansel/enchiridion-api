@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use super::{
-    CreateFloorError, FloorErrorCode, FloorServiceInterface, ListFloorError, ListFloorParams,
-    UpdateFloorInfoParams, UpdateFloorError,
+    CreateFloorError, DeleteFloorError, FloorErrorCode, FloorServiceInterface, ListFloorError,
+    ListFloorParams, UpdateFloorError, UpdateFloorInfoParams,
 };
 
 use crate::http::{
@@ -166,7 +166,7 @@ pub async fn create_floor(
                 ))
             }
             CreateFloorError::InternalServerError => {
-                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
                     FloorErrorCode::InternalServerError.to_string(),
                     vec![FloorErrorCode::InternalServerError.to_string()],
                 ))
@@ -191,25 +191,71 @@ pub async fn update_floor(
     body: web::Json<CreateFloorBody>,
     path: web::Path<i32>,
 ) -> HttpResponse {
-    // let floor_id = path.into_inner();
+    let floor_id = path.into_inner();
 
-    // if let Err(e) = floor_service
-    //     .update_floor(
-    //         floor_id,
-    //         UpdateFloorInfoParams {
-    //             name: body.name.clone(),
-    //             building_id: body.building_id,
-    //         },
-    //     )
-    //     .await
-    // {
-    //         match e {
-    //         }
-    // }
+    if let Err(e) = floor_service
+        .update_floor(
+            floor_id,
+            UpdateFloorInfoParams {
+                name: body.name.clone(),
+                building_id: body.building_id,
+            },
+        )
+        .await
+    {
+        match e {
+            UpdateFloorError::FloorNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    FloorErrorCode::FloorNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            UpdateFloorError::BuildingNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    FloorErrorCode::BuildingNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            UpdateFloorError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    FloorErrorCode::InternalServerError.to_string(),
+                    vec![FloorErrorCode::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
 
     HttpResponse::NoContent().finish()
 }
 
-pub async fn delete_floor() -> HttpResponse {
+pub async fn delete_floor(
+    floor_service: web::Data<Arc<dyn FloorServiceInterface + Send + Sync + 'static>>,
+    path: web::Path<i32>,
+) -> HttpResponse {
+    let floor_id = path.into_inner();
+
+    if let Err(e) = floor_service.delete_floor(floor_id).await {
+        match e {
+            DeleteFloorError::FloorNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    FloorErrorCode::FloorNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            DeleteFloorError::DeviceCascadeConstraint(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    FloorErrorCode::DeviceCascadeConstraint.to_string(),
+                    vec![message],
+                ))
+            }
+            DeleteFloorError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    FloorErrorCode::InternalServerError.to_string(),
+                    vec![FloorErrorCode::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
     HttpResponse::NoContent().finish()
 }

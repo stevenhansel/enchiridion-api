@@ -158,6 +158,17 @@ impl FloorServiceInterface for FloorService {
                 sqlx::Error::RowNotFound => {
                     return Err(DeleteFloorError::FloorNotFound("Floor not found".into()))
                 }
+                sqlx::Error::Database(db_error) => {
+                    if let Some(code) = db_error.code() {
+                        let code = code.to_string();
+                        if code == DatabaseError::ForeignKeyError.to_string() {
+                            return Err(DeleteFloorError::DeviceCascadeConstraint(
+                                "Floor still have devices can't delete".into(),
+                            ));
+                        }
+                    }
+                    return Err(DeleteFloorError::InternalServerError);
+                }
                 _ => return Err(DeleteFloorError::InternalServerError),
 
             }

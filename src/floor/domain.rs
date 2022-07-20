@@ -26,6 +26,7 @@ pub struct DeviceFloorContent {
 pub enum FloorErrorCode {
     FloorNotFound,
     FloorAlreadyExists,
+    DeviceCascadeConstraint,
     BuildingNotFound,
     InternalServerError,
 }
@@ -35,6 +36,7 @@ impl std::fmt::Display for FloorErrorCode {
         match self {
             FloorErrorCode::FloorNotFound => write!(f, "FLOOR_NOT_FOUND"),
             FloorErrorCode::FloorAlreadyExists => write!(f, "FLOOR_ALREADY_EXISTS"),
+            FloorErrorCode::DeviceCascadeConstraint => write!(f, "DEVICE_CASCADE_CONSTRAINT"),
             FloorErrorCode::BuildingNotFound => write!(f, "BUILDING_NOT_FOUND"),
             FloorErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
@@ -87,6 +89,7 @@ impl std::fmt::Display for UpdateFloorError {
 
 pub enum DeleteFloorError {
     FloorNotFound(String),
+    DeviceCascadeConstraint(String),
     InternalServerError,
 }
 
@@ -94,6 +97,7 @@ impl std::fmt::Display for DeleteFloorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             DeleteFloorError::FloorNotFound(message) => write!(f, "{}", message),
+            DeleteFloorError::DeviceCascadeConstraint(message) => write!(f, "{}", message),
             DeleteFloorError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
