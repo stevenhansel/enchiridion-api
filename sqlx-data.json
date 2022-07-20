@@ -1,5 +1,28 @@
 {
   "db": "PostgreSQL",
+  "030b6baecd10e195d13a9028c53a8c14e72502146cf7d386ee4e8c03753d3995": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Text",
+          "Int4",
+          "Bool"
+        ]
+      }
+    },
+    "query": "\n            insert into \"device\" (\"name\", \"description\", \"floor_id\", \"is_linked\")\n            values ($1, $2, $3, $4)\n            returning \"id\"\n            "
+  },
   "0bbdee3a9cb8a79078b61d1bb80886885a4e38f7d61c9371bf27e8a6f1858775": {
     "describe": {
       "columns": [
@@ -229,6 +252,39 @@
     },
     "query": "\n            update \"user\"\n            set is_email_confirmed = true\n            where id = $1\n            "
   },
+  "91965e0e4dc9531189e958a1f55c1937c19a5c756ae4d3a4305a983c906a4886": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                delete from \"device\"\n                where \"id\" = $1\n            "
+  },
+  "b9c20a54d894511f510fa4aaf2206836523510f94a85c0979b71da1bcdff04bc": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                insert into \"floor\" (\"name\", \"building_id\")\n                values ($1, $2)\n                returning \"id\"\n            "
+  },
   "c9095d2c9da1d413c963c2021aab7e23b1087b2367630f3b5eecada2ff31984e": {
     "describe": {
       "columns": [
@@ -409,6 +465,21 @@
       }
     },
     "query": "\n            select id, name, description\n            from role\n            "
+  },
+  "f51f3506de47b9539777dd3b559926a94d76c44f8aa942338bb20fd0bfc682b2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Text",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            update \"device\"\n            set \n                \"name\" = $2,\n                \"description\" = $3,\n                \"floor_id\" = $4\n            where \"id\" = $1\n            "
   },
   "fd9e13b243ac0483a0a28ace02a38891e3695c8306aaffdca533eb031b674579": {
     "describe": {

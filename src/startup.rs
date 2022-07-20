@@ -117,17 +117,11 @@ pub fn run(
                                 auth_service.clone(),
                                 role_service.clone(),
                             ))
+                            .route("/{device_id}", web::get().to(device_http::get_device_by_id))
+                            .route("/{device_id}", web::put().to(device_http::update_device))
+                            .route("/{device_id}", web::delete().to(device_http::delete_device))
                             .route("", web::get().to(device_http::list_device))
-                            .guard(guard::Get()),
-                    )
-                    .service(
-                        web::scope("/v1/devices")
-                            .wrap(AuthenticationMiddlewareFactory::new(
-                                auth_service.clone(),
-                                role_service.clone(),
-                            ))
-                            .route("", web::post().to(device_http::create_device))
-                            .guard(guard::Post()),
+                            .route("", web::post().to(device_http::create_device)),
                     ),
             )
     })
