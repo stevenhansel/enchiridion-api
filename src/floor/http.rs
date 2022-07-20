@@ -6,6 +6,7 @@ use validator::Validate;
 
 use super::{
     CreateFloorError, FloorErrorCode, FloorServiceInterface, ListFloorError, ListFloorParams,
+    UpdateFloorInfoParams, UpdateFloorError,
 };
 
 use crate::http::{
@@ -176,7 +177,36 @@ pub async fn create_floor(
     HttpResponse::NoContent().finish()
 }
 
-pub async fn update_floor() -> HttpResponse {
+#[derive(Debug, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateFloorBody {
+    #[validate(length(min = 1, message = "name: name must not be empty"))]
+    name: String,
+    #[validate(range(min = 1, message = "buildingId: id must be greater than 1"))]
+    building_id: i32,
+}
+
+pub async fn update_floor(
+    floor_service: web::Data<Arc<dyn FloorServiceInterface + Send + Sync + 'static>>,
+    body: web::Json<CreateFloorBody>,
+    path: web::Path<i32>,
+) -> HttpResponse {
+    // let floor_id = path.into_inner();
+
+    // if let Err(e) = floor_service
+    //     .update_floor(
+    //         floor_id,
+    //         UpdateFloorInfoParams {
+    //             name: body.name.clone(),
+    //             building_id: body.building_id,
+    //         },
+    //     )
+    //     .await
+    // {
+    //         match e {
+    //         }
+    // }
+
     HttpResponse::NoContent().finish()
 }
 

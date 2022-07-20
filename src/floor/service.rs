@@ -3,8 +3,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use super::{
-    CreateFloorError, FindFloorParams, Floor, FloorRepositoryInterface, InsertFloorParams,
-    ListFloorError,
+    CreateFloorError, DeleteFloorError, FindFloorParams, Floor, FloorRepositoryInterface,
+    InsertFloorParams, ListFloorError, UpdateFloorError, UpdateFloorParams,
 };
 
 use crate::database::{DatabaseError, PaginationResult};
@@ -21,6 +21,11 @@ pub struct CreateFloorParams {
     pub building_id: i32,
 }
 
+pub struct UpdateFloorInfoParams {
+    pub name: String,
+    pub building_id: i32,
+}
+
 #[async_trait]
 pub trait FloorServiceInterface {
     async fn list_floor(
@@ -28,6 +33,12 @@ pub trait FloorServiceInterface {
         params: ListFloorParams,
     ) -> Result<PaginationResult<Floor>, ListFloorError>;
     async fn create_floor(&self, params: CreateFloorParams) -> Result<(), CreateFloorError>;
+    async fn update_floor(
+        &self,
+        floor_id: i32,
+        params: UpdateFloorInfoParams,
+    ) -> Result<(), UpdateFloorError>;
+    async fn delete_floor(&self, floor_id: i32) -> Result<(), DeleteFloorError>;
 }
 
 pub struct FloorService {
@@ -61,7 +72,6 @@ impl FloorServiceInterface for FloorService {
             Ok(result) => Ok(result),
             Err(e) => match e {
                 _ => {
-                    println!("{:?}", e);
                     return Err(ListFloorError::InternalServerError);
                 }
             },
@@ -98,6 +108,58 @@ impl FloorServiceInterface for FloorService {
                     return Err(CreateFloorError::InternalServerError);
                 }
                 _ => return Err(CreateFloorError::InternalServerError),
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn update_floor(
+        &self,
+        floor_id: i32,
+        params: UpdateFloorInfoParams,
+    ) -> Result<(), UpdateFloorError> {
+        if let Err(e) = self
+            ._floor_repository
+            .update(
+                floor_id,
+                UpdateFloorParams {
+                    name: params.name.clone(),
+                    building_id: params.building_id,
+                },
+            )
+            .await
+        {
+            match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(UpdateFloorError::FloorNotFound("Floor not found".into()))
+                }
+                sqlx::Error::Database(db_error) => {
+                    if let Some(code) = db_error.code() {
+                        let code = code.to_string();
+                        if code == DatabaseError::ForeignKeyError.to_string() {
+                            return Err(UpdateFloorError::BuildingNotFound(
+                                "Building not found".into(),
+                            ));
+                        }
+                    }
+                    return Err(UpdateFloorError::InternalServerError);
+                }
+                _ => return Err(UpdateFloorError::InternalServerError),
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn delete_floor(&self, floor_id: i32) -> Result<(), DeleteFloorError> {
+        if let Err(e) = self._floor_repository.delete(floor_id).await {
+            match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(DeleteFloorError::FloorNotFound("Floor not found".into()))
+                }
+                _ => return Err(DeleteFloorError::InternalServerError),
+
             }
         }
 

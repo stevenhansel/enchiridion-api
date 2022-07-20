@@ -2,7 +2,7 @@
 create table "floor" (
   id serial primary key,
 
-  name varchar(255) unique not null,
+  name varchar(255) not null,
 
   building_id integer not null references building(id),
 

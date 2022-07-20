@@ -14,9 +14,9 @@ pub struct RawFloorRow {
     building_id: i32,
     building_name: String,
     building_color: String,
-    device_id: i32,
-    device_name: String,
-    device_description: String,
+    device_id: Option<i32>,
+    device_name: Option<String>,
+    device_description: Option<String>,
     // device_total_announcements: i32,
 }
 
@@ -74,7 +74,7 @@ impl FloorRepositoryInterface for FloorRepository {
                 "device"."description" as "device_description"
             from "floor"
             join "building" on "building"."id" = "floor"."building_id"
-            join "device" on "device"."floor_id" = "floor"."id"
+            left join "device" on "device"."floor_id" = "floor"."id"
             left join lateral (
                 select count(*) from "floor"
             ) "result" on true
@@ -111,18 +111,16 @@ impl FloorRepositoryInterface for FloorRepository {
         let total_pages = (count as f64 / params.limit as f64).ceil() as i32;
         let has_next = (params.page as f64 * params.limit as f64) < 1.0;
 
-        for row in &result {
-            println!("row_id: {}", row.floor_id);
-        }
-
         let mut device_map: BTreeMap<i32, DeviceFloorContent> = BTreeMap::new();
         for row in &result {
-            if let Entry::Vacant(v) = device_map.entry(row.device_id) {
-                v.insert(DeviceFloorContent {
-                    id: row.device_id,
-                    name: row.device_name.clone(),
-                    description: row.device_description.clone(),
-                });
+            if let Some(device_id) = row.device_id {
+                if let Entry::Vacant(v) = device_map.entry(device_id) {
+                    v.insert(DeviceFloorContent {
+                        id: device_id,
+                        name: row.device_name.clone().unwrap(),
+                        description: row.device_description.clone().unwrap(),
+                    });
+                }
             }
         }
 
@@ -130,8 +128,11 @@ impl FloorRepositoryInterface for FloorRepository {
         for row in &result {
             match floor_map.entry(row.floor_id) {
                 Entry::Vacant(v) => {
-                    let device = device_map.get(&row.device_id).unwrap();
-                    let devices: Vec<DeviceFloorContent> = vec![device.clone()];
+                    let mut devices: Vec<DeviceFloorContent> = vec![];
+                    if let Some(device_id) = row.device_id {
+                        let device = device_map.get(&device_id).unwrap();
+                        devices.push(device.clone());
+                    }
 
                     v.insert(Floor {
                         id: row.floor_id,
@@ -145,10 +146,12 @@ impl FloorRepositoryInterface for FloorRepository {
                     });
                 }
                 Entry::Occupied(o) => {
-                    let floor = o.into_mut();
-                    let device = device_map.get(&row.device_id).unwrap();
+                    if let Some(device_id) = row.device_id {
+                        let floor = o.into_mut();
+                        let device = device_map.get(&device_id).unwrap();
 
-                    floor.devices.push(device.clone());
+                        floor.devices.push(device.clone());
+                    }
                 }
             }
         }
