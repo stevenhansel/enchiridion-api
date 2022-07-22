@@ -492,6 +492,67 @@
     },
     "query": "\n            select id, name, description\n            from role\n            "
   },
+  "db901f040e6c7fd575c8d9a0418bed74fb59684a52ba394fb9b91d4e243acaf2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "create",
+                  "change_date",
+                  "delete",
+                  "change_content",
+                  "change_devices"
+                ]
+              },
+              "name": "request_action_type"
+            }
+          },
+          "Text",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            insert into \"request\" (\"action\", \"description\", \"announcement_id\", \"user_id\")\n            values ($1, $2, $3, $4)\n            returning \"id\"\n            "
+  },
+  "e7a0e51df45fce673e4dc8ab009a06755ed660f15e25de5d9dc9b53e5245310a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Text",
+          "Timestamptz",
+          "Timestamptz",
+          "Text",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                insert into \"announcement\" (\"title\", \"media\", \"start_date\", \"end_date\", \"notes\", \"user_id\")\n                values ($1, $2, $3, $4, $5, $6)\n                returning \"id\"\n            "
+  },
   "f51f3506de47b9539777dd3b559926a94d76c44f8aa942338bb20fd0bfc682b2": {
     "describe": {
       "columns": [],
