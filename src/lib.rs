@@ -11,3 +11,4 @@ pub mod queue;
 pub mod floor;
 pub mod device;
 pub mod announcement;
+pub mod cloud_storage;

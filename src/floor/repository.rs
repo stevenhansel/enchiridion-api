@@ -156,7 +156,11 @@ impl FloorRepositoryInterface for FloorRepository {
             }
         }
 
-        let contents = floor_map.into_iter().rev().map(|(_, v)| v).collect();
+        let contents = floor_map
+            .into_iter()
+            .rev()
+            .map(|(_, v)| v)
+            .collect();
 
         Ok(PaginationResult {
             count,

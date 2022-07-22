@@ -9,6 +9,7 @@ use serde::Serialize;
 use crate::floor::FloorServiceInterface;
 use crate::http::AuthenticationMiddlewareFactory;
 
+use crate::announcement::http as announcement_http;
 use crate::auth::{http as auth_http, AuthServiceInterface};
 use crate::building::{http as building_http, BuildingServiceInterface};
 use crate::device::{http as device_http, DeviceServiceInterface};
@@ -111,7 +112,7 @@ pub fn run(
                             .route("/{floor_id}", web::put().to(floor_http::update_floor))
                             .route("/{floor_id}", web::delete().to(floor_http::delete_floor))
                             .route("", web::get().to(floor_http::list_floor))
-                            .route("", web::post().to(floor_http::create_floor))
+                            .route("", web::post().to(floor_http::create_floor)),
                     )
                     .service(
                         web::scope("/v1/devices")
@@ -124,6 +125,14 @@ pub fn run(
                             .route("/{device_id}", web::delete().to(device_http::delete_device))
                             .route("", web::get().to(device_http::list_device))
                             .route("", web::post().to(device_http::create_device)),
+                    )
+                    .service(
+                        web::scope("/v1/announcements")
+                            .wrap(AuthenticationMiddlewareFactory::new(
+                                auth_service.clone(),
+                                role_service.clone(),
+                            ))
+                            .route("", web::post().to(announcement_http::create_announcement)),
                     ),
             )
     })
