@@ -71,6 +71,7 @@ pub struct Configuration {
     pub aws_access_key_id: Secret<String>,
     pub aws_access_key_secret: Secret<String>,
     pub aws_s3_bucket_name: String,
+    pub aws_s3_presigning_url_expiration_seconds: i32,
 
     pub dashboard_baseurl: String,
 }
@@ -86,10 +87,16 @@ impl Configuration {
             access_token_secret: Secret::new(dotenvy::var("ACCESS_TOKEN_SECRET")?),
             refresh_token_secret: Secret::new(dotenvy::var("REFRESH_TOKEN_SECRET")?),
 
-            email_confirmation_expiration_seconds: dotenvy::var("EMAIL_CONFIRMATION_EXPIRATION_SECONDS")?.parse()?,
-            forgot_password_expiration_seconds: dotenvy::var("FORGOT_PASSWORD_EXPIRATION_SECONDS")?.parse()?,
-            access_token_expiration_seconds: dotenvy::var("ACCESS_TOKEN_EXPIRATION_SECONDS")?.parse()?,
-            refresh_token_expiration_seconds: dotenvy::var("REFRESH_TOKEN_EXPIRATION_SECONDS")?.parse()?,
+            email_confirmation_expiration_seconds: dotenvy::var(
+                "EMAIL_CONFIRMATION_EXPIRATION_SECONDS",
+            )?
+            .parse()?,
+            forgot_password_expiration_seconds: dotenvy::var("FORGOT_PASSWORD_EXPIRATION_SECONDS")?
+                .parse()?,
+            access_token_expiration_seconds: dotenvy::var("ACCESS_TOKEN_EXPIRATION_SECONDS")?
+                .parse()?,
+            refresh_token_expiration_seconds: dotenvy::var("REFRESH_TOKEN_EXPIRATION_SECONDS")?
+                .parse()?,
 
             database_url: Secret::new(dotenvy::var("DATABASE_URL")?),
             redis_url: Secret::new(dotenvy::var("REDIS_URL")?),
@@ -101,6 +108,7 @@ impl Configuration {
             aws_access_key_id: Secret::new(dotenvy::var("AWS_ACCESS_KEY_ID")?),
             aws_access_key_secret: Secret::new(dotenvy::var("AWS_ACCESS_KEY_SECRET")?),
             aws_s3_bucket_name: dotenvy::var("AWS_S3_BUCKET_NAME")?,
+            aws_s3_presigning_url_expiration_seconds: dotenvy::var("AWS_S3_PRESIGNING_URL_EXPIRATION_SECONDS")?.parse()?,
 
             dashboard_baseurl: dotenvy::var("DASHBOARD_BASEURL")?,
         })
@@ -116,10 +124,16 @@ impl Configuration {
             access_token_secret: Secret::new(env::var("ACCESS_TOKEN_SECRET")?),
             refresh_token_secret: Secret::new(env::var("REFRESH_TOKEN_SECRET")?),
 
-            email_confirmation_expiration_seconds: env::var("EMAIL_CONFIRMATION_EXPIRATION_SECONDS")?.parse()?,
-            forgot_password_expiration_seconds: env::var("FORGOT_PASSWORD_EXPIRATION_SECONDS")?.parse()?,
-            access_token_expiration_seconds: env::var("ACCESS_TOKEN_EXPIRATION_SECONDS")?.parse()?,
-            refresh_token_expiration_seconds: env::var("REFRESH_TOKEN_EXPIRATION_SECONDS")?.parse()?,
+            email_confirmation_expiration_seconds: env::var(
+                "EMAIL_CONFIRMATION_EXPIRATION_SECONDS",
+            )?
+            .parse()?,
+            forgot_password_expiration_seconds: env::var("FORGOT_PASSWORD_EXPIRATION_SECONDS")?
+                .parse()?,
+            access_token_expiration_seconds: env::var("ACCESS_TOKEN_EXPIRATION_SECONDS")?
+                .parse()?,
+            refresh_token_expiration_seconds: env::var("REFRESH_TOKEN_EXPIRATION_SECONDS")?
+                .parse()?,
 
             database_url: Secret::new(env::var("DATABASE_URL")?),
             redis_url: Secret::new(env::var("REDIS_URL")?),
@@ -130,7 +144,9 @@ impl Configuration {
 
             aws_access_key_id: Secret::new(env::var("AWS_ACCESS_KEY_ID")?),
             aws_access_key_secret: Secret::new(env::var("AWS_ACCESS_KEY_SECRET")?),
-            aws_s3_bucket_name: dotenvy::var("AWS_S3_BUCKET_NAME")?,
+            aws_s3_bucket_name: env::var("AWS_S3_BUCKET_NAME")?,
+            aws_s3_presigning_url_expiration_seconds: env::var("AWS_S3_PRESIGNING_URL_EXPIRATION_SECONDS")?.parse()?,
+
 
             dashboard_baseurl: env::var("DASHBOARD_BASEURL")?,
         })
