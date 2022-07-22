@@ -1,7 +1,6 @@
 use std::{
     fs::{create_dir_all, remove_file, File},
     io::Write,
-    sync::Arc,
 };
 
 use actix_web::web::Bytes;
@@ -24,14 +23,18 @@ impl std::fmt::Display for TmpFileError {
 #[derive(Debug, Clone)]
 pub struct TmpFile {
     pub filename: String,
+    pub filetype: String,
+    pub key: String,
     pub path: String,
 }
 
 impl TmpFile {
-    pub fn new(filename: String) -> Self {
+    pub fn new(filename: String, filetype: String, key: String) -> Self {
         TmpFile {
-            filename: filename.clone(),
-            path: format!("./tmp/{}", filename.clone()),
+            path: format!("./tmp/{}.{}", filename.clone(), filetype.clone()),
+            filename,
+            filetype,
+            key,
         }
     }
 
@@ -57,21 +60,50 @@ impl TmpFile {
 
         Ok(())
     }
+
+    pub fn name(&self) -> String {
+        format!("{}.{}", self.filename, self.filetype)
+    }
 }
 
-pub enum CloudStorageError {}
+pub enum CloudStorageError {
+    PresignedRequestError(String),
+    ReadFileError(String),
+    UploadError(String),
+    DeleteFileError(String),
+}
+
+impl std::fmt::Display for CloudStorageError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CloudStorageError::PresignedRequestError(message) => write!(f, "{}", message),
+            CloudStorageError::ReadFileError(message) => write!(f, "{}", message),
+            CloudStorageError::UploadError(message) => write!(f, "{}", message),
+            CloudStorageError::DeleteFileError(message) => write!(f, "{}", message),
+        }
+    }
+}
 
 #[async_trait]
 pub trait CloudStorageClient {
-    //    async fn upload(&self) -> Result<String, CloudStorageError>;
+    async fn get_object(&self, key: String) -> Result<String, CloudStorageError>;
+    async fn upload(&self, file: TmpFile) -> Result<(), CloudStorageError>;
 }
 
 pub struct Client {
-    _storage: Arc<dyn CloudStorageClient + Send + Sync + 'static>,
+    _storage: Box<dyn CloudStorageClient + Send + Sync + 'static>,
 }
 
 impl Client {
-    pub fn new(_storage: Arc<dyn CloudStorageClient + Send + Sync + 'static>) -> Self {
+    pub fn new(_storage: Box<dyn CloudStorageClient + Send + Sync + 'static>) -> Self {
         Client { _storage }
+    }
+
+    pub async fn get_object(&self, key: String) -> Result<String, CloudStorageError> {
+        self._storage.get_object(key).await
+    }
+
+    pub async fn upload(&self, file: TmpFile) -> Result<(), CloudStorageError> {
+        self._storage.upload(file).await
     }
 }

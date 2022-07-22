@@ -12,19 +12,19 @@ use actix_web::{
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use futures::StreamExt;
 
-use crate::http::HttpErrorResponse;
-use crate::cloud_storage::TmpFile;
+use crate::{announcement::CreateAnnouncementError, http::HttpErrorResponse};
+use crate::{announcement::CreateAnnouncementParams, cloud_storage::TmpFile};
 
 use super::AnnouncementServiceInterface;
 
 #[derive(Debug)]
 pub struct CreateAnnouncementFormData {
-    title: String,
-    media: TmpFile,
-    start_date: chrono::DateTime<chrono::Utc>,
-    end_date: chrono::DateTime<chrono::Utc>,
-    notes: String,
-    device_ids: Vec<i32>,
+    pub title: String,
+    pub media: TmpFile,
+    pub start_date: chrono::DateTime<chrono::Utc>,
+    pub end_date: chrono::DateTime<chrono::Utc>,
+    pub notes: String,
+    pub device_ids: Vec<i32>,
 }
 
 pub async fn parse_create_announcement_multipart(
@@ -103,7 +103,11 @@ pub async fn parse_create_announcement_multipart(
                 device_ids = Some(ids);
             } else if field.name() == "media" {
                 let now = chrono::Utc::now().timestamp().to_string();
-                let tmp = TmpFile::new(now);
+                let tmp = TmpFile::new(
+                    now,
+                    field.content_type().subtype().to_string(),
+                    "announcement".into(),
+                );
 
                 let path = tmp.path.clone();
                 if let Err(e) = web::block(move || TmpFile::write(path, chunk))
@@ -154,7 +158,7 @@ pub async fn parse_create_announcement_multipart(
 }
 
 pub async fn create_announcement(
-    // announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
+    announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
     multipart: Multipart,
 ) -> HttpResponse {
     let form = match parse_create_announcement_multipart(multipart).await {
@@ -164,6 +168,22 @@ pub async fn create_announcement(
                 "API_VALIDATION_ERROR".into(),
                 vec![message],
             ))
+        }
+    };
+
+    if let Err(e) = announcement_service
+        .create_announcement(CreateAnnouncementParams {
+            media: form.media.to_owned(),
+        })
+        .await
+    {
+        match e {
+            CreateAnnouncementError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    CreateAnnouncementError::InternalServerError.to_string(),
+                    vec![CreateAnnouncementError::InternalServerError.to_string()],
+                ))
+            }
         }
     };
     println!("form: {:?}", form);

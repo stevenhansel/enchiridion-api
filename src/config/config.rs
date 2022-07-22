@@ -68,6 +68,10 @@ pub struct Configuration {
     pub mailgun_domain: Secret<String>,
     pub mailgun_api_key: Secret<String>,
 
+    pub aws_access_key_id: Secret<String>,
+    pub aws_access_key_secret: Secret<String>,
+    pub aws_s3_bucket_name: String,
+
     pub dashboard_baseurl: String,
 }
 
@@ -94,6 +98,10 @@ impl Configuration {
             mailgun_domain: Secret::new(dotenvy::var("MAILGUN_DOMAIN")?),
             mailgun_api_key: Secret::new(dotenvy::var("MAILGUN_API_KEY")?),
 
+            aws_access_key_id: Secret::new(dotenvy::var("AWS_ACCESS_KEY_ID")?),
+            aws_access_key_secret: Secret::new(dotenvy::var("AWS_ACCESS_KEY_SECRET")?),
+            aws_s3_bucket_name: dotenvy::var("AWS_S3_BUCKET_NAME")?,
+
             dashboard_baseurl: dotenvy::var("DASHBOARD_BASEURL")?,
         })
     }
@@ -119,6 +127,10 @@ impl Configuration {
             mailgun_baseurl: env::var("MAILGUN_BASEURL")?,
             mailgun_domain: Secret::new(env::var("MAILGUN_DOMAIN")?),
             mailgun_api_key: Secret::new(env::var("MAILGUN_API_KEY")?),
+
+            aws_access_key_id: Secret::new(env::var("AWS_ACCESS_KEY_ID")?),
+            aws_access_key_secret: Secret::new(env::var("AWS_ACCESS_KEY_SECRET")?),
+            aws_s3_bucket_name: dotenvy::var("AWS_S3_BUCKET_NAME")?,
 
             dashboard_baseurl: env::var("DASHBOARD_BASEURL")?,
         })

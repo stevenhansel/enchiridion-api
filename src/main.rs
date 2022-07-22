@@ -2,6 +2,9 @@ use std::env;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 
+use aws_sdk_s3::{Client, Config};
+use enchiridion_api::announcement::{AnnouncementRepository, AnnouncementService};
+use enchiridion_api::cloud_storage::s3::S3Adapter;
 use enchiridion_api::device::{DeviceRepository, DeviceService};
 use enchiridion_api::floor::{FloorRepository, FloorService};
 use secrecy::ExposeSecret;
@@ -10,7 +13,7 @@ use sqlx::PgPool;
 use enchiridion_api::startup::run;
 
 use enchiridion_api::config::Configuration;
-use enchiridion_api::email;
+use enchiridion_api::{cloud_storage, email};
 
 use enchiridion_api::auth::{AuthRepository, AuthService};
 use enchiridion_api::building::{BuildingRepository, BuildingService};
@@ -49,6 +52,21 @@ async fn main() -> std::io::Result<()> {
     );
     let email_client = email::Client::new(Box::new(mailgun_adapter));
 
+    let s3_credentials = aws_sdk_s3::Credentials::new(
+        config.aws_access_key_id.expose_secret(),
+        config.aws_access_key_secret.expose_secret(),
+        None,
+        None,
+        "enchiridion_api",
+    );
+    let s3_config = aws_config::from_env()
+        .credentials_provider(s3_credentials)
+        .load()
+        .await;
+    let s3_client = Client::new(&s3_config);
+    let s3_adapter = S3Adapter::new(s3_client, config.aws_s3_bucket_name.clone());
+    let cloud_storage = cloud_storage::Client::new(Box::new(s3_adapter));
+
     let role_repository = Arc::new(RoleRepository::new(pool.clone(), redis_connection.clone()));
     let building_repository = Arc::new(BuildingRepository::new(pool.clone()));
     let user_repository = Arc::new(UserRepository::new(pool.clone()));
@@ -59,6 +77,7 @@ async fn main() -> std::io::Result<()> {
     ));
     let floor_repository = Arc::new(FloorRepository::new(pool.clone()));
     let device_repository = Arc::new(DeviceRepository::new(pool.clone()));
+    let announcement_repository = Arc::new(AnnouncementRepository::new(pool.clone()));
 
     let role_service = Arc::new(RoleService::new(role_repository.clone()));
     let building_service = Arc::new(BuildingService::new(building_repository.clone()));
@@ -71,6 +90,10 @@ async fn main() -> std::io::Result<()> {
     ));
     let floor_service = Arc::new(FloorService::new(floor_repository.clone()));
     let device_service = Arc::new(DeviceService::new(device_repository.clone()));
+    let announcement_service = Arc::new(AnnouncementService::new(
+        announcement_repository.clone(),
+        cloud_storage,
+    ));
 
     let listener = TcpListener::bind(config.address)?;
     run(
@@ -81,6 +104,7 @@ async fn main() -> std::io::Result<()> {
         auth_service.clone(),
         floor_service.clone(),
         device_service.clone(),
+        announcement_service.clone(),
     )?
     .await
 }

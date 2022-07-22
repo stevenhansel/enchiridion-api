@@ -19,6 +19,14 @@ pub struct AnnouncementRepository {
     _db: Pool<Postgres>,
 }
 
+impl AnnouncementRepository {
+    pub fn new(_db: Pool<Postgres>) -> Self {
+        AnnouncementRepository {
+            _db,
+        }
+    }
+}
+
 #[async_trait]
 impl AnnouncementRepositoryInterface for AnnouncementRepository {
     async fn insert(&self, params: InsertAnnouncementParams) -> Result<i32, sqlx::Error> {

@@ -9,7 +9,7 @@ use serde::Serialize;
 use crate::floor::FloorServiceInterface;
 use crate::http::AuthenticationMiddlewareFactory;
 
-use crate::announcement::http as announcement_http;
+use crate::announcement::{http as announcement_http, AnnouncementServiceInterface};
 use crate::auth::{http as auth_http, AuthServiceInterface};
 use crate::building::{http as building_http, BuildingServiceInterface};
 use crate::device::{http as device_http, DeviceServiceInterface};
@@ -36,6 +36,7 @@ pub fn run(
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
     floor_service: Arc<dyn FloorServiceInterface + Send + Sync + 'static>,
     device_service: Arc<dyn DeviceServiceInterface + Send + Sync + 'static>,
+    announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
 ) -> Result<Server, std::io::Error> {
     let role_svc = web::Data::new(role_service.clone());
     let building_svc = web::Data::new(building_service.clone());
@@ -43,6 +44,7 @@ pub fn run(
     let auth_svc = web::Data::new(auth_service.clone());
     let floor_svc = web::Data::new(floor_service.clone());
     let device_svc = web::Data::new(device_service.clone());
+    let announcement_svc = web::Data::new(announcement_service.clone());
 
     let server = HttpServer::new(move || {
         let cors = Cors::permissive();
@@ -55,6 +57,7 @@ pub fn run(
             .app_data(auth_svc.clone())
             .app_data(floor_svc.clone())
             .app_data(device_svc.clone())
+            .app_data(announcement_svc.clone())
             .route("/", web::get().to(health_check))
             .service(
                 web::scope("/dashboard")
