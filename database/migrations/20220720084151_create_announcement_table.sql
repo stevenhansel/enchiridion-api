@@ -13,5 +13,5 @@ create table "announcement" (
   user_id  integer not null references "user"(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  approved_at timestamptz
+  approval_timestamp timestamptz
 )
