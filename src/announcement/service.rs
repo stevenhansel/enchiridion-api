@@ -16,6 +16,7 @@ pub struct CreateAnnouncementParams {
     pub start_date: chrono::DateTime<chrono::Utc>,
     pub end_date: chrono::DateTime<chrono::Utc>,
     pub notes: String,
+    pub device_ids: Vec<i32>,
     pub user_id: i32,
 }
 
@@ -53,11 +54,8 @@ impl AnnouncementServiceInterface for AnnouncementService {
         &self,
         params: CreateAnnouncementParams,
     ) -> Result<(), CreateAnnouncementError> {
+        // TODO: use db transaction if fail
         let media = params.media.key();
-
-        if let Err(_) = self._cloud_storage.upload(params.media).await {
-            return Err(CreateAnnouncementError::InternalServerError);
-        }
 
         let announcement_id = match self
             ._announcement_repository
@@ -66,6 +64,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
                 start_date: params.start_date,
                 end_date: params.end_date,
                 notes: params.notes.clone(),
+                device_ids: params.device_ids,
                 user_id: params.user_id,
                 media,
             })
@@ -97,6 +96,10 @@ impl AnnouncementServiceInterface for AnnouncementService {
             })
             .await
         {
+            return Err(CreateAnnouncementError::InternalServerError);
+        }
+
+        if let Err(_) = self._cloud_storage.upload(params.media).await {
             return Err(CreateAnnouncementError::InternalServerError);
         }
 

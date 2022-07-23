@@ -183,6 +183,7 @@ pub async fn create_announcement(
             start_date: form.start_date,
             end_date: form.end_date,
             notes: form.notes.clone(),
+            device_ids: form.device_ids,
             user_id,
         })
         .await
