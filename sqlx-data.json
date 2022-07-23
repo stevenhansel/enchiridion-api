@@ -216,6 +216,32 @@
     },
     "query": "\n            delete from \"building\"\n            where id = $1\n            returning id\n            "
   },
+  "32908a9811543007feb819937717369f4f76ca0a890c88824d88c1f1b65e186b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_for_approval",
+                  "active",
+                  "done",
+                  "canceled",
+                  "rejected"
+                ]
+              },
+              "name": "announcement_status"
+            }
+          }
+        ]
+      }
+    },
+    "query": "\n            update \"announcement\"\n            set \"status\" = $2\n            where \"id\" = $1\n            "
+  },
   "42b49a33def36e8baec37f9808e20ab37cae80c89bc70bbbf029b24f4299a15e": {
     "describe": {
       "columns": [
@@ -239,6 +265,22 @@
       }
     },
     "query": "\n            insert into \"user\" (name, email, password, registration_reason, role_id)\n            values($1, $2, $3, $4, $5)\n            returning id\n            "
+  },
+  "4ebd75f8f60cd9c98a01a4477f3631f0d10a95b227415edb89df000c292cc18d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Bool",
+          "Bool",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            update \"request\"\n            set\n                \"approved_by_lsc\" = $2,\n                \"approved_by_bm\" = $3,\n                \"lsc_approver\" = $4,\n                \"bm_approver\" = $5\n            where \"id\" = $1\n            "
   },
   "6a2123012a4cef962441b6d47e9c0002a2d701f01ca6e423c146a2f7ccc886e5": {
     "describe": {
