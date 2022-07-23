@@ -114,7 +114,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
 
         result.media = match self._cloud_storage.get_object(result.media).await {
             Ok(uri) => uri,
-            Err(e) => return Err(GetAnnouncementDetailError::InternalServerError),
+            Err(_) => return Err(GetAnnouncementDetailError::InternalServerError),
         };
 
         Ok(result)
@@ -157,7 +157,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             },
         };
 
-        if let Err(_) = self
+        if let Err(e) = self
             ._request_service
             .create_request_action_type_create(CreateRequestParams {
                 description: params.notes.clone(),
@@ -166,10 +166,13 @@ impl AnnouncementServiceInterface for AnnouncementService {
             })
             .await
         {
+            println!("err: {}", e.to_string());
+
             return Err(CreateAnnouncementError::InternalServerError);
         }
 
-        if let Err(_) = self._cloud_storage.upload(params.media).await {
+        if let Err(e) = self._cloud_storage.upload(params.media).await {
+            println!("err: {}", e.to_string());
             return Err(CreateAnnouncementError::InternalServerError);
         }
 
