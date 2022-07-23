@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use actix_cors::Cors;
 use actix_web::dev::Server;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{guard, web, App, HttpResponse, HttpServer};
 use serde::Serialize;
 
 use crate::floor::FloorServiceInterface;
@@ -135,11 +135,24 @@ pub fn run(
                     )
                     .service(
                         web::scope("/v1/announcements")
-                            .wrap(AuthenticationMiddlewareFactory::new(
-                                auth_service.clone(),
-                                role_service.clone(),
-                            ))
-                            .route("", web::post().to(announcement_http::create_announcement)),
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Get())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(announcement_http::list_announcement),
+                            )
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Post())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(announcement_http::create_announcement),
+                            ),
                     ),
             )
     })

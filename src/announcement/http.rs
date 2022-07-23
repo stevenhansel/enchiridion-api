@@ -4,6 +4,7 @@ use actix_multipart::Multipart;
 use actix_web::{web, HttpResponse};
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use futures::StreamExt;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     announcement::CreateAnnouncementError,
@@ -14,7 +15,11 @@ use crate::{
     },
 };
 
-use super::{AnnouncementErrorCode, AnnouncementServiceInterface, CreateAnnouncementParams};
+use super::{
+    AnnouncementErrorCode, AnnouncementServiceInterface, AnnouncementStatus,
+    AnnouncementStatusObject, CreateAnnouncementParams, ListAnnouncementError,
+    ListAnnouncementParams,
+};
 
 #[derive(Debug)]
 pub struct CreateAnnouncementFormData {
@@ -205,4 +210,109 @@ pub async fn create_announcement(
     };
 
     HttpResponse::NoContent().finish()
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListAnnouncementQueryParams {
+    pub page: Option<i32>,
+    pub limit: Option<i32>,
+    pub query: Option<String>,
+    pub status: Option<AnnouncementStatus>,
+    pub user_id: Option<i32>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListAnnouncementResponse {
+    count: i32,
+    total_pages: i32,
+    has_next: bool,
+    contents: Vec<ListAnnouncementContent>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListAnnouncementContent {
+    id: i32,
+    title: String,
+    start_date: String,
+    end_date: String,
+    status: AnnouncementStatusObject,
+    author: AnnouncementAuthorObject,
+    media: String,
+    created_at: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnnouncementAuthorObject {
+    id: i32,
+    name: String,
+}
+
+pub async fn list_announcement(
+    announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
+    query_params: web::Query<ListAnnouncementQueryParams>,
+) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
+    let mut page = 1;
+    if let Some(raw_page) = query_params.page {
+        page = raw_page;
+    }
+
+    let mut limit = 25;
+    if let Some(raw_limit) = query_params.limit {
+        limit = raw_limit;
+    }
+
+    let result = match announcement_service
+        .list_announcement(ListAnnouncementParams {
+            page,
+            limit,
+            query: query_params.query.clone(),
+            status: query_params.status.clone(),
+            user_id: query_params.user_id.clone(),
+        })
+        .await
+    {
+        Ok(res) => res,
+        Err(e) => match e {
+            ListAnnouncementError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AnnouncementErrorCode::InternalServerError.to_string(),
+                    vec![ListAnnouncementError::InternalServerError.to_string()],
+                ))
+            }
+        },
+    };
+
+    let contents = result
+        .contents
+        .into_iter()
+        .map(|row| ListAnnouncementContent {
+            id: row.id,
+            title: row.title,
+            start_date: row.start_date.to_rfc3339(),
+            end_date: row.end_date.to_rfc3339(),
+            status: row.status.object(),
+            author: AnnouncementAuthorObject {
+                id: row.user_id,
+                name: row.user_name,
+            },
+            media: row.media,
+            created_at: row.created_at.to_rfc3339(),
+        })
+        .collect();
+
+    HttpResponse::Ok().json(ListAnnouncementResponse {
+        total_pages: result.total_pages,
+        count: result.count,
+        has_next: result.has_next,
+        contents,
+    })
 }

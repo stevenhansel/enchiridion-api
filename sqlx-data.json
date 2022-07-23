@@ -254,6 +254,32 @@
     },
     "query": "\n                update \"floor\"\n                set\n                    \"name\" = $2,\n                    \"building_id\" = $3\n                where \"id\" = $1\n            "
   },
+  "89dcd51fe4342182cc301c4a7449a44bf8cabff610e2f1dc76276b89cebf60a1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Text",
+          "Timestamptz",
+          "Timestamptz",
+          "Text",
+          "Int4",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n                with cte_announcement as (\n                    insert into \"announcement\" (\"title\", \"media\", \"start_date\", \"end_date\", \"notes\", \"user_id\")\n                    values ($1, $2, $3, $4, $5, $6)\n                    returning \"id\"\n                )\n                insert into \"device_announcement\" (\"announcement_id\", \"device_id\")\n                values ((select \"id\" from \"cte_announcement\"), unnest($7::int4[]))\n                returning (select \"id\" from \"cte_announcement\")\n            "
+  },
   "8d6c820297baa2e1eb9cb53d687e634f70eaaa3585d2c09812e1592bd019b82d": {
     "describe": {
       "columns": [],
@@ -527,31 +553,6 @@
       }
     },
     "query": "\n            insert into \"request\" (\"action\", \"description\", \"announcement_id\", \"user_id\")\n            values ($1, $2, $3, $4)\n            returning \"id\"\n            "
-  },
-  "e7a0e51df45fce673e4dc8ab009a06755ed660f15e25de5d9dc9b53e5245310a": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Text",
-          "Timestamptz",
-          "Timestamptz",
-          "Text",
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n                insert into \"announcement\" (\"title\", \"media\", \"start_date\", \"end_date\", \"notes\", \"user_id\")\n                values ($1, $2, $3, $4, $5, $6)\n                returning \"id\"\n            "
   },
   "f51f3506de47b9539777dd3b559926a94d76c44f8aa942338bb20fd0bfc682b2": {
     "describe": {

@@ -4,11 +4,22 @@ use async_trait::async_trait;
 
 use crate::{
     cloud_storage::{self, TmpFile},
-    database::DatabaseError,
+    database::{DatabaseError, PaginationResult},
     request::{CreateRequestParams, RequestServiceInterface},
 };
 
-use super::{AnnouncementRepositoryInterface, CreateAnnouncementError, InsertAnnouncementParams};
+use super::{
+    Announcement, AnnouncementRepositoryInterface, AnnouncementStatus, CreateAnnouncementError,
+    FindListAnnouncementParams, InsertAnnouncementParams, ListAnnouncementError,
+};
+
+pub struct ListAnnouncementParams {
+    pub page: i32,
+    pub limit: i32,
+    pub query: Option<String>,
+    pub status: Option<AnnouncementStatus>,
+    pub user_id: Option<i32>,
+}
 
 pub struct CreateAnnouncementParams {
     pub title: String,
@@ -22,6 +33,10 @@ pub struct CreateAnnouncementParams {
 
 #[async_trait]
 pub trait AnnouncementServiceInterface {
+    async fn list_announcement(
+        &self,
+        params: ListAnnouncementParams,
+    ) -> Result<PaginationResult<Announcement>, ListAnnouncementError>;
     async fn create_announcement(
         &self,
         params: CreateAnnouncementParams,
@@ -50,6 +65,29 @@ impl AnnouncementService {
 
 #[async_trait]
 impl AnnouncementServiceInterface for AnnouncementService {
+    async fn list_announcement(
+        &self,
+        params: ListAnnouncementParams,
+    ) -> Result<PaginationResult<Announcement>, ListAnnouncementError> {
+        match self
+            ._announcement_repository
+            .find(FindListAnnouncementParams {
+                page: params.page,
+                limit: params.limit,
+                query: params.query.clone(),
+                status: params.status.clone(),
+                user_id: params.user_id.clone(),
+            })
+            .await
+        {
+            Ok(result) => Ok(result),
+            Err(e) => {
+                println!("err: {}", e.to_string());
+                return Err(ListAnnouncementError::InternalServerError);
+            }
+        }
+    }
+
     async fn create_announcement(
         &self,
         params: CreateAnnouncementParams,
