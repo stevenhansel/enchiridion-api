@@ -3,7 +3,7 @@ use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
 use crate::database::PaginationResult;
 
-use super::{Announcement, AnnouncementStatus};
+use super::{Announcement, AnnouncementDetail, AnnouncementStatus};
 
 pub struct FindListAnnouncementParams {
     pub page: i32,
@@ -42,6 +42,7 @@ pub trait AnnouncementRepositoryInterface {
         &self,
         params: FindListAnnouncementParams,
     ) -> Result<PaginationResult<Announcement>, sqlx::Error>;
+    // async fn find_one(&self, announcement_id: i32) -> Result<AnnouncementDetail, sqlx::Error>;
     async fn insert(&self, params: InsertAnnouncementParams) -> Result<i32, sqlx::Error>;
 }
 
@@ -139,6 +140,19 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             contents,
         })
     }
+
+    // async fn find_one(&self, announcement_id: i32) -> Result<AnnouncementDetail, sqlx::Error> {
+    //     let result = sqlx::query(
+    //             r#"
+
+    //             "#
+    //         )
+    //         .bind(announcement_id)
+    //         .fetch_all(&self._db)
+    //         .await?;
+
+    //     Ok(AnnouncementDetail{})
+    // }
 
     async fn insert(&self, params: InsertAnnouncementParams) -> Result<i32, sqlx::Error> {
         let result = sqlx::query!(

@@ -12,6 +12,24 @@ pub struct Announcement {
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
+
+pub struct AnnouncementDetail {
+    pub id: i32,
+    pub title: String,
+    pub media: String,
+    pub notes: String,
+    pub status: AnnouncementStatus,
+    pub user_id: i32,
+    pub user_name: String,
+    pub start_date: chrono::DateTime<chrono::Utc>,
+    pub end_date: chrono::DateTime<chrono::Utc>,
+    pub approved_by_lsc: bool,
+    pub approved_by_bm: bool,
+    // devices?
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
 #[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize, Deserialize)]
 #[sqlx(type_name = "announcement_status", rename_all = "snake_case")]
 pub enum AnnouncementStatus {

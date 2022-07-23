@@ -89,19 +89,6 @@ pub fn run(
                         "/v1/auth/reset-password",
                         web::put().to(auth_http::reset_password),
                     )
-                    .route(
-                        "/v1/buildings",
-                        web::get().to(building_http::list_buildings),
-                    )
-                    .route("/v1/buildings", web::post().to(building_http::create))
-                    .route(
-                        "/v1/buildings/{buildingId}",
-                        web::put().to(building_http::update),
-                    )
-                    .route(
-                        "/v1/buildings/{buildingId}",
-                        web::delete().to(building_http::delete),
-                    )
                     .service(
                         web::scope("/v1/me")
                             .wrap(AuthenticationMiddlewareFactory::new(
@@ -111,15 +98,82 @@ pub fn run(
                             .route("", web::get().to(auth_http::me)),
                     )
                     .service(
+                        web::scope("/v1/buildings")
+                            .service(
+                                web::resource("/{building_id}")
+                                    .guard(guard::Put())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(building_http::update),
+                            )
+                            .service(
+                                web::resource("/{building_id}")
+                                    .guard(guard::Delete())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(building_http::delete),
+                            )
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Get())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(building_http::list_buildings),
+                            )
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Post())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(building_http::create),
+                            ),
+                    )
+                    .service(
                         web::scope("/v1/floors")
-                            .wrap(AuthenticationMiddlewareFactory::new(
-                                auth_service.clone(),
-                                role_service.clone(),
-                            ))
-                            .route("/{floor_id}", web::put().to(floor_http::update_floor))
-                            .route("/{floor_id}", web::delete().to(floor_http::delete_floor))
-                            .route("", web::get().to(floor_http::list_floor))
-                            .route("", web::post().to(floor_http::create_floor)),
+                            .service(
+                                web::resource("/{floor_id}")
+                                    .guard(guard::Put())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(floor_http::update_floor),
+                            )
+                            .service(
+                                web::resource("/{floor_id}")
+                                    .guard(guard::Delete())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(floor_http::delete_floor),
+                            )
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Get())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(floor_http::list_floor),
+                            )
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Post())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(floor_http::create_floor),
+                            ),
                     )
                     .service(
                         web::scope("/v1/devices")
