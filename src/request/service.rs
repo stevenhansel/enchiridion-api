@@ -16,6 +16,7 @@ use super::{
 */
 
 pub struct CreateRequestParams {
+    pub action: RequestActionType,
     pub description: String,
     pub announcement_id: i32,
     pub user_id: i32,
@@ -23,17 +24,10 @@ pub struct CreateRequestParams {
 
 #[async_trait]
 pub trait RequestServiceInterface {
-    // async fn list_request(&self) {}
+    async fn create_request(&self, params: CreateRequestParams) -> Result<(), CreateRequestError>;
 
-    async fn create_request_action_type_create(
-        &self,
-        params: CreateRequestParams,
-    ) -> Result<(), CreateRequestError>;
-
-    // async fn create_request_action_type_delete(
-    //     &self,
-    //     params: CreateRequestActionTypeDeleteParams,
-    // ) -> Result<(), CreateRequestError>;
+    // TODO: approve/reject
+    // async fn update_request_approval() -> Result<(), UpdateRequestApprovalError>;
 }
 
 pub struct RequestService {
@@ -49,17 +43,13 @@ impl RequestService {
         }
     }
 }
-
 #[async_trait]
 impl RequestServiceInterface for RequestService {
-    async fn create_request_action_type_create(
-        &self,
-        params: CreateRequestParams,
-    ) -> Result<(), CreateRequestError> {
+    async fn create_request(&self, params: CreateRequestParams) -> Result<(), CreateRequestError> {
         if let Err(e) = self
             ._request_repository
             .insert(InsertRequestParams {
-                action: RequestActionType::Create,
+                action: params.action,
                 description: params.description,
                 announcement_id: params.announcement_id,
                 user_id: params.user_id,

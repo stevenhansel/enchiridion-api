@@ -1,6 +1,19 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize)]
+pub struct Request {
+    pub id: i32,
+    pub action: RequestActionType,
+    pub announcement_id: i32,
+    pub announcement_title: String,
+    pub user_id: i32,
+    pub user_name: String,
+    pub description: String,
+    pub approved_by_lsc: Option<bool>,
+    pub approved_by_bm: Option<bool>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize, Deserialize)]
 #[sqlx(type_name = "request_action_type", rename_all = "snake_case")]
 pub enum RequestActionType {
     Create,

@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use crate::{
     cloud_storage::{self, TmpFile},
     database::{DatabaseError, PaginationResult},
-    request::{CreateRequestParams, RequestServiceInterface},
+    request::{CreateRequestParams, RequestServiceInterface, RequestActionType},
 };
 
 use super::{
@@ -157,22 +157,20 @@ impl AnnouncementServiceInterface for AnnouncementService {
             },
         };
 
-        if let Err(e) = self
+        if let Err(_) = self
             ._request_service
-            .create_request_action_type_create(CreateRequestParams {
+            .create_request(CreateRequestParams {
+                action: RequestActionType::Create,
                 description: params.notes.clone(),
                 user_id: params.user_id,
                 announcement_id,
             })
             .await
         {
-            println!("err: {}", e.to_string());
-
             return Err(CreateAnnouncementError::InternalServerError);
         }
 
-        if let Err(e) = self._cloud_storage.upload(params.media).await {
-            println!("err: {}", e.to_string());
+        if let Err(_) = self._cloud_storage.upload(params.media).await {
             return Err(CreateAnnouncementError::InternalServerError);
         }
 
