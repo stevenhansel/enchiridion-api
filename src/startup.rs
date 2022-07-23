@@ -14,7 +14,7 @@ use crate::auth::{http as auth_http, AuthServiceInterface};
 use crate::building::{http as building_http, BuildingServiceInterface};
 use crate::device::{http as device_http, DeviceServiceInterface};
 use crate::floor::http as floor_http;
-use crate::request::RequestServiceInterface;
+use crate::request::{http as request_http, RequestServiceInterface};
 use crate::role::{http as role_http, RoleServiceInterface};
 use crate::user::UserServiceInterface;
 
@@ -252,7 +252,19 @@ pub fn run(
                                     ))
                                     .to(announcement_http::create_announcement),
                             ),
-                    ),
+                    )
+                    .service(
+                        web::scope("/v1/requests")
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Get())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(request_http::list_request),
+                            )
+                    )
             )
     })
     .listen(listener)?

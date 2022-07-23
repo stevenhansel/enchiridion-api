@@ -109,7 +109,7 @@ impl FloorRepositoryInterface for FloorRepository {
         }
 
         let total_pages = (count as f64 / params.limit as f64).ceil() as i32;
-        let has_next = (params.page as f64 * params.limit as f64) < 1.0;
+        let has_next = ((params.page as f64 * params.limit as f64) / count as f64) < 1.0;
 
         let mut device_map: BTreeMap<i32, DeviceFloorContent> = BTreeMap::new();
         for row in &result {

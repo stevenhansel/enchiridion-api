@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::database::DatabaseError;
+use crate::database::{DatabaseError, PaginationResult};
 
 use super::{
-    CreateRequestError, InsertRequestParams, RequestActionType, RequestRepositoryInterface,
+    CreateRequestError, FindRequestParams, InsertRequestParams, ListRequestError, Request,
+    RequestActionType, RequestRepositoryInterface,
 };
 /**
 * create -> metadata: null
@@ -14,6 +15,16 @@ use super::{
 * change_content -> tba
 * change devices -> tba
 */
+pub struct ListRequestParams {
+    pub page: i32,
+    pub limit: i32,
+    pub request_id: Option<i32>,
+    pub announcement_id: Option<i32>,
+    pub user_id: Option<i32>,
+    pub action_type: Option<RequestActionType>,
+    pub approved_by_lsc: Option<bool>,
+    pub approved_by_bm: Option<bool>,
+}
 
 pub struct CreateRequestParams {
     pub action: RequestActionType,
@@ -24,6 +35,10 @@ pub struct CreateRequestParams {
 
 #[async_trait]
 pub trait RequestServiceInterface {
+    async fn list_request(
+        &self,
+        params: ListRequestParams,
+    ) -> Result<PaginationResult<Request>, ListRequestError>;
     async fn create_request(&self, params: CreateRequestParams) -> Result<(), CreateRequestError>;
 
     // TODO: approve/reject
@@ -45,6 +60,29 @@ impl RequestService {
 }
 #[async_trait]
 impl RequestServiceInterface for RequestService {
+    async fn list_request(
+        &self,
+        params: ListRequestParams,
+    ) -> Result<PaginationResult<Request>, ListRequestError> {
+        match self
+            ._request_repository
+            .find(FindRequestParams {
+                page: params.page,
+                limit: params.limit,
+                request_id: params.request_id,
+                announcement_id: params.announcement_id,
+                user_id: params.user_id,
+                action_type: params.action_type,
+                approved_by_lsc: params.approved_by_lsc,
+                approved_by_bm: params.approved_by_bm,
+            })
+            .await
+        {
+            Ok(result) => Ok(result),
+            Err(e) => Err(ListRequestError::InternalServerError),
+        }
+    }
+
     async fn create_request(&self, params: CreateRequestParams) -> Result<(), CreateRequestError> {
         if let Err(e) = self
             ._request_repository
