@@ -2,7 +2,7 @@ use std::env;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 
-use aws_sdk_s3::Client;
+use aws_sdk_s3::{Client, Region};
 use enchiridion_api::announcement::{AnnouncementRepository, AnnouncementService};
 use enchiridion_api::cloud_storage::s3::S3Adapter;
 use enchiridion_api::device::{DeviceRepository, DeviceService};
@@ -39,7 +39,7 @@ async fn main() -> std::io::Result<()> {
         .unwrap();
 
     let redis_instance = redis::Client::open(config.redis_url.expose_secret().to_string())
-        .expect("Failed to create redis nstance");
+        .expect("Failed to create redis instance");
     let redis_connection = Arc::new(Mutex::new(
         redis_instance
             .get_connection()
@@ -62,6 +62,7 @@ async fn main() -> std::io::Result<()> {
     );
     let s3_config = aws_config::from_env()
         .credentials_provider(s3_credentials)
+        .region(Region::new("ap-southeast-1"))
         .load()
         .await;
     let s3_client = Client::new(&s3_config);
