@@ -9,7 +9,9 @@ pub struct Request {
     pub user_name: String,
     pub description: String,
     pub approved_by_lsc: Option<bool>,
+    pub lsc_approver: Option<i32>,
     pub approved_by_bm: Option<bool>,
+    pub bm_approver: Option<i32>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -47,6 +49,12 @@ impl RequestActionType {
 
 pub enum RequestErrorCode {
     EntityNotFound,
+    RequestNotFound,
+    UserNotFound,
+    UserForbiddenToApprove,
+    AnnouncementNotFound,
+    RequestAlreadyApproved,
+    InvalidAnnouncementStatus,
     InternalServerError,
 }
 
@@ -54,6 +62,12 @@ impl std::fmt::Display for RequestErrorCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RequestErrorCode::EntityNotFound => write!(f, "ENTITY_NOT_FOUND"),
+            RequestErrorCode::RequestNotFound => write!(f, "REQUEST_NOT_FOUND"),
+            RequestErrorCode::UserNotFound => write!(f, "USER_NOT_FOUND"),
+            RequestErrorCode::UserForbiddenToApprove => write!(f, "USER_FORBIDDEN_TO_APPROVE"),
+            RequestErrorCode::AnnouncementNotFound => write!(f, "ANNOUNCEMENT_NOT_FOUND"),
+            RequestErrorCode::RequestAlreadyApproved => write!(f, "REQUEST_ALREADY_APPROVED"),
+            RequestErrorCode::InvalidAnnouncementStatus => write!(f, "INVALID_ANNOUNCEMENT_STATUS"),
             RequestErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
     }
@@ -83,6 +97,33 @@ impl std::fmt::Display for ListRequestError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ListRequestError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum UpdateRequestApprovalError {
+    RequestNotFound(String),
+    UserNotFound(String),
+    UserForbiddenToApprove(String),
+    AnnouncementNotFound(String),
+    RequestAlreadyApproved(String),
+    InvalidAnnouncementStatus(String),
+    InternalServerError,
+}
+
+impl std::fmt::Display for UpdateRequestApprovalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UpdateRequestApprovalError::RequestNotFound(message) => write!(f, "{}", message),
+            UpdateRequestApprovalError::UserNotFound(message) => write!(f, "{}", message),
+            UpdateRequestApprovalError::UserForbiddenToApprove(message) => write!(f, "{}", message),
+            UpdateRequestApprovalError::AnnouncementNotFound(message) => write!(f, "{}", message),
+            UpdateRequestApprovalError::RequestAlreadyApproved(message) => write!(f, "{}", message),
+            UpdateRequestApprovalError::InvalidAnnouncementStatus(message) => {
+                write!(f, "{}", message)
+            }
+            UpdateRequestApprovalError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
 }

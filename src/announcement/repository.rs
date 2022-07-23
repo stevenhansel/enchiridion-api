@@ -63,6 +63,11 @@ pub trait AnnouncementRepositoryInterface {
     ) -> Result<PaginationResult<Announcement>, sqlx::Error>;
     async fn find_one(&self, announcement_id: i32) -> Result<AnnouncementDetail, sqlx::Error>;
     async fn insert(&self, params: InsertAnnouncementParams) -> Result<i32, sqlx::Error>;
+    async fn update_status(
+        &self,
+        announcement_id: i32,
+        status: AnnouncementStatus,
+    ) -> Result<(), sqlx::Error>;
 }
 
 pub struct AnnouncementRepository {
@@ -135,7 +140,6 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
 
         let total_pages = (count as f64 / params.limit as f64).ceil() as i32;
         let has_next = ((params.page as f64 * params.limit as f64) / count as f64) < 1.0;
-
 
         let contents: Vec<Announcement> = result
             .into_iter()
@@ -261,5 +265,30 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             Some(id) => Ok(id),
             None => Err(sqlx::Error::RowNotFound),
         }
+    }
+
+    async fn update_status(
+        &self,
+        announcement_id: i32,
+        status: AnnouncementStatus,
+    ) -> Result<(), sqlx::Error> {
+        let rows_affected = sqlx::query!(
+            r#"
+            update "announcement"
+            set "status" = $2
+            where "id" = $1
+            "#,
+            announcement_id,
+            status as _,
+        )
+        .execute(&self._db)
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
     }
 }

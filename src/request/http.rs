@@ -10,7 +10,7 @@ use crate::http::{
 
 use super::{
     ListRequestError, ListRequestParams, RequestActionType, RequestErrorCode,
-    RequestServiceInterface,
+    RequestServiceInterface, UpdateRequestApprovalError, UpdateRequestApprovalParams,
 };
 
 #[derive(Debug, Deserialize)]
@@ -148,4 +148,89 @@ pub async fn list_request(
             })
             .collect(),
     })
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateRequestApprovalBody {
+    action: String,
+}
+
+pub async fn update_request_approval(
+    request_service: web::Data<Arc<dyn RequestServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
+    body: web::Json<UpdateRequestApprovalBody>,
+    request_id: web::Path<i32>,
+) -> HttpResponse {
+    let request_id = request_id.into_inner();
+    let user_id = match derive_user_id(auth) {
+        Ok(id) => id,
+        Err(e) => return derive_authentication_middleware_error(e),
+    };
+    let approval = match body.action.as_str() {
+        "approve" => true,
+        "reject" => false,
+        _ => {
+            return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+                "API_VALIDATION_ERROR".into(),
+                vec!["action should be approve or reject".into()],
+            ))
+        }
+    };
+
+    if let Err(e) = request_service
+        .update_request_approval(UpdateRequestApprovalParams {
+            request_id,
+            approval,
+            approver_id: user_id,
+        })
+        .await
+    {
+        match e {
+            UpdateRequestApprovalError::RequestNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    RequestErrorCode::RequestNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            UpdateRequestApprovalError::UserNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    RequestErrorCode::UserNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            UpdateRequestApprovalError::AnnouncementNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    RequestErrorCode::AnnouncementNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            UpdateRequestApprovalError::UserForbiddenToApprove(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    RequestErrorCode::UserForbiddenToApprove.to_string(),
+                    vec![message],
+                ))
+            }
+            UpdateRequestApprovalError::RequestAlreadyApproved(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    RequestErrorCode::RequestAlreadyApproved.to_string(),
+                    vec![message],
+                ))
+            }
+            UpdateRequestApprovalError::InvalidAnnouncementStatus(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    RequestErrorCode::InvalidAnnouncementStatus.to_string(),
+                    vec![message],
+                ))
+            }
+            UpdateRequestApprovalError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    RequestErrorCode::InternalServerError.to_string(),
+                    vec![UpdateRequestApprovalError::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
+    HttpResponse::NoContent().finish()
 }
