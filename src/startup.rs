@@ -226,6 +226,15 @@ pub fn run(
                     .service(
                         web::scope("/v1/announcements")
                             .service(
+                                web::resource("/{announcement_id}/media")
+                                    .guard(guard::Get())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(announcement_http::get_announcement_media_presigned_url),
+                            )
+                            .service(
                                 web::resource("/{announcement_id}")
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
@@ -254,17 +263,16 @@ pub fn run(
                             ),
                     )
                     .service(
-                        web::scope("/v1/requests")
-                            .service(
-                                web::resource("")
-                                    .guard(guard::Get())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                        role_service.clone(),
-                                    ))
-                                    .to(request_http::list_request),
-                            )
-                    )
+                        web::scope("/v1/requests").service(
+                            web::resource("")
+                                .guard(guard::Get())
+                                .wrap(AuthenticationMiddlewareFactory::new(
+                                    auth_service.clone(),
+                                    role_service.clone(),
+                                ))
+                                .to(request_http::list_request),
+                        ),
+                    ),
             )
     })
     .listen(listener)?

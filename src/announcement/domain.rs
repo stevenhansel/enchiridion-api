@@ -136,3 +136,21 @@ impl std::fmt::Display for GetAnnouncementDetailError {
         }
     }
 }
+
+pub enum GetAnnouncementMediaPresignedURLError {
+    AnnouncementNotFound(String),
+    InternalServerError,
+}
+
+impl std::fmt::Display for GetAnnouncementMediaPresignedURLError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GetAnnouncementMediaPresignedURLError::AnnouncementNotFound(message) => {
+                write!(f, "{}", message)
+            }
+            GetAnnouncementMediaPresignedURLError::InternalServerError => {
+                write!(f, "Internal Server Error")
+            }
+        }
+    }
+}

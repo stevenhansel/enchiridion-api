@@ -5,13 +5,13 @@ use async_trait::async_trait;
 use crate::{
     cloud_storage::{self, TmpFile},
     database::{DatabaseError, PaginationResult},
-    request::{CreateRequestParams, RequestServiceInterface, RequestActionType},
+    request::{CreateRequestParams, RequestActionType, RequestServiceInterface},
 };
 
 use super::{
     Announcement, AnnouncementDetail, AnnouncementRepositoryInterface, AnnouncementStatus,
     CreateAnnouncementError, FindListAnnouncementParams, GetAnnouncementDetailError,
-    InsertAnnouncementParams, ListAnnouncementError,
+    GetAnnouncementMediaPresignedURLError, InsertAnnouncementParams, ListAnnouncementError,
 };
 
 pub struct ListAnnouncementParams {
@@ -46,6 +46,10 @@ pub trait AnnouncementServiceInterface {
         &self,
         params: CreateAnnouncementParams,
     ) -> Result<(), CreateAnnouncementError>;
+    async fn get_announcement_media_presigned_url(
+        &self,
+        announcement_id: i32,
+    ) -> Result<String, GetAnnouncementMediaPresignedURLError>;
 }
 
 pub struct AnnouncementService {
@@ -175,5 +179,33 @@ impl AnnouncementServiceInterface for AnnouncementService {
         }
 
         Ok(())
+    }
+
+    async fn get_announcement_media_presigned_url(
+        &self,
+        announcement_id: i32,
+    ) -> Result<String, GetAnnouncementMediaPresignedURLError> {
+        let result = match self
+            ._announcement_repository
+            .find_one(announcement_id)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(GetAnnouncementMediaPresignedURLError::AnnouncementNotFound(
+                        "Announcement not found".into(),
+                    ))
+                }
+                _ => return Err(GetAnnouncementMediaPresignedURLError::InternalServerError),
+            },
+        };
+
+        let media = match self._cloud_storage.get_object(result.media).await {
+            Ok(uri) => uri,
+            Err(_) => return Err(GetAnnouncementMediaPresignedURLError::InternalServerError),
+        };
+
+        Ok(media)
     }
 }

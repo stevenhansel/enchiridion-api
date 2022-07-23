@@ -18,7 +18,7 @@ use crate::{
 use super::{
     AnnouncementErrorCode, AnnouncementServiceInterface, AnnouncementStatus,
     AnnouncementStatusObject, CreateAnnouncementParams, GetAnnouncementDetailError,
-    ListAnnouncementError, ListAnnouncementParams,
+    GetAnnouncementMediaPresignedURLError, ListAnnouncementError, ListAnnouncementParams,
 };
 
 #[derive(Debug)]
@@ -399,4 +399,43 @@ pub async fn get_announcement_detail(
         created_at: result.created_at.to_rfc3339(),
         updated_at: result.updated_at.to_rfc3339(),
     })
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAnnouncementMediaPresignedURLResponse {
+    media: String,
+}
+
+pub async fn get_announcement_media_presigned_url(
+    announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
+    announcement_id: web::Path<i32>,
+) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
+    let media = match announcement_service
+        .get_announcement_media_presigned_url(announcement_id.into_inner())
+        .await
+    {
+        Ok(media) => media,
+        Err(e) => match e {
+            GetAnnouncementMediaPresignedURLError::AnnouncementNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AnnouncementErrorCode::AnnouncementNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            GetAnnouncementMediaPresignedURLError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AnnouncementErrorCode::InternalServerError.to_string(),
+                    vec![GetAnnouncementMediaPresignedURLError::InternalServerError.to_string()],
+                ))
+            }
+        },
+    };
+
+    HttpResponse::Ok().json(GetAnnouncementMediaPresignedURLResponse { media })
 }
