@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use actix_cors::Cors;
 use actix_web::dev::Server;
-use actix_web::{guard, web, App, HttpResponse, HttpServer};
+use actix_web::{web, App, HttpResponse, HttpServer};
 use serde::Serialize;
 
 use crate::floor::FloorServiceInterface;
@@ -14,6 +14,7 @@ use crate::auth::{http as auth_http, AuthServiceInterface};
 use crate::building::{http as building_http, BuildingServiceInterface};
 use crate::device::{http as device_http, DeviceServiceInterface};
 use crate::floor::http as floor_http;
+use crate::request::RequestServiceInterface;
 use crate::role::{http as role_http, RoleServiceInterface};
 use crate::user::UserServiceInterface;
 
@@ -36,6 +37,7 @@ pub fn run(
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
     floor_service: Arc<dyn FloorServiceInterface + Send + Sync + 'static>,
     device_service: Arc<dyn DeviceServiceInterface + Send + Sync + 'static>,
+    request_service: Arc<dyn RequestServiceInterface + Send + Sync + 'static>,
     announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
 ) -> Result<Server, std::io::Error> {
     let role_svc = web::Data::new(role_service.clone());
@@ -44,6 +46,7 @@ pub fn run(
     let auth_svc = web::Data::new(auth_service.clone());
     let floor_svc = web::Data::new(floor_service.clone());
     let device_svc = web::Data::new(device_service.clone());
+    let request_svc = web::Data::new(request_service.clone());
     let announcement_svc = web::Data::new(announcement_service.clone());
 
     let server = HttpServer::new(move || {
@@ -57,6 +60,7 @@ pub fn run(
             .app_data(auth_svc.clone())
             .app_data(floor_svc.clone())
             .app_data(device_svc.clone())
+            .app_data(request_svc.clone())
             .app_data(announcement_svc.clone())
             .route("/", web::get().to(health_check))
             .service(

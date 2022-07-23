@@ -396,6 +396,12 @@ pub async fn refresh_token(
                     vec![message],
                 ))
             }
+            AuthError::UserNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AuthErrorCode::UserNotFound.to_string(),
+                    vec![message],
+                ))
+            }
             _ => {
                 return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
                     AuthErrorCode::InternalServerError.to_string(),

@@ -1,21 +1,20 @@
-use std::{
-    fs::{create_dir_all, File},
-    io::Write,
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use actix_multipart::Multipart;
-use actix_web::{
-    web::{self, Bytes},
-    Error, HttpResponse,
-};
+use actix_web::{web, HttpResponse};
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use futures::StreamExt;
 
-use crate::{announcement::CreateAnnouncementError, http::HttpErrorResponse};
-use crate::{announcement::CreateAnnouncementParams, cloud_storage::TmpFile};
+use crate::{
+    announcement::CreateAnnouncementError,
+    cloud_storage::TmpFile,
+    http::{
+        derive_authentication_middleware_error, derive_user_id, AuthenticationContext,
+        HttpErrorResponse,
+    },
+};
 
-use super::AnnouncementServiceInterface;
+use super::{AnnouncementErrorCode, AnnouncementServiceInterface, CreateAnnouncementParams};
 
 #[derive(Debug)]
 pub struct CreateAnnouncementFormData {
@@ -159,8 +158,14 @@ pub async fn parse_create_announcement_multipart(
 
 pub async fn create_announcement(
     announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
     multipart: Multipart,
 ) -> HttpResponse {
+    let user_id = match derive_user_id(auth) {
+        Ok(id) => id,
+        Err(e) => return derive_authentication_middleware_error(e),
+    };
+
     let form = match parse_create_announcement_multipart(multipart).await {
         Ok(result) => result,
         Err(message) => {
@@ -173,20 +178,30 @@ pub async fn create_announcement(
 
     if let Err(e) = announcement_service
         .create_announcement(CreateAnnouncementParams {
+            title: form.title.clone(),
             media: form.media.to_owned(),
+            start_date: form.start_date,
+            end_date: form.end_date,
+            notes: form.notes.clone(),
+            user_id,
         })
         .await
     {
         match e {
+            CreateAnnouncementError::UserNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AnnouncementErrorCode::UserNotFound.to_string(),
+                    vec![message],
+                ))
+            }
             CreateAnnouncementError::InternalServerError => {
                 return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
-                    CreateAnnouncementError::InternalServerError.to_string(),
+                    AnnouncementErrorCode::InternalServerError.to_string(),
                     vec![CreateAnnouncementError::InternalServerError.to_string()],
                 ))
             }
         }
     };
-    println!("form: {:?}", form);
 
     HttpResponse::NoContent().finish()
 }

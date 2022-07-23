@@ -12,3 +12,4 @@ pub mod floor;
 pub mod device;
 pub mod announcement;
 pub mod cloud_storage;
+pub mod request;

@@ -2,11 +2,12 @@ use std::env;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 
-use aws_sdk_s3::{Client, Config};
+use aws_sdk_s3::Client;
 use enchiridion_api::announcement::{AnnouncementRepository, AnnouncementService};
 use enchiridion_api::cloud_storage::s3::S3Adapter;
 use enchiridion_api::device::{DeviceRepository, DeviceService};
 use enchiridion_api::floor::{FloorRepository, FloorService};
+use enchiridion_api::request::{RequestRepository, RequestService};
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
@@ -78,6 +79,7 @@ async fn main() -> std::io::Result<()> {
     let floor_repository = Arc::new(FloorRepository::new(pool.clone()));
     let device_repository = Arc::new(DeviceRepository::new(pool.clone()));
     let announcement_repository = Arc::new(AnnouncementRepository::new(pool.clone()));
+    let request_repository = Arc::new(RequestRepository::new(pool.clone()));
 
     let role_service = Arc::new(RoleService::new(role_repository.clone()));
     let building_service = Arc::new(BuildingService::new(building_repository.clone()));
@@ -90,8 +92,10 @@ async fn main() -> std::io::Result<()> {
     ));
     let floor_service = Arc::new(FloorService::new(floor_repository.clone()));
     let device_service = Arc::new(DeviceService::new(device_repository.clone()));
+    let request_service = Arc::new(RequestService::new(request_repository.clone()));
     let announcement_service = Arc::new(AnnouncementService::new(
         announcement_repository.clone(),
+        request_service.clone(),
         cloud_storage,
     ));
 
@@ -104,6 +108,7 @@ async fn main() -> std::io::Result<()> {
         auth_service.clone(),
         floor_service.clone(),
         device_service.clone(),
+        request_service.clone(),
         announcement_service.clone(),
     )?
     .await

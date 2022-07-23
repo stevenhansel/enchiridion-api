@@ -64,6 +64,10 @@ impl TmpFile {
     pub fn name(&self) -> String {
         format!("{}.{}", self.filename, self.filetype)
     }
+
+    pub fn key(&self) -> String {
+        format!("{}/{}.{}", self.key, self.filename, self.filetype)
+    }
 }
 
 pub enum CloudStorageError {
