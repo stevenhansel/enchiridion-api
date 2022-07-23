@@ -123,15 +123,51 @@ pub fn run(
                     )
                     .service(
                         web::scope("/v1/devices")
-                            .wrap(AuthenticationMiddlewareFactory::new(
-                                auth_service.clone(),
-                                role_service.clone(),
-                            ))
-                            .route("/{device_id}", web::get().to(device_http::get_device_by_id))
-                            .route("/{device_id}", web::put().to(device_http::update_device))
-                            .route("/{device_id}", web::delete().to(device_http::delete_device))
-                            .route("", web::get().to(device_http::list_device))
-                            .route("", web::post().to(device_http::create_device)),
+                            .service(
+                                web::resource("/{device_id}")
+                                    .guard(guard::Get())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(device_http::get_device_by_id),
+                            )
+                            .service(
+                                web::resource("/{device_id}")
+                                    .guard(guard::Put())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(device_http::update_device),
+                            )
+                            .service(
+                                web::resource("/{device_id}")
+                                    .guard(guard::Delete())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(device_http::delete_device),
+                            )
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Get())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(device_http::list_device),
+                            )
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Post())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(device_http::create_device),
+                            ),
                     )
                     .service(
                         web::scope("/v1/announcements")

@@ -13,6 +13,7 @@ pub enum BuildingError {
     BuildingInvalid(String),
     BuildingNotFound(String),
     BuildingNameAlreadyExists(String),
+    BuildingCascadeConstraint(String),
     InternalServerError,
 }
 
@@ -21,6 +22,7 @@ pub enum BuildingErrorCode {
     BuildingInvalid,
     BuildingNotFound,
     BuildingNameAlreadyExists,
+    BuildingCascadeConstraint,
     InternalServerError,
 }
 
@@ -32,6 +34,8 @@ impl fmt::Display for BuildingError {
             BuildingError::BuildingInvalid(message) => write!(f, "{}", message),
             BuildingError::BuildingNotFound(message) => write!(f, "{}", message),
             BuildingError::BuildingNameAlreadyExists(message) => write!(f, "{}", message),
+            BuildingError::BuildingCascadeConstraint(message) => write!(f, "{}", message),
+
             BuildingError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
@@ -42,7 +46,13 @@ impl fmt::Display for BuildingErrorCode {
         match self {
             BuildingErrorCode::BuildingInvalid => write!(f, "BUILDING_INVALID"),
             BuildingErrorCode::BuildingNotFound => write!(f, "BUILDING_NOT_FOUND"),
-            BuildingErrorCode::BuildingNameAlreadyExists => write!(f, "BUILDING_NAME_ALREADY_EXISTS"),
+            BuildingErrorCode::BuildingNameAlreadyExists => {
+                write!(f, "BUILDING_NAME_ALREADY_EXISTS")
+            }
+            BuildingErrorCode::BuildingCascadeConstraint => {
+                write!(f, "BUILDING_CASCADE_CONSTRAINT")
+            }
+
             BuildingErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
     }

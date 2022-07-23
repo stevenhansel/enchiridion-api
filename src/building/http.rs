@@ -174,6 +174,12 @@ pub async fn delete(
                     vec![message],
                 ))
             }
+            BuildingError::BuildingCascadeConstraint(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    BuildingErrorCode::BuildingCascadeConstraint.to_string(),
+                    vec![message],
+                ))
+            }
             _ => {
                 return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
                     BuildingErrorCode::InternalServerError.to_string(),

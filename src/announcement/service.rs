@@ -82,7 +82,6 @@ impl AnnouncementServiceInterface for AnnouncementService {
         {
             Ok(result) => Ok(result),
             Err(e) => {
-                println!("err: {}", e.to_string());
                 return Err(ListAnnouncementError::InternalServerError);
             }
         }

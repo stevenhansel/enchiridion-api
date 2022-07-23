@@ -295,6 +295,12 @@ pub async fn delete_device(
                     vec![message],
                 ))
             }
+            DeleteDeviceError::DeviceCascadeConstraint(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    DeviceErrorCode::DeviceCascadeConstraint.to_string(),
+                    vec![message],
+                ))
+            }
             DeleteDeviceError::InternalServerError => {
                 return HttpResponse::NotFound().json(HttpErrorResponse::new(
                     DeviceErrorCode::InternalServerError.to_string(),

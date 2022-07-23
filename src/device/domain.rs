@@ -30,6 +30,7 @@ pub enum DeviceErrorCode {
     DeviceAlreadyExists,
     DeviceNotFound,
     FloorNotFound,
+    DeviceCascadeConstraint,
     InternalServerError,
 }
 
@@ -39,6 +40,7 @@ impl std::fmt::Display for DeviceErrorCode {
             DeviceErrorCode::DeviceAlreadyExists => write!(f, "DEVICE_ALREADY_EXISTS"),
             DeviceErrorCode::DeviceNotFound => write!(f, "DEVICE_NOT_FOUND"),
             DeviceErrorCode::FloorNotFound => write!(f, "BUILDING_NOT_FOUND"),
+            DeviceErrorCode::DeviceCascadeConstraint => write!(f, "DEVICE_CASCADE_CONSTRAINT"),
             DeviceErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
     }
@@ -106,6 +108,7 @@ impl std::fmt::Display for UpdateDeviceError {
 
 pub enum DeleteDeviceError {
     DeviceNotFound(String),
+    DeviceCascadeConstraint(String),
     InternalServerError,
 }
 
@@ -113,8 +116,8 @@ impl std::fmt::Display for DeleteDeviceError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             DeleteDeviceError::DeviceNotFound(message) => write!(f, "{}", message),
+            DeleteDeviceError::DeviceCascadeConstraint(message) => write!(f, "{}", message),
             DeleteDeviceError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
 }
-

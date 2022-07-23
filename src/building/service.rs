@@ -127,6 +127,18 @@ impl BuildingServiceInterface for BuildingService {
                 sqlx::Error::RowNotFound => {
                     return Err(BuildingError::BuildingNotFound("Building not found".into()));
                 }
+                sqlx::Error::Database(db_error) => {
+                    if let Some(code) = db_error.code() {
+                        let code = code.to_string();
+                        if code == DatabaseError::ForeignKeyError.to_string() {
+                            return Err(BuildingError::BuildingCascadeConstraint(
+                                "Unable to delete building because it still have existing floors".into(),
+                            ));
+                        }
+                    }
+
+                    return Err(BuildingError::InternalServerError);
+                }
                 _ => return Err(BuildingError::InternalServerError),
             },
         };

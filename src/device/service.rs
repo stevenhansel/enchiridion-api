@@ -143,7 +143,6 @@ impl DeviceServiceInterface for DeviceService {
                         let code = code.to_string();
                         if code == DatabaseError::UniqueConstraintError.to_string() {
                             return Err(UpdateDeviceError::DeviceAlreadyExists(
-
                                 format!(
                                     "Device with the name of {} already exists",
                                     params.name.clone()
@@ -168,6 +167,18 @@ impl DeviceServiceInterface for DeviceService {
             match e {
                 sqlx::Error::RowNotFound => {
                     return Err(DeleteDeviceError::DeviceNotFound("Device not found".into()))
+                }
+                sqlx::Error::Database(db_error) => {
+                    if let Some(code) = db_error.code() {
+                        let code = code.to_string();
+                        if code == DatabaseError::ForeignKeyError.to_string() {
+                            return Err(DeleteDeviceError::DeviceCascadeConstraint(
+                                "Unable to delete device because it still have existing announcements".into(),
+                            ));
+                        }
+                    }
+
+                    return Err(DeleteDeviceError::InternalServerError);
                 }
                 _ => return Err(DeleteDeviceError::InternalServerError),
             }
