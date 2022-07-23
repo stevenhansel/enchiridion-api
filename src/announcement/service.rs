@@ -9,8 +9,9 @@ use crate::{
 };
 
 use super::{
-    Announcement, AnnouncementRepositoryInterface, AnnouncementStatus, CreateAnnouncementError,
-    FindListAnnouncementParams, InsertAnnouncementParams, ListAnnouncementError,
+    Announcement, AnnouncementDetail, AnnouncementRepositoryInterface, AnnouncementStatus,
+    CreateAnnouncementError, FindListAnnouncementParams, GetAnnouncementDetailError,
+    InsertAnnouncementParams, ListAnnouncementError,
 };
 
 pub struct ListAnnouncementParams {
@@ -37,6 +38,10 @@ pub trait AnnouncementServiceInterface {
         &self,
         params: ListAnnouncementParams,
     ) -> Result<PaginationResult<Announcement>, ListAnnouncementError>;
+    async fn get_announcement_detail(
+        &self,
+        announcement_id: i32,
+    ) -> Result<AnnouncementDetail, GetAnnouncementDetailError>;
     async fn create_announcement(
         &self,
         params: CreateAnnouncementParams,
@@ -81,10 +86,38 @@ impl AnnouncementServiceInterface for AnnouncementService {
             .await
         {
             Ok(result) => Ok(result),
-            Err(e) => {
+            Err(_) => {
                 return Err(ListAnnouncementError::InternalServerError);
             }
         }
+    }
+
+    async fn get_announcement_detail(
+        &self,
+        announcement_id: i32,
+    ) -> Result<AnnouncementDetail, GetAnnouncementDetailError> {
+        let mut result = match self
+            ._announcement_repository
+            .find_one(announcement_id)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(GetAnnouncementDetailError::AnnouncementNotFound(
+                        "Announcement not found".into(),
+                    ))
+                }
+                _ => return Err(GetAnnouncementDetailError::InternalServerError),
+            },
+        };
+
+        result.media = match self._cloud_storage.get_object(result.media).await {
+            Ok(uri) => uri,
+            Err(e) => return Err(GetAnnouncementDetailError::InternalServerError),
+        };
+
+        Ok(result)
     }
 
     async fn create_announcement(
@@ -139,14 +172,6 @@ impl AnnouncementServiceInterface for AnnouncementService {
         if let Err(_) = self._cloud_storage.upload(params.media).await {
             return Err(CreateAnnouncementError::InternalServerError);
         }
-
-        // let uri = match self
-        //     ._cloud_storage
-        //     .get_object(format!("{}/{}", key, name))
-        //     .await {
-        //         Ok(uri) => uri,
-        //         Err(e) => return Err(CreateAnnouncementError::InternalServerError),
-        //     };
 
         Ok(())
     }

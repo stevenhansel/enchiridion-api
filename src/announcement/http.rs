@@ -17,8 +17,8 @@ use crate::{
 
 use super::{
     AnnouncementErrorCode, AnnouncementServiceInterface, AnnouncementStatus,
-    AnnouncementStatusObject, CreateAnnouncementParams, ListAnnouncementError,
-    ListAnnouncementParams,
+    AnnouncementStatusObject, CreateAnnouncementParams, GetAnnouncementDetailError,
+    ListAnnouncementError, ListAnnouncementParams,
 };
 
 #[derive(Debug)]
@@ -314,5 +314,89 @@ pub async fn list_announcement(
         count: result.count,
         has_next: result.has_next,
         contents,
+    })
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAnnouncementDetailResponse {
+    id: i32,
+    title: String,
+    media: String,
+    notes: String,
+    status: AnnouncementStatusObject,
+    author: AnnouncementAuthorObject,
+    start_date: String,
+    end_date: String,
+    devices: Vec<GetAnnouncementDetailDevice>,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAnnouncementDetailDevice {
+    id: i32,
+    name: String,
+    description: String,
+    floor_id: i32,
+}
+
+pub async fn get_announcement_detail(
+    announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
+    announcement_id: web::Path<i32>,
+) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
+    let announcement_id = announcement_id.into_inner();
+
+    let result = match announcement_service
+        .get_announcement_detail(announcement_id)
+        .await
+    {
+        Ok(result) => result,
+        Err(e) => match e {
+            GetAnnouncementDetailError::AnnouncementNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AnnouncementErrorCode::AnnouncementNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            GetAnnouncementDetailError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AnnouncementErrorCode::InternalServerError.to_string(),
+                    vec![GetAnnouncementDetailError::InternalServerError.to_string()],
+                ))
+            }
+        },
+    };
+
+    HttpResponse::Ok().json(GetAnnouncementDetailResponse {
+        id: result.id,
+        title: result.title,
+        media: result.media,
+        notes: result.notes,
+        status: result.status.object(),
+        author: AnnouncementAuthorObject {
+            id: result.user_id,
+            name: result.user_name,
+        },
+        start_date: result.start_date.to_rfc3339(),
+        end_date: result.end_date.to_rfc3339(),
+        devices: result
+            .devices
+            .into_iter()
+            .map(|row| GetAnnouncementDetailDevice {
+                id: row.id,
+                name: row.name,
+                description: row.description,
+                floor_id: row.floor_id,
+            })
+            .collect(),
+        created_at: result.created_at.to_rfc3339(),
+        updated_at: result.updated_at.to_rfc3339(),
     })
 }

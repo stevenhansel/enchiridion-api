@@ -226,6 +226,15 @@ pub fn run(
                     .service(
                         web::scope("/v1/announcements")
                             .service(
+                                web::resource("/{announcement_id}")
+                                    .guard(guard::Get())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(announcement_http::get_announcement_detail),
+                            )
+                            .service(
                                 web::resource("")
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(

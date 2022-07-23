@@ -19,15 +19,20 @@ pub struct AnnouncementDetail {
     pub media: String,
     pub notes: String,
     pub status: AnnouncementStatus,
-    pub user_id: i32,
-    pub user_name: String,
     pub start_date: chrono::DateTime<chrono::Utc>,
     pub end_date: chrono::DateTime<chrono::Utc>,
-    pub approved_by_lsc: bool,
-    pub approved_by_bm: bool,
-    // devices?
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub user_id: i32,
+    pub user_name: String,
+    pub devices: Vec<AnnouncementDetailDevices>,
+}
+
+pub struct AnnouncementDetailDevices {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+    pub floor_id: i32,
 }
 
 #[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize, Deserialize)]
@@ -77,6 +82,7 @@ impl AnnouncementStatus {
 }
 
 pub enum AnnouncementErrorCode {
+    AnnouncementNotFound,
     UserNotFound,
     InternalServerError,
 }
@@ -84,6 +90,7 @@ pub enum AnnouncementErrorCode {
 impl std::fmt::Display for AnnouncementErrorCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            AnnouncementErrorCode::AnnouncementNotFound => write!(f, "ANNOUNCEMENT_NOT_FOUND"),
             AnnouncementErrorCode::UserNotFound => write!(f, "USER_NOT_FOUND"),
             AnnouncementErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
@@ -112,6 +119,20 @@ impl std::fmt::Display for ListAnnouncementError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ListAnnouncementError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}
+
+pub enum GetAnnouncementDetailError {
+    AnnouncementNotFound(String),
+    InternalServerError,
+}
+
+impl std::fmt::Display for GetAnnouncementDetailError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GetAnnouncementDetailError::AnnouncementNotFound(message) => write!(f, "{}", message),
+            GetAnnouncementDetailError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
 }
