@@ -38,7 +38,7 @@ impl TmpFile {
         }
     }
 
-    pub fn write(path: String, data: Bytes) -> Result<(), TmpFileError> {
+    pub fn write(path: String, data: Vec<Bytes>) -> Result<(), TmpFileError> {
         if let Err(e) = create_dir_all("./tmp") {
             return Err(TmpFileError::WriteError(e.to_string()));
         }
@@ -47,9 +47,11 @@ impl TmpFile {
             Err(e) => return Err(TmpFileError::WriteError(e.to_string())),
         };
 
-        if let Err(e) = file.write_all(&data) {
-            return Err(TmpFileError::WriteError(e.to_string()));
-        };
+        for bytes in data {
+            if let Err(e) = file.write(&bytes) {
+                return Err(TmpFileError::WriteError(e.to_string()));
+            };
+        }
 
         Ok(())
     }

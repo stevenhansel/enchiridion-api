@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use actix_multipart::Multipart;
-use actix_web::{web, HttpResponse};
+use actix_web::{
+    web::{self, Bytes},
+    HttpResponse,
+};
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -47,83 +50,134 @@ pub async fn parse_create_announcement_multipart(
             Err(e) => return Err(e.to_string()),
         };
 
-        while let Some(chunk) = field.next().await {
-            let chunk = match chunk {
-                Ok(c) => c,
+        if field.name() == "title" {
+            let mut chunks: Vec<Bytes> = vec![];
+            while let Some(chunk) = field.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(e) => return Err(e.to_string()),
+                };
+
+                chunks.push(chunk);
+            }
+
+            title = match std::str::from_utf8(&chunks[0]) {
+                Ok(title) => Some(title.to_string()),
+                Err(e) => return Err(e.to_string()),
+            }
+        } else if field.name() == "startDate" {
+            let mut chunks: Vec<Bytes> = vec![];
+            while let Some(chunk) = field.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(e) => return Err(e.to_string()),
+                };
+
+                chunks.push(chunk);
+            }
+
+            let date_string = match std::str::from_utf8(&chunks[0]) {
+                Ok(title) => title.to_string(),
+                Err(e) => return Err(e.to_string()),
+            };
+            let naive_date = match NaiveDate::parse_from_str(date_string.as_str(), "%Y-%m-%d") {
+                Ok(date) => date,
+                Err(e) => return Err(e.to_string()),
+            };
+            let naive_time = NaiveTime::from_hms(0, 0, 0);
+            let naive_date_time = NaiveDateTime::new(naive_date, naive_time);
+
+            start_date = Some(chrono::Utc.from_utc_datetime(&naive_date_time));
+        } else if field.name() == "endDate" {
+            let mut chunks: Vec<Bytes> = vec![];
+            while let Some(chunk) = field.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(e) => return Err(e.to_string()),
+                };
+
+                chunks.push(chunk);
+            }
+
+            let date_string = match std::str::from_utf8(&chunks[0]) {
+                Ok(title) => title.to_string(),
+                Err(e) => return Err(e.to_string()),
+            };
+            let naive_date = match NaiveDate::parse_from_str(date_string.as_str(), "%Y-%m-%d") {
+                Ok(date) => date,
+                Err(e) => return Err(e.to_string()),
+            };
+            let naive_time = NaiveTime::from_hms(0, 0, 0);
+            let naive_date_time = NaiveDateTime::new(naive_date, naive_time);
+
+            end_date = Some(chrono::Utc.from_utc_datetime(&naive_date_time));
+        } else if field.name() == "notes" {
+            let mut chunks: Vec<Bytes> = vec![];
+            while let Some(chunk) = field.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(e) => return Err(e.to_string()),
+                };
+
+                chunks.push(chunk);
+            }
+
+            notes = match std::str::from_utf8(&chunks[0]) {
+                Ok(notes) => Some(notes.to_string()),
+                Err(e) => return Err(e.to_string()),
+            }
+        } else if field.name() == "deviceIds" {
+            let mut chunks: Vec<Bytes> = vec![];
+            while let Some(chunk) = field.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(e) => return Err(e.to_string()),
+                };
+
+                chunks.push(chunk);
+            }
+
+            let raw_ids = match std::str::from_utf8(&chunks[0]) {
+                Ok(notes) => notes.to_string(),
                 Err(e) => return Err(e.to_string()),
             };
 
-            if field.name() == "title" {
-                title = match std::str::from_utf8(&chunk) {
-                    Ok(title) => Some(title.to_string()),
-                    Err(e) => return Err(e.to_string()),
-                }
-            } else if field.name() == "startDate" {
-                let date_string = match std::str::from_utf8(&chunk) {
-                    Ok(title) => title.to_string(),
+            let mut ids: Vec<i32> = vec![];
+            for raw_id in raw_ids.split(",") {
+                let id: i32 = match raw_id.parse() {
+                    Ok(id) => id,
                     Err(e) => return Err(e.to_string()),
                 };
-                let naive_date = match NaiveDate::parse_from_str(date_string.as_str(), "%Y-%m-%d") {
-                    Ok(date) => date,
-                    Err(e) => return Err(e.to_string()),
-                };
-                let naive_time = NaiveTime::from_hms(0, 0, 0);
-                let naive_date_time = NaiveDateTime::new(naive_date, naive_time);
-
-                start_date = Some(chrono::Utc.from_utc_datetime(&naive_date_time));
-            } else if field.name() == "endDate" {
-                let date_string = match std::str::from_utf8(&chunk) {
-                    Ok(title) => title.to_string(),
-                    Err(e) => return Err(e.to_string()),
-                };
-                let naive_date = match NaiveDate::parse_from_str(date_string.as_str(), "%Y-%m-%d") {
-                    Ok(date) => date,
-                    Err(e) => return Err(e.to_string()),
-                };
-                let naive_time = NaiveTime::from_hms(0, 0, 0);
-                let naive_date_time = NaiveDateTime::new(naive_date, naive_time);
-
-                end_date = Some(chrono::Utc.from_utc_datetime(&naive_date_time));
-            } else if field.name() == "notes" {
-                notes = match std::str::from_utf8(&chunk) {
-                    Ok(notes) => Some(notes.to_string()),
-                    Err(e) => return Err(e.to_string()),
-                }
-            } else if field.name() == "deviceIds" {
-                let raw_ids = match std::str::from_utf8(&chunk) {
-                    Ok(notes) => notes.to_string(),
-                    Err(e) => return Err(e.to_string()),
-                };
-
-                let mut ids: Vec<i32> = vec![];
-                for raw_id in raw_ids.split(",") {
-                    let id: i32 = match raw_id.parse() {
-                        Ok(id) => id,
-                        Err(e) => return Err(e.to_string()),
-                    };
-                    ids.push(id);
-                }
-
-                device_ids = Some(ids);
-            } else if field.name() == "media" {
-                println!("chunk length: {}", chunk.len());
-                let now = chrono::Utc::now().timestamp().to_string();
-                let tmp = TmpFile::new(
-                    now,
-                    field.content_type().subtype().to_string(),
-                    "announcement".into(),
-                );
-
-                let path = tmp.path.clone();
-                if let Err(e) = web::block(move || TmpFile::write(path, chunk))
-                    .await
-                    .unwrap()
-                {
-                    return Err(e.to_string());
-                };
-
-                media = Some(tmp);
+                ids.push(id);
             }
+
+            device_ids = Some(ids);
+        } else if field.name() == "media" {
+            let mut chunks: Vec<Bytes> = vec![];
+            while let Some(chunk) = field.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(e) => return Err(e.to_string()),
+                };
+
+                chunks.push(chunk);
+            }
+            let now = chrono::Utc::now().timestamp().to_string();
+            let tmp = TmpFile::new(
+                now,
+                field.content_type().subtype().to_string(),
+                "announcement".into(),
+            );
+            let path = tmp.path.clone();
+
+            if let Err(e) = web::block(move || TmpFile::write(path, chunks))
+                .await
+                .unwrap()
+            {
+                return Err(e.to_string());
+            };
+
+            media = Some(tmp);
         }
     }
 

@@ -174,7 +174,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             return Err(CreateAnnouncementError::InternalServerError);
         }
 
-        if let Err(_) = self._cloud_storage.upload(params.media).await {
+        if let Err(e) = self._cloud_storage.upload(params.media).await {
             return Err(CreateAnnouncementError::InternalServerError);
         }
 
