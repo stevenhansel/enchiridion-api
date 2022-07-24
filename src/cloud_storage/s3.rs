@@ -40,6 +40,9 @@ impl CloudStorageClient for S3Adapter {
     }
 
     async fn upload(&self, file: TmpFile) -> Result<(), CloudStorageError> {
+        println!("file: {:?}", file);
+        println!("path: {}", file.path);
+
         let body = match ByteStream::from_path(Path::new(&file.path)).await {
             Ok(body) => body,
             Err(e) => return Err(CloudStorageError::ReadFileError(e.to_string())),
@@ -57,9 +60,9 @@ impl CloudStorageClient for S3Adapter {
             return Err(CloudStorageError::UploadError(e.to_string()));
         }
 
-        if let Err(e) = file.remove() {
-            return Err(CloudStorageError::DeleteFileError(e.to_string()));
-        };
+        // if let Err(e) = file.remove() {
+        //     return Err(CloudStorageError::DeleteFileError(e.to_string()));
+        // };
 
         Ok(())
     }
