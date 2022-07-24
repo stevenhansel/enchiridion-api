@@ -106,6 +106,7 @@ pub async fn parse_create_announcement_multipart(
 
                 device_ids = Some(ids);
             } else if field.name() == "media" {
+                println!("chunk length: {}", chunk.len());
                 let now = chrono::Utc::now().timestamp().to_string();
                 let tmp = TmpFile::new(
                     now,
