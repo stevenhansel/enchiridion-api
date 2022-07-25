@@ -3,7 +3,9 @@ use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 
 use aws_sdk_s3::{Client, Region};
-use enchiridion_api::announcement::{AnnouncementRepository, AnnouncementService};
+use enchiridion_api::announcement::{
+    AnnouncementQueue, AnnouncementRepository, AnnouncementService,
+};
 use enchiridion_api::cloud_storage::s3::S3Adapter;
 use enchiridion_api::device::{DeviceRepository, DeviceService};
 use enchiridion_api::floor::{FloorRepository, FloorService};
@@ -82,6 +84,8 @@ async fn main() -> std::io::Result<()> {
     let announcement_repository = Arc::new(AnnouncementRepository::new(pool.clone()));
     let request_repository = Arc::new(RequestRepository::new(pool.clone()));
 
+    let announcement_queue = Arc::new(AnnouncementQueue::new(redis_connection.clone()));
+
     let role_service = Arc::new(RoleService::new(role_repository.clone()));
     let building_service = Arc::new(BuildingService::new(building_repository.clone()));
     let user_service = Arc::new(UserService::new(user_repository.clone()));
@@ -96,6 +100,7 @@ async fn main() -> std::io::Result<()> {
     let request_service = Arc::new(RequestService::new(
         request_repository.clone(),
         announcement_repository.clone(),
+        announcement_queue.clone(),
         auth_repository.clone(),
     ));
     let announcement_service = Arc::new(AnnouncementService::new(

@@ -1,12 +1,13 @@
-use std::sync::Arc;
+use std::{sync::Arc, thread::spawn};
 
 use async_trait::async_trait;
 
 use crate::{
-    announcement::{AnnouncementRepositoryInterface, AnnouncementStatus},
+    announcement::{
+        AnnouncementQueueInterface, AnnouncementRepositoryInterface, AnnouncementStatus,
+    },
     auth::AuthRepositoryInterface,
     database::{DatabaseError, PaginationResult},
-    user::UserRepositoryInterface,
 };
 
 use super::{
@@ -14,14 +15,6 @@ use super::{
     RequestActionType, RequestRepositoryInterface, UpdateApprovalParams,
     UpdateRequestApprovalError,
 };
-
-/**
-* create -> metadata: null
-* delete -> metadata: null
-* change_date -> tba
-* change_content -> tba
-* change devices -> tba
-*/
 
 pub struct ListRequestParams {
     pub page: i32,
@@ -64,6 +57,7 @@ pub trait RequestServiceInterface {
 pub struct RequestService {
     _request_repository: Arc<dyn RequestRepositoryInterface + Send + Sync + 'static>,
     _announcement_repository: Arc<dyn AnnouncementRepositoryInterface + Send + Sync + 'static>,
+    _announcement_queue: Arc<dyn AnnouncementQueueInterface + Send + Sync + 'static>,
     _auth_repository: Arc<dyn AuthRepositoryInterface + Send + Sync + 'static>,
 }
 
@@ -71,11 +65,13 @@ impl RequestService {
     pub fn new(
         _request_repository: Arc<dyn RequestRepositoryInterface + Send + Sync + 'static>,
         _announcement_repository: Arc<dyn AnnouncementRepositoryInterface + Send + Sync + 'static>,
+        _announcement_queue: Arc<dyn AnnouncementQueueInterface + Send + Sync + 'static>,
         _auth_repository: Arc<dyn AuthRepositoryInterface + Send + Sync + 'static>,
     ) -> Self {
         RequestService {
             _request_repository,
             _announcement_repository,
+            _announcement_queue,
             _auth_repository,
         }
     }
@@ -245,6 +241,19 @@ impl RequestServiceInterface for RequestService {
                 {
                     return Err(UpdateRequestApprovalError::InternalServerError);
                 }
+                let announcement_queue = self._announcement_queue.clone();
+
+                let device_ids: Vec<i32> = announcement
+                    .devices
+                    .into_iter()
+                    .map(|device| device.id)
+                    .collect();
+                let announcement_id = announcement.id;
+                if let Err(_) = announcement_queue
+                    .synchronize_create_announcement_action_to_devices(device_ids, announcement_id)
+                {
+                    // TODO: handle the Error
+                };
                 // TODO: sync to devices queue
             } else if approved_by_bm == Some(false) || approved_by_lsc == Some(false) {
                 if let Err(_) = self
@@ -255,6 +264,8 @@ impl RequestServiceInterface for RequestService {
                     return Err(UpdateRequestApprovalError::InternalServerError);
                 }
             }
+        } else if request.action == RequestActionType::Delete {
+            // TODO: handle delete here
         }
 
         Ok(())

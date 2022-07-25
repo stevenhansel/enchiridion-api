@@ -5,7 +5,9 @@ use async_trait::async_trait;
 use crate::{
     cloud_storage::{self, TmpFile},
     database::{DatabaseError, PaginationResult},
-    request::{CreateRequestParams, RequestActionType, RequestServiceInterface},
+    request::{
+        CreateRequestParams, RequestActionType, RequestServiceInterface,
+    },
 };
 
 use super::{
