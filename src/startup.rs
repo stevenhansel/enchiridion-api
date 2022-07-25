@@ -63,6 +63,10 @@ pub fn run(
             .app_data(request_svc.clone())
             .app_data(announcement_svc.clone())
             .route("/", web::get().to(health_check))
+            .service(web::scope("/device").route(
+                "/v1/announcements/{announcement_id}/media",
+                web::get().to(announcement_http::get_announcement_media_presigned_url),
+            ))
             .service(
                 web::scope("/dashboard")
                     .route("/v1/auth/register", web::post().to(auth_http::register))

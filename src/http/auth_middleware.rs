@@ -245,9 +245,10 @@ pub fn derive_user_id(
             Ok(user_id) => Ok(user_id),
             Err(e) => Err(e),
         };
-    } else {
-        return Err(AuthenticationMiddlewareError::InternalServerError);
-    }
+    } 
+
+    // TODO: if middleware doesn't exist
+    Ok(-1)
 }
 
 pub fn derive_authentication_middleware_error(e: AuthenticationMiddlewareError) -> HttpResponse {
