@@ -275,6 +275,7 @@ pub struct ListAnnouncementQueryParams {
     pub query: Option<String>,
     pub status: Option<AnnouncementStatus>,
     pub user_id: Option<i32>,
+    pub device_id: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -332,6 +333,7 @@ pub async fn list_announcement(
             query: query_params.query.clone(),
             status: query_params.status.clone(),
             user_id: query_params.user_id.clone(),
+            device_id: query_params.device_id.clone(),
         })
         .await
     {

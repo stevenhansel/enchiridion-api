@@ -22,6 +22,7 @@ pub struct ListAnnouncementParams {
     pub query: Option<String>,
     pub status: Option<AnnouncementStatus>,
     pub user_id: Option<i32>,
+    pub device_id: Option<i32>,
 }
 
 pub struct CreateAnnouncementParams {
@@ -88,6 +89,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
                 query: params.query.clone(),
                 status: params.status.clone(),
                 user_id: params.user_id.clone(),
+                device_id: params.device_id.clone(),
             })
             .await
         {

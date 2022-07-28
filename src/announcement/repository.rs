@@ -11,6 +11,7 @@ pub struct FindListAnnouncementParams {
     pub query: Option<String>,
     pub status: Option<AnnouncementStatus>,
     pub user_id: Option<i32>,
+    pub device_id: Option<i32>,
 }
 
 pub struct InsertAnnouncementParams {
@@ -104,10 +105,12 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 "user"."name" as "user_name"
             from "announcement"
             join "user" on "user"."id" = "announcement"."user_id"
+            join "device_announcement" on "device_announcement"."announcement_id" = "announcement"."id"
             where
                 ($3::text is null or "announcement"."title" ilike concat('%', $3, '%')) and
                 ($4::text is null or "announcement"."status" = $4) and
-                ($5::integer is null or "announcement"."user_id" = $5)
+                ($5::integer is null or "announcement"."user_id" = $5) and 
+                ($6::integer is null or "device_announcement"."device_id" = $6)
             order by "announcement"."id" desc
             offset $1 limit $2
             "#,
@@ -117,6 +120,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         .bind(params.query.clone())
         .bind(params.status.clone())
         .bind(params.user_id.clone())
+        .bind(params.device_id.clone())
         .map(|row: PgRow| ListAnnouncementRow {
             count: row.get("count"),
             announcement_id: row.get("announcement_id"),
