@@ -6,6 +6,7 @@ pub struct Device {
     pub name: String,
     pub location: String,
     pub description: String,
+    pub active_announcements: i32,
 }
 
 #[derive(Debug)]

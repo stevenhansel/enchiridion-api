@@ -40,7 +40,7 @@ pub struct ListDeviceContent {
     pub id: i32,
     pub name: String,
     pub location: String,
-    // pub active_announcements: i32,
+    pub active_announcements: i32,
     pub description: String,
 }
 
@@ -89,7 +89,7 @@ pub async fn list_device(
             id: c.id,
             name: c.name.to_string(),
             location: c.location.to_string(),
-            // active_announcements: c.active_announcements,
+            active_announcements: c.active_announcements,
             description: c.description.to_string(),
         })
         .collect();

@@ -24,6 +24,7 @@ pub struct ListDeviceRow {
     pub device_name: String,
     pub device_location: String,
     pub device_description: String,
+    pub device_active_announcements: i32,
 }
 
 #[async_trait]
@@ -61,10 +62,15 @@ impl DeviceRepositoryInterface for DeviceRepository {
                     "device"."id" as "device_id",
                     "device"."name" as "device_name",
                     concat("building"."name", ', ', "floor"."name") as "device_location",
-                    "device"."description" as "device_description" 
+                    "device"."description" as "device_description",
+                    cast("result"."count" as integer) as "device_active_announcements"
                 from "device" 
                 join "floor" on "floor"."id" = "device"."floor_id"
                 join "building" on "building"."id" = "floor"."building_id"
+                left join lateral (
+                    select count(*) as "count" from "device_announcement"
+                    where "device_id" = "device"."id"
+                ) "result" on true
                 where 
                     ($3::text is null or "device"."name" ilike concat('%', $3, '%')) and
                     ($4::integer is null or "building"."id" = $4) and
@@ -84,6 +90,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
             device_name: row.get("device_name"),
             device_location: row.get("device_location"),
             device_description: row.get("device_description"),
+            device_active_announcements: row.get("device_active_announcements"),
         })
         .fetch_all(&self._db)
         .await?;
@@ -102,6 +109,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 name: item.device_name.to_string(),
                 location: item.device_location.to_string(),
                 description: item.device_description.to_string(),
+                active_announcements: item.device_active_announcements,
             })
             .collect();
 
