@@ -6,7 +6,10 @@ use validator::Validate;
 
 use crate::building::service::{CreateParams, UpdateParams};
 
-use crate::http::{ApiValidationError, HttpErrorResponse};
+use crate::http::{
+    derive_authentication_middleware_error, derive_user_id, ApiValidationError,
+    AuthenticationContext, HttpErrorResponse,
+};
 
 use super::service::BuildingServiceInterface;
 use super::{BuildingError, BuildingErrorCode};
@@ -27,7 +30,12 @@ pub struct ListBuildingsResponse {
 
 pub async fn list_buildings(
     building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
 ) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
     let result = building_service.get_buildings().await;
 
     let result = match result {
@@ -68,7 +76,12 @@ pub struct CreateBody {
 pub async fn create(
     body: web::Json<CreateBody>,
     building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
 ) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
     if let Err(e) = body.validate() {
         let e = ApiValidationError::new(e);
 
@@ -116,9 +129,14 @@ pub struct UpdateBody {
 
 pub async fn update(
     building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
     path: web::Path<i32>,
     body: web::Json<UpdateBody>,
 ) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
     let building_id = path.into_inner();
 
     if let Err(e) = body.validate() {
@@ -162,8 +180,13 @@ pub async fn update(
 
 pub async fn delete(
     building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
     path: web::Path<i32>,
 ) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
     let building_id = path.into_inner();
 
     if let Err(e) = building_service.delete_by_id(building_id).await {
