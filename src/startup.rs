@@ -70,6 +70,10 @@ pub fn run(
                         web::get().to(announcement_http::get_announcement_media_presigned_url),
                     )
                     .route(
+                        "/v1/devices/{device_id}",
+                        web::get().to(device_http::get_device_by_id),
+                    )
+                    .route(
                         "/v1/buildings",
                         web::get().to(building_http::list_buildings)
                     )
