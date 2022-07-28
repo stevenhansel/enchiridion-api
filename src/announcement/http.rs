@@ -461,6 +461,7 @@ pub async fn get_announcement_detail(
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetAnnouncementMediaPresignedURLResponse {
+    filename: String,
     media: String,
 }
 
@@ -473,7 +474,7 @@ pub async fn get_announcement_media_presigned_url(
         return derive_authentication_middleware_error(e);
     }
 
-    let media = match announcement_service
+    let obj = match announcement_service
         .get_announcement_media_presigned_url(announcement_id.into_inner())
         .await
     {
@@ -494,5 +495,8 @@ pub async fn get_announcement_media_presigned_url(
         },
     };
 
-    HttpResponse::Ok().json(GetAnnouncementMediaPresignedURLResponse { media })
+    HttpResponse::Ok().json(GetAnnouncementMediaPresignedURLResponse {
+        filename: obj.filename,
+        media: obj.media,
+    })
 }

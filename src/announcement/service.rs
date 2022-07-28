@@ -13,7 +13,7 @@ use crate::{
 use super::{
     Announcement, AnnouncementDetail, AnnouncementRepositoryInterface, AnnouncementStatus,
     CreateAnnouncementError, FindListAnnouncementParams, GetAnnouncementDetailError,
-    GetAnnouncementMediaPresignedURLError, InsertAnnouncementParams, ListAnnouncementError,
+    GetAnnouncementMediaPresignedURLError, InsertAnnouncementParams, ListAnnouncementError, AnnouncementMediaObject,
 };
 
 pub struct ListAnnouncementParams {
@@ -52,7 +52,7 @@ pub trait AnnouncementServiceInterface {
     async fn get_announcement_media_presigned_url(
         &self,
         announcement_id: i32,
-    ) -> Result<String, GetAnnouncementMediaPresignedURLError>;
+    ) -> Result<AnnouncementMediaObject, GetAnnouncementMediaPresignedURLError>;
 }
 
 pub struct AnnouncementService {
@@ -188,7 +188,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
     async fn get_announcement_media_presigned_url(
         &self,
         announcement_id: i32,
-    ) -> Result<String, GetAnnouncementMediaPresignedURLError> {
+    ) -> Result<AnnouncementMediaObject, GetAnnouncementMediaPresignedURLError> {
         let result = match self
             ._announcement_repository
             .find_one(announcement_id)
@@ -205,11 +205,17 @@ impl AnnouncementServiceInterface for AnnouncementService {
             },
         };
 
-        let media = match self._cloud_storage.get_object(result.media).await {
+        let media = match self._cloud_storage.get_object(result.media.clone()).await {
             Ok(uri) => uri,
             Err(_) => return Err(GetAnnouncementMediaPresignedURLError::InternalServerError),
         };
 
-        Ok(media)
+        let splits: Vec<String> = result.media.clone().split("/").map(|m| m.to_string()).collect();
+        let filename = splits[1].clone();
+
+        Ok(AnnouncementMediaObject{
+            filename,
+            media,
+        })
     }
 }

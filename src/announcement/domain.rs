@@ -35,6 +35,11 @@ pub struct AnnouncementDetailDevices {
     pub floor_id: i32,
 }
 
+pub struct AnnouncementMediaObject {
+    pub filename: String,
+    pub media: String,
+}
+
 #[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize, Deserialize)]
 #[sqlx(type_name = "announcement_status", rename_all = "snake_case")]
 pub enum AnnouncementStatus {
