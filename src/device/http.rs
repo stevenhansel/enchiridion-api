@@ -165,6 +165,12 @@ pub struct CreateDeviceBody {
     is_linked: bool,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateDeviceResponse {
+    id: i32,
+}
+
 pub async fn create_device(
     device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
     auth: AuthenticationContext<'_>,
@@ -180,7 +186,7 @@ pub async fn create_device(
         return HttpResponse::BadRequest().json(HttpErrorResponse::new(e.code(), e.messages()));
     }
 
-    if let Err(e) = device_service
+    let id = match device_service
         .create_device(CreateDeviceParams {
             name: body.name.clone(),
             description: body.description.clone(),
@@ -189,7 +195,8 @@ pub async fn create_device(
         })
         .await
     {
-        match e {
+        Ok(id) => id,
+        Err(e) => match e {
             CreateDeviceError::DeviceAlreadyExists(message) => {
                 return HttpResponse::Conflict().json(HttpErrorResponse::new(
                     DeviceErrorCode::DeviceAlreadyExists.to_string(),
@@ -208,10 +215,10 @@ pub async fn create_device(
                     vec![DeviceErrorCode::InternalServerError.to_string()],
                 ))
             }
-        }
-    }
+        },
+    };
 
-    HttpResponse::NoContent().finish()
+    HttpResponse::Ok().json(CreateDeviceResponse{ id })
 }
 
 #[derive(Debug, Validate, Deserialize)]

@@ -33,7 +33,7 @@ pub trait DeviceServiceInterface {
         &self,
         device_id: i32,
     ) -> Result<DeviceDetail, GetDeviceDetailByIdError>;
-    async fn create_device(&self, params: CreateDeviceParams) -> Result<(), CreateDeviceError>;
+    async fn create_device(&self, params: CreateDeviceParams) -> Result<i32, CreateDeviceError>;
     async fn update_device_info(
         &self,
         device_id: i32,
@@ -81,8 +81,8 @@ impl DeviceServiceInterface for DeviceService {
         }
     }
 
-    async fn create_device(&self, params: CreateDeviceParams) -> Result<(), CreateDeviceError> {
-        if let Err(e) = self
+    async fn create_device(&self, params: CreateDeviceParams) -> Result<i32, CreateDeviceError> {
+        match self
             ._device_repository
             .insert(InsertDeviceParams {
                 name: params.name.clone(),
@@ -92,7 +92,8 @@ impl DeviceServiceInterface for DeviceService {
             })
             .await
         {
-            match e {
+            Ok(id) => Ok(id),
+            Err(e) => match e {
                 sqlx::Error::Database(db_error) => {
                     if let Some(code) = db_error.code() {
                         let code = code.to_string();
@@ -111,10 +112,8 @@ impl DeviceServiceInterface for DeviceService {
                     return Err(CreateDeviceError::InternalServerError);
                 }
                 _ => return Err(CreateDeviceError::InternalServerError),
-            }
+            },
         }
-
-        Ok(())
     }
 
     async fn update_device_info(
