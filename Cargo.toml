@@ -19,7 +19,7 @@ tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
 futures = "0.3"
-async-trait = "0.1.56"
+async-trait = "0.1.57"
 password-hash = { version = "0.4.2", features = ["alloc"] }
 argon2 = "0.4"
 rand_core = { version = "0.6", features = ["std"] }
@@ -29,9 +29,9 @@ validator = { version = "0.16.0", features = ["derive"] }
 jwt = "0.16.0"
 hmac = "0.12.1"
 sha2 = "0.10.2"
-chrono = "0.4.19"
+chrono = "0.4.22"
 actix-cors = "0.6.2"
 redis = { version = "0.21.5", features = ["streams"] }
-aws-config = "0.15.0"
+aws-config = "0.46.0"
 aws-sdk-s3 = "0.15.0"
 actix-multipart = "0.4.0"
