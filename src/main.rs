@@ -2,7 +2,8 @@ use std::env;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 
-use aws_sdk_s3::{Client, Region};
+use aws_config::meta::region::RegionProviderChain;
+
 use enchiridion_api::announcement::{
     AnnouncementQueue, AnnouncementRepository, AnnouncementService,
 };
@@ -62,12 +63,14 @@ async fn main() -> std::io::Result<()> {
         None,
         "enchiridion_api",
     );
-    let s3_config = aws_config::from_env()
+
+    let region_provider = RegionProviderChain::first_try("ap-southeast-1");
+    let aws_configuration = aws_config::from_env()
         .credentials_provider(s3_credentials)
-        .region(Region::new("ap-southeast-1"))
+        .region(region_provider)
         .load()
         .await;
-    let s3_client = Client::new(&s3_config);
+    let s3_client = aws_sdk_s3::Client::new(&aws_configuration);
     let s3_adapter = S3Adapter::new(s3_client, config.aws_s3_bucket_name.clone());
     let cloud_storage = cloud_storage::Client::new(Box::new(s3_adapter));
 
