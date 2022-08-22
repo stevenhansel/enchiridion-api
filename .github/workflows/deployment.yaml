@@ -63,3 +63,9 @@ jobs:
       run: |
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+    - name: Trigger Deployment
+      env:
+        token: ${{ secrets.WEBHOOK_TOKEN }}
+      run:
+        curl --request GET --url https://enchiridion.stevenhansel.com/hooks/deploy?token=$token
