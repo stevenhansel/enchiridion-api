@@ -75,16 +75,10 @@ pub fn run(
                     )
                     .route(
                         "/v1/buildings",
-                        web::get().to(building_http::list_buildings)
+                        web::get().to(building_http::list_buildings),
                     )
-                    .route(
-                        "/v1/floors",
-                        web::get().to(floor_http::list_floor)
-                    )
-                    .route(
-                        "/v1/devices",
-                        web::post().to(device_http::create_device)
-                    )
+                    .route("/v1/floors", web::get().to(floor_http::list_floor))
+                    .route("/v1/devices", web::post().to(device_http::create_device)),
             )
             .service(
                 web::scope("/dashboard")
@@ -119,6 +113,14 @@ pub fn run(
                                 role_service.clone(),
                             ))
                             .route("", web::get().to(auth_http::me)),
+                    )
+                    .service(
+                        web::scope("/v1/logout")
+                            .wrap(AuthenticationMiddlewareFactory::new(
+                                auth_service.clone(),
+                                role_service.clone(),
+                            ))
+                            .route("", web::get().to(auth_http::logout)),
                     )
                     .service(
                         web::scope("/v1/buildings")

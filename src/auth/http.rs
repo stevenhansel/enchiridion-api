@@ -487,6 +487,52 @@ pub async fn me(
     HttpResponse::Ok().json(response)
 }
 
+pub async fn logout(
+    auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
+) -> HttpResponse {
+    let user_id = match derive_user_id(auth) {
+        Ok(id) => id,
+        Err(e) => return derive_authentication_middleware_error(e),
+    };
+
+    match auth_service.logout(user_id).await {
+        Ok(entity) => entity,
+        Err(e) => match e {
+            AuthError::UserNotFound(e) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AuthErrorCode::UserNotFound.to_string(),
+                    vec![e.to_string()],
+                ))
+            }
+            _ => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AuthErrorCode::InternalServerError.to_string(),
+                    vec![AuthError::InternalServerError.to_string()],
+                ))
+            }
+        },
+    };
+
+    let access_token_cookie = Cookie::build("access_token", "")
+        .path("/")
+        .secure(true)
+        .http_only(true)
+        .same_site(SameSite::None)
+        .finish();
+    let refresh_token_cookie = Cookie::build("refresh_token", "")
+        .path("/")
+        .secure(true)
+        .http_only(true)
+        .same_site(SameSite::None)
+        .finish();
+
+    HttpResponse::NoContent()
+        .cookie(access_token_cookie)
+        .cookie(refresh_token_cookie)
+        .finish()
+}
+
 pub async fn forgot_password() -> HttpResponse {
     HttpResponse::NoContent().finish()
 }

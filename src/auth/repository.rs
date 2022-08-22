@@ -33,6 +33,7 @@ pub trait AuthRepositoryInterface {
         user_id: i32,
         refresh_token: String,
     ) -> Result<(), redis::RedisError>;
+    async fn delete_user_refresh_token(&self, user_id: i32) -> Result<(), redis::RedisError>;
 }
 
 pub struct AuthRepository {
@@ -172,6 +173,16 @@ impl AuthRepositoryInterface for AuthRepository {
 
         redis.set(key.clone(), refresh_token)?;
         redis.expire_at(key.clone(), expire_at.try_into().unwrap())?;
+
+        Ok(())
+    }
+
+    async fn delete_user_refresh_token(&self, user_id: i32) -> Result<(), redis::RedisError> {
+        let mut redis = self._redis.lock().expect("Cannot get redis connection");
+
+        let key = AuthRepository::refresh_token_key_builder(user_id);
+
+        redis.del(key)?;
 
         Ok(())
     }

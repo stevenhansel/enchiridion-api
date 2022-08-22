@@ -61,6 +61,7 @@ pub trait AuthServiceInterface {
     async fn login(&self, params: LoginParams) -> Result<AuthEntity, AuthError>;
     async fn refresh_token(&self, refresh_token: String) -> Result<RefreshTokenResult, AuthError>;
     async fn me(&self, user_id: i32) -> Result<UserAuthEntity, AuthError>;
+    async fn logout(&self, user_id: i32) -> Result<(), AuthError>;
 }
 
 pub struct AuthService {
@@ -580,5 +581,23 @@ impl AuthServiceInterface for AuthService {
         };
 
         Ok(entity)
+    }
+
+    async fn logout(&self, user_id: i32) -> Result<(), AuthError> {
+        if let Err(_) = self._user_repository.find_one_by_id(user_id).await {
+            return Err(AuthError::UserNotFound(
+                "User with the given id is not found".into(),
+            ));
+        }
+
+        if let Err(_) = self
+            ._auth_repository
+            .delete_user_refresh_token(user_id)
+            .await
+        {
+            return Err(AuthError::InternalServerError);
+        }
+
+        Ok(())
     }
 }
