@@ -79,7 +79,7 @@ impl RequestRepositoryInterface for RequestRepository {
         let result = sqlx::query(
             r#"
             select
-                cast(count("request".*) over () as integer) as "count",
+                cast("result"."count" as integer) as "count",
                 "request"."id" as "request_id",
                 "request"."action" as "request_action",
                 "request"."description" as "request_description",
@@ -95,6 +95,16 @@ impl RequestRepositoryInterface for RequestRepository {
             from "request"
             join "announcement" on "announcement"."id" = "request"."announcement_id"
             join "user" on "user"."id"= "request"."user_id"
+            left join lateral (
+                select count(*) from "request"
+                where
+                    ($3::integer is null or "request"."id" = $3) and 
+                    ($4::integer is null or "announcement"."id" = $4) and 
+                    ($5::integer is null or "user"."id" = $5) and 
+                    ($6::text is null or "request"."action" = $6) and 
+                    ($7::bool is null or "request"."approved_by_lsc" = $7) and 
+                    ($8::bool is null or "request"."approved_by_bm" = $8)
+            ) "result" on true
             where
                 ($3::integer is null or "request"."id" = $3) and 
                 ($4::integer is null or "announcement"."id" = $4) and 

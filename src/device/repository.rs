@@ -58,19 +58,26 @@ impl DeviceRepositoryInterface for DeviceRepository {
         let result = sqlx::query(
             r#"
                 select
-                    cast(count("device".*) over () as integer) as "count",
+                    cast("device_result"."count" as integer) as "count",
                     "device"."id" as "device_id",
                     "device"."name" as "device_name",
                     concat("building"."name", ', ', "floor"."name") as "device_location",
                     "device"."description" as "device_description",
-                    cast("result"."count" as integer) as "device_active_announcements"
+                    cast("device_announcement_result"."count" as integer) as "device_active_announcements"
                 from "device" 
                 join "floor" on "floor"."id" = "device"."floor_id"
                 join "building" on "building"."id" = "floor"."building_id"
                 left join lateral (
+                    select count(*) as "count" from "device"
+                    where
+                        ($3::text is null or "device"."name" ilike concat('%', $3, '%')) and
+                        ($4::integer is null or "building"."id" = $4) and
+                        ($5::integer is null or "floor"."id" = $5)
+                ) "device_result" on true
+                left join lateral (
                     select count(*) as "count" from "device_announcement"
                     where "device_id" = "device"."id"
-                ) "result" on true
+                ) "device_announcement_result" on true
                 where 
                     ($3::text is null or "device"."name" ilike concat('%', $3, '%')) and
                     ($4::integer is null or "building"."id" = $4) and

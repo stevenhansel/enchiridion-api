@@ -77,6 +77,9 @@ impl FloorRepositoryInterface for FloorRepository {
             left join "device" on "device"."floor_id" = "floor"."id"
             left join lateral (
                 select count(*) from "floor"
+                where
+                    ($3::text is null or "floor"."name" ilike concat('%', $3, '%')) and
+                    ($4::integer is null or "building"."id" = $4)
             ) "result" on true
             where 
                 ($3::text is null or "floor"."name" ilike concat('%', $3, '%')) and

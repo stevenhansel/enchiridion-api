@@ -92,7 +92,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         let result = sqlx::query(
             r#"
             select
-                cast(count("announcement".*) over () as integer) as "count",
+                cast("result"."count" as integer) as "count",
                 "announcement"."id" as "announcement_id",
                 "announcement"."title" as "announcement_title",
                 "announcement"."start_date" as "announcement_start_date",
@@ -106,6 +106,14 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             from "announcement"
             join "user" on "user"."id" = "announcement"."user_id"
             join "device_announcement" on "device_announcement"."announcement_id" = "announcement"."id"
+            left join lateral (
+                select count(*) from "announcement"
+                where
+                    ($3::text is null or "announcement"."title" ilike concat('%', $3, '%')) and
+                    ($4::text is null or "announcement"."status" = $4) and
+                    ($5::integer is null or "announcement"."user_id" = $5) and 
+                    ($6::integer is null or "device_announcement"."device_id" = $6)
+            ) "result" on true
             where
                 ($3::text is null or "announcement"."title" ilike concat('%', $3, '%')) and
                 ($4::text is null or "announcement"."status" = $4) and
