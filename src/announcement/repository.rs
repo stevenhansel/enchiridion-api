@@ -109,13 +109,25 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             left join lateral (
                 select count(*) from "announcement"
                 where
-                    ($3::text is null or "announcement"."title" ilike concat('%', $3, '%')) and
+                    (
+                        $3::text is null or 
+                        "announcement"."id" = cast(
+                            (coalesce(nullif(regexp_replace($3, '[^0-9]+', '', 'g'), ''), '0')) as integer    
+                        ) or
+                        "announcement"."title" ilike concat('%', $3, '%')
+                    ) and
                     ($4::text is null or "announcement"."status" = $4) and
                     ($5::integer is null or "announcement"."user_id" = $5) and 
                     ($6::integer is null or "device_announcement"."device_id" = $6)
             ) "result" on true
             where
-                ($3::text is null or "announcement"."title" ilike concat('%', $3, '%')) and
+                (
+                    $3::text is null or 
+                    "announcement"."id" = cast(
+                        (coalesce(nullif(regexp_replace($3, '[^0-9]+', '', 'g'), ''), '0')) as integer    
+                    ) or
+                    "announcement"."title" ilike concat('%', $3, '%')
+                ) and
                 ($4::text is null or "announcement"."status" = $4) and
                 ($5::integer is null or "announcement"."user_id" = $5) and 
                 ($6::integer is null or "device_announcement"."device_id" = $6)

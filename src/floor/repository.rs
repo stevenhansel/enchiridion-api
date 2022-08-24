@@ -78,11 +78,23 @@ impl FloorRepositoryInterface for FloorRepository {
             left join lateral (
                 select count(*) from "floor"
                 where
-                    ($3::text is null or "floor"."name" ilike concat('%', $3, '%')) and
+                    (
+                        $3::text is null or 
+                        "floor"."id" = cast(
+                            (coalesce(nullif(regexp_replace($3, '[^0-9]+', '', 'g'), ''), '0')) as integer    
+                        ) or
+                        "floor"."name" ilike concat('%', $3, '%')
+                    ) and
                     ($4::integer is null or "building"."id" = $4)
             ) "result" on true
             where 
-                ($3::text is null or "floor"."name" ilike concat('%', $3, '%')) and
+                (
+                    $3::text is null or 
+                    "floor"."id" = cast(
+                        (coalesce(nullif(regexp_replace($3, '[^0-9]+', '', 'g'), ''), '0')) as integer    
+                    ) or
+                    "floor"."name" ilike concat('%', $3, '%')
+                ) and
                 ($4::integer is null or "building"."id" = $4)
             order by "floor"."id" desc
             offset $1 limit $2

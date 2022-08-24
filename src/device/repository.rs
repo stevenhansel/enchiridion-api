@@ -70,7 +70,13 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 left join lateral (
                     select count(*) as "count" from "device"
                     where
-                        ($3::text is null or "device"."name" ilike concat('%', $3, '%')) and
+                        (
+                            $3::text is null or 
+                            "device"."id" = cast(
+                                (coalesce(nullif(regexp_replace($3, '[^0-9]+', '', 'g'), ''), '0')) as integer    
+                            ) or
+                            "device"."name" ilike concat('%', $3, '%')
+                        ) and
                         ($4::integer is null or "building"."id" = $4) and
                         ($5::integer is null or "floor"."id" = $5)
                 ) "device_result" on true
@@ -79,7 +85,13 @@ impl DeviceRepositoryInterface for DeviceRepository {
                     where "device_id" = "device"."id"
                 ) "device_announcement_result" on true
                 where 
-                    ($3::text is null or "device"."name" ilike concat('%', $3, '%')) and
+                    (
+                        $3::text is null or 
+                        "device"."id" = cast(
+                            (coalesce(nullif(regexp_replace($3, '[^0-9]+', '', 'g'), ''), '0')) as integer    
+                        ) or
+                        "device"."name" ilike concat('%', $3, '%')
+                    ) and
                     ($4::integer is null or "building"."id" = $4) and
                     ($5::integer is null or "floor"."id" = $5)
                 order by "device"."id" desc
