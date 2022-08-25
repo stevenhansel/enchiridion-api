@@ -108,7 +108,7 @@ pub struct DeviceDetailResponse {
     pub id: i32,
     pub name: String,
     pub location: String,
-    // pub active_announcements: i32,
+    pub active_announcements: i32,
     pub description: String,
     pub created_at: String,
     pub updated_at: String,
@@ -148,6 +148,7 @@ pub async fn get_device_by_id(
         name: result.name.into(),
         location: result.location.into(),
         description: result.description.into(),
+        active_announcements: result.active_announcements,
         created_at: result.created_at.to_rfc3339(),
         updated_at: result.updated_at.to_rfc3339(),
     })

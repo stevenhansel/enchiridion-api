@@ -82,7 +82,10 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 ) "device_result" on true
                 left join lateral (
                     select count(*) as "count" from "device_announcement"
-                    where "device_id" = "device"."id"
+                    join "announcement" on "announcement"."id" = "device_announcement"."announcement_id"
+                    where 
+                        "device_id" = "device"."id" and
+                        "announcement"."status" = 'active'
                 ) "device_announcement_result" on true
                 where 
                     (
@@ -148,11 +151,19 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 "device"."name" as "name",
                 concat("building"."name", ', ', "floor"."name") as "location",
                 "device"."description" as "description",
+                cast("device_announcement_result"."count" as integer) as "active_announcements",
                 "device"."created_at" as "created_at",
                 "device"."updated_at" as "updated_at"
             from "device"
             join "floor" on "floor"."id" = "device"."floor_id"
             join "building" on "building"."id" = "floor"."building_id"
+            left join lateral (
+                select count(*) as "count" from "device_announcement"
+                join "announcement" on "announcement"."id" = "device_announcement"."announcement_id"
+                where 
+                    "device_id" = "device"."id" and
+                    "announcement"."status" = 'active'
+            ) "device_announcement_result" on true
             where "device"."id" = $1
             "#,
         )
@@ -162,6 +173,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
             name: row.get("name"),
             location: row.get("location"),
             description: row.get("description"),
+            active_announcements: row.get("active_announcements"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
         })

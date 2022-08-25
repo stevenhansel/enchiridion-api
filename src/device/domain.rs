@@ -15,6 +15,7 @@ pub struct DeviceDetail {
     pub name: String,
     pub location: String,
     pub description: String,
+    pub active_announcements: i32,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
