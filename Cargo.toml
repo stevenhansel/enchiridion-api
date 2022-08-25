@@ -11,6 +11,12 @@ path = "src/lib.rs"
 path = "src/main.rs"
 name = "enchiridion_api"
 
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+
 [dependencies]
 actix-web = "4.1.0"
 sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls" , "postgres", "offline", "chrono" ] }
