@@ -309,15 +309,25 @@ pub fn run(
                             ),
                     )
                     .service(
-                        web::scope("/v1/users").service(
-                            web::resource("")
-                                .guard(guard::Get())
-                                .wrap(AuthenticationMiddlewareFactory::new(
-                                    auth_service.clone(),
-                                    role_service.clone(),
-                                ))
-                                .to(user_http::list_user),
-                        ),
+                        web::scope("/v1/users")
+                            .service(
+                                web::resource("/{user_id}/approval")
+                                    .guard(guard::Put())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(user_http::update_user_approval),
+                            )
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Get())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(user_http::list_user),
+                            ),
                     ),
             )
     })

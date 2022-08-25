@@ -7,11 +7,14 @@ use crate::{
     database::PaginationResult,
     http::{
         derive_authentication_middleware_error, derive_user_id, AuthenticationContext,
-        HttpErrorResponse,
+        HttpErrorResponse, API_VALIDATION_ERROR_CODE,
     },
 };
 
-use super::{ListUserError, ListUserParams, UserErrorCode, UserServiceInterface, UserStatus};
+use super::{
+    ListUserError, ListUserParams, UpdateUserApprovalError, UserErrorCode, UserServiceInterface,
+    UserStatus,
+};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -113,4 +116,78 @@ pub async fn list_user(
     };
 
     HttpResponse::Ok().json(response)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateUserApprovalBody {
+    action: UserApprovalAction,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum UserApprovalAction {
+    Approve,
+    Reject,
+}
+
+pub async fn update_user_approval(
+    user_service: web::Data<Arc<dyn UserServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
+    path: web::Path<String>,
+    body: web::Json<UpdateUserApprovalBody>,
+) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
+    let user_id: i32 = match path.into_inner().parse() {
+        Ok(id) => id,
+        Err(_) => {
+            return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+                String::from(API_VALIDATION_ERROR_CODE),
+                vec!["Invalid user id, must be a valid integer".into()],
+            ))
+        }
+    };
+
+    if let Err(e) = user_service
+        .update_user_approval(
+            user_id,
+            match &body.action {
+                UserApprovalAction::Approve => true,
+                UserApprovalAction::Reject => false,
+            },
+        )
+        .await
+    {
+        match e {
+            UpdateUserApprovalError::UserNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    UserErrorCode::UserNotFound.to_string(),
+                    vec![message.into()],
+                ))
+            }
+            UpdateUserApprovalError::UserNotConfirmed(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    UserErrorCode::UserStatusConflict.to_string(),
+                    vec![message.into()],
+                ))
+            }
+            UpdateUserApprovalError::UserStatusConflict(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    UserErrorCode::UserStatusConflict.to_string(),
+                    vec![message.into()],
+                ))
+            }
+            UpdateUserApprovalError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    UserErrorCode::InternalServerError.to_string(),
+                    vec![UpdateUserApprovalError::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
+    HttpResponse::NoContent().finish()
 }

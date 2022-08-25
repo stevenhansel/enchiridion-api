@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -50,12 +50,18 @@ pub struct UserDetail {
 }
 
 pub enum UserErrorCode {
+    UserNotFound,
+    UserNotConfirmed,
+    UserStatusConflict,
     InternalServerError,
 }
 
 impl std::fmt::Display for UserErrorCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            UserErrorCode::UserNotFound => write!(f, "USER_NOT_FOUND"),
+            UserErrorCode::UserNotConfirmed => write!(f, "USER_NOT_CONFIRMED"),
+            UserErrorCode::UserStatusConflict => write!(f, "USER_STATUS_CONFLICT"),
             UserErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
     }
@@ -69,6 +75,24 @@ impl std::fmt::Display for ListUserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ListUserError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}
+
+pub enum UpdateUserApprovalError {
+    UserNotFound(&'static str),
+    UserNotConfirmed(&'static str),
+    UserStatusConflict(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for UpdateUserApprovalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UpdateUserApprovalError::UserNotFound(message) => write!(f, "{}", message),
+            UpdateUserApprovalError::UserNotConfirmed(message) => write!(f, "{}", message),
+            UpdateUserApprovalError::UserStatusConflict(message) => write!(f, "{}", message),
+            UpdateUserApprovalError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
 }

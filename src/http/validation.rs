@@ -2,6 +2,8 @@ use validator::ValidationErrors;
 
 pub struct ApiValidationError(ValidationErrors);
 
+pub const API_VALIDATION_ERROR_CODE: &'static str = "API_VALIDATION_ERROR";
+
 impl ApiValidationError {
     pub fn new(e: ValidationErrors) -> ApiValidationError {
         ApiValidationError(e)
