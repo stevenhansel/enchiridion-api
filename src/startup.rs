@@ -108,11 +108,24 @@ pub fn run(
                     )
                     .service(
                         web::scope("/v1/me")
-                            .wrap(AuthenticationMiddlewareFactory::new(
-                                auth_service.clone(),
-                                role_service.clone(),
-                            ))
-                            .route("", web::get().to(auth_http::me)),
+                            .service(
+                                web::resource("/change-password")
+                                    .guard(guard::Put())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(auth_http::change_password),
+                            )
+                            .service(
+                                web::resource("")
+                                    .guard(guard::Get())
+                                    .wrap(AuthenticationMiddlewareFactory::new(
+                                        auth_service.clone(),
+                                        role_service.clone(),
+                                    ))
+                                    .to(auth_http::me),
+                            ),
                     )
                     .service(
                         web::scope("/v1/logout")

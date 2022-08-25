@@ -11,7 +11,7 @@ use crate::http::{
 };
 
 use super::service::AuthServiceInterface;
-use super::{AuthError, AuthErrorCode, LoginParams, RegisterParams};
+use super::{AuthError, AuthErrorCode, ChangePasswordError, LoginParams, RegisterParams};
 
 #[derive(Debug, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
@@ -538,5 +538,69 @@ pub async fn forgot_password() -> HttpResponse {
 }
 
 pub async fn reset_password() -> HttpResponse {
+    HttpResponse::NoContent().finish()
+}
+
+#[derive(Debug, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangePasswordBody {
+    #[validate(length(
+        min = 8,
+        message = "password: Password must have at least 8 characters"
+    ))]
+    old_password: String,
+    #[validate(length(
+        min = 8,
+        message = "password: Password must have at least 8 characters"
+    ))]
+    new_password: String,
+}
+
+pub async fn change_password(
+    auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext<'_>,
+    body: web::Json<ChangePasswordBody>,
+) -> HttpResponse {
+    let user_id = match derive_user_id(auth) {
+        Ok(id) => id,
+        Err(e) => return derive_authentication_middleware_error(e),
+    };
+
+    if let Err(e) = body.validate() {
+        let e = ApiValidationError::new(e);
+
+        return HttpResponse::BadRequest().json(HttpErrorResponse::new(e.code(), e.messages()));
+    }
+
+    if let Err(e) = auth_service
+        .change_password(
+            user_id,
+            body.old_password.clone(),
+            body.new_password.clone(),
+        )
+        .await
+    {
+        match e {
+            ChangePasswordError::UserInvalidOldPassword(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AuthErrorCode::UserInvalidOldPassword.to_string(),
+                    vec![message.into()],
+                ))
+            }
+            ChangePasswordError::UserNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AuthErrorCode::UserNotFound.to_string(),
+                    vec![message.into()],
+                ))
+            }
+            ChangePasswordError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AuthErrorCode::InternalServerError.to_string(),
+                    vec![ChangePasswordError::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
     HttpResponse::NoContent().finish()
 }

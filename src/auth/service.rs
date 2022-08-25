@@ -17,7 +17,10 @@ use crate::database::DatabaseError;
 use crate::email::{self, EmailParams};
 use crate::user::{InsertUserParams, UserRepositoryInterface, UserStatus};
 
-use super::{AuthEntity, AuthError, AuthRepositoryInterface, RefreshTokenResult, UserAuthEntity};
+use super::{
+    AuthEntity, AuthError, AuthRepositoryInterface, ChangePasswordError, RefreshTokenResult,
+    UserAuthEntity,
+};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -62,6 +65,12 @@ pub trait AuthServiceInterface {
     async fn refresh_token(&self, refresh_token: String) -> Result<RefreshTokenResult, AuthError>;
     async fn me(&self, user_id: i32) -> Result<UserAuthEntity, AuthError>;
     async fn logout(&self, user_id: i32) -> Result<(), AuthError>;
+    async fn change_password(
+        &self,
+        user_id: i32,
+        old_password: String,
+        new_password: String,
+    ) -> Result<(), ChangePasswordError>;
 }
 
 pub struct AuthService {
@@ -596,6 +605,60 @@ impl AuthServiceInterface for AuthService {
             .await
         {
             return Err(AuthError::InternalServerError);
+        }
+
+        Ok(())
+    }
+
+    async fn change_password(
+        &self,
+        user_id: i32,
+        old_password: String,
+        new_password: String,
+    ) -> Result<(), ChangePasswordError> {
+        let user = match self._user_repository.find_one_by_id(user_id).await {
+            Ok(user) => user,
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(ChangePasswordError::UserNotFound(
+                        "Unable to find user in the system",
+                    ))
+                }
+                _ => return Err(ChangePasswordError::InternalServerError),
+            },
+        };
+
+        let password_str = match str::from_utf8(&user.password) {
+            Ok(v) => v,
+            _ => return Err(ChangePasswordError::InternalServerError),
+        };
+        let parsed_hash = match PasswordHash::new(password_str) {
+            Ok(hash) => hash,
+            _ => return Err(ChangePasswordError::InternalServerError),
+        };
+        let is_password_match = Argon2::default()
+            .verify_password(old_password.as_bytes(), &parsed_hash)
+            .is_ok();
+        if is_password_match == false {
+            return Err(ChangePasswordError::UserInvalidOldPassword(
+                "Unable to change password due to invalid old password",
+            ));
+        }
+
+        let hash = match Argon2::default().hash_password(
+            new_password.as_bytes(),
+            self._configuration.password_secret.expose_secret(),
+        ) {
+            Ok(p) => p.serialize(),
+            Err(_) => return Err(ChangePasswordError::InternalServerError),
+        };
+
+        if let Err(_) = self
+            ._user_repository
+            .update_password(user_id, hash.to_string())
+            .await
+        {
+            return Err(ChangePasswordError::InternalServerError);
         }
 
         Ok(())

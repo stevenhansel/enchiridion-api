@@ -16,19 +16,6 @@ pub enum AuthError {
     InternalServerError,
 }
 
-#[derive(Debug)]
-pub enum AuthErrorCode {
-    AuthenticationFailed,
-    TokenInvalid,
-    TokenExpired,
-    EmailAlreadyExists,
-    EmailAlreadyConfirmed,
-    RoleNotFound,
-    InternalServerError,
-    UserNotFound,
-    UserNotVerified,
-}
-
 impl error::Error for AuthError {}
 
 impl fmt::Display for AuthError {
@@ -47,6 +34,20 @@ impl fmt::Display for AuthError {
     }
 }
 
+#[derive(Debug)]
+pub enum AuthErrorCode {
+    AuthenticationFailed,
+    TokenInvalid,
+    TokenExpired,
+    EmailAlreadyExists,
+    EmailAlreadyConfirmed,
+    RoleNotFound,
+    UserNotFound,
+    UserNotVerified,
+    UserInvalidOldPassword,
+    InternalServerError,
+}
+
 impl fmt::Display for AuthErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -58,6 +59,7 @@ impl fmt::Display for AuthErrorCode {
             AuthErrorCode::RoleNotFound => write!(f, "ROLE_NOT_FOUND"),
             AuthErrorCode::UserNotFound => write!(f, "USER_NOT_FOUND"),
             AuthErrorCode::UserNotVerified => write!(f, "USER_NOT_VERIFIED"),
+            AuthErrorCode::UserInvalidOldPassword => write!(f, "USER_INVALID_OLD_PASSWORD"),
             AuthErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
     }
@@ -98,4 +100,20 @@ pub struct PermissionAuthEntity {
 pub struct RefreshTokenResult {
     pub access_token: String,
     pub refresh_token: String,
+}
+
+pub enum ChangePasswordError {
+    UserNotFound(&'static str),
+    UserInvalidOldPassword(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for ChangePasswordError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ChangePasswordError::UserNotFound(message) => write!(f, "{}", message),
+            ChangePasswordError::UserInvalidOldPassword(message) => write!(f, "{}", message),
+            ChangePasswordError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
 }
