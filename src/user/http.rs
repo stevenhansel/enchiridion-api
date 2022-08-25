@@ -34,6 +34,7 @@ pub struct ListUserContentResponse {
     pub email: String,
     pub role: ListUserContentRole,
     pub status: ListUserContentStatus,
+    pub is_email_confirmed: bool,
     pub registration_reason: Option<String>,
 }
 
@@ -110,6 +111,7 @@ pub async fn list_user(
                     label: u.status.clone().label().to_string(),
                     value: u.status.clone().value().to_string(),
                 },
+                is_email_confirmed: u.is_email_confirmed,
                 registration_reason: u.registration_reason,
             })
             .collect(),

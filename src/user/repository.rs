@@ -26,10 +26,11 @@ struct ListUserRow {
     pub user_id: i32,
     pub user_name: String,
     pub user_email: String,
+    pub user_status: UserStatus,
+    pub user_is_email_confirmed: bool,
+    pub user_registration_reason: Option<String>,
     pub role_id: i32,
     pub role_name: String,
-    pub user_status: UserStatus,
-    pub user_registration_reason: Option<String>,
 }
 
 #[async_trait]
@@ -83,10 +84,11 @@ impl UserRepositoryInterface for UserRepository {
                 "user"."id" as "user_id",
                 "user"."name" as "user_name",
                 "user"."email" as "user_email",
-                "role"."id" as "role_id",
-                "role"."name" as "role_name",
                 "user"."status" as "user_status",
-                "user"."registration_reason" as "user_registration_reason"
+                "user"."is_email_confirmed" as "user_is_email_confirmed",
+                "user"."registration_reason" as "user_registration_reason",
+                "role"."id" as "role_id",
+                "role"."name" as "role_name"
             from "user"
             join "role" on "role"."id" = "user"."role_id"
             left join lateral (
@@ -126,10 +128,11 @@ impl UserRepositoryInterface for UserRepository {
             user_id: row.get("user_id"),
             user_name: row.get("user_name"),
             user_email: row.get("user_email"),
+            user_status: row.get("user_status"),
+            user_is_email_confirmed: row.get("user_is_email_confirmed"),
+            user_registration_reason: row.get("user_registration_reason"),
             role_id: row.get("role_id"),
             role_name: row.get("role_name"),
-            user_status: row.get("user_status"),
-            user_registration_reason: row.get("user_registration_reason"),
         })
         .fetch_all(&self._db)
         .await?;
@@ -148,10 +151,11 @@ impl UserRepositoryInterface for UserRepository {
                 id: row.user_id,
                 name: row.user_name,
                 email: row.user_email,
-                role_id: row.role_id,
-                role_name: row.role_name,
                 status: row.user_status,
                 registration_reason: row.user_registration_reason,
+                is_email_confirmed: row.user_is_email_confirmed,
+                role_id: row.role_id,
+                role_name: row.role_name,
             })
             .collect();
 

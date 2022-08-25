@@ -34,6 +34,7 @@ pub struct User {
     pub role_id: i32,
     pub role_name: String,
     pub status: UserStatus,
+    pub is_email_confirmed: bool,
     pub registration_reason: Option<String>,
 }
 
