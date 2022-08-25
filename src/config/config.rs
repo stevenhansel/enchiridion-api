@@ -74,6 +74,11 @@ pub struct Configuration {
     pub aws_s3_presigning_url_expiration_seconds: i32,
 
     pub dashboard_baseurl: String,
+
+    pub default_user_name: Secret<String>,
+    pub default_user_email: Secret<String>,
+    pub default_user_password: Secret<String>,
+    pub default_user_role_id: i32,
 }
 
 impl Configuration {
@@ -111,6 +116,11 @@ impl Configuration {
             aws_s3_presigning_url_expiration_seconds: dotenvy::var("AWS_S3_PRESIGNING_URL_EXPIRATION_SECONDS")?.parse()?,
 
             dashboard_baseurl: dotenvy::var("DASHBOARD_BASEURL")?,
+
+            default_user_name: Secret::new(dotenvy::var("DEFAULT_USER_NAME")?),
+            default_user_email: Secret::new(dotenvy::var("DEFAULT_USER_EMAIL")?),
+            default_user_password: Secret::new(dotenvy::var("DEFAULT_USER_PASSWORD")?),
+            default_user_role_id: dotenvy::var("DEFAULT_USER_ROLE_ID")?.parse()?,
         })
     }
 
@@ -147,8 +157,12 @@ impl Configuration {
             aws_s3_bucket_name: env::var("AWS_S3_BUCKET_NAME")?,
             aws_s3_presigning_url_expiration_seconds: env::var("AWS_S3_PRESIGNING_URL_EXPIRATION_SECONDS")?.parse()?,
 
-
             dashboard_baseurl: env::var("DASHBOARD_BASEURL")?,
+            default_user_name: Secret::new(env::var("DEFAULT_USER_NAME")?),
+            default_user_email: Secret::new(env::var("DEFAULT_USER_EMAIL")?),
+            default_user_password: Secret::new(env::var("DEFAULT_USER_PASSWORD")?),
+            default_user_role_id: env::var("DEFAULT_USER_ROLE_ID")?.parse()?,
+
         })
     }
 }

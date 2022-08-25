@@ -15,11 +15,11 @@ use sha2::Sha256;
 use crate::config::Configuration;
 use crate::database::DatabaseError;
 use crate::email::{self, EmailParams};
-use crate::user::{InsertUserParams, UserRepositoryInterface, UserStatus};
+use crate::user::{InsertRawUserParams, InsertUserParams, UserRepositoryInterface, UserStatus};
 
 use super::{
     AuthEntity, AuthError, AuthRepositoryInterface, ChangePasswordError, RefreshTokenResult,
-    UserAuthEntity,
+    SeedDefaultUserError, UserAuthEntity,
 };
 
 type HmacSha256 = Hmac<Sha256>;
@@ -71,6 +71,7 @@ pub trait AuthServiceInterface {
         old_password: String,
         new_password: String,
     ) -> Result<(), ChangePasswordError>;
+    async fn seed_default_user(&self) -> Result<(), SeedDefaultUserError>;
 }
 
 pub struct AuthService {
@@ -659,6 +660,54 @@ impl AuthServiceInterface for AuthService {
             .await
         {
             return Err(ChangePasswordError::InternalServerError);
+        }
+
+        Ok(())
+    }
+
+    async fn seed_default_user(&self) -> Result<(), SeedDefaultUserError> {
+        match self
+            ._user_repository
+            .find_one_by_email(self._configuration.default_user_email.expose_secret().clone())
+            .await
+        {
+            Ok(_) => {
+                return Err(SeedDefaultUserError::EmailAlreadyExists(
+                    "Default user already exists",
+                ))
+            }
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {}
+                _ => return Err(SeedDefaultUserError::InternalServerError),
+            },
+        };
+
+        let hash = match Argon2::default().hash_password(
+            self._configuration
+                .default_user_password
+                .expose_secret()
+                .as_bytes(),
+            self._configuration.password_secret.expose_secret(),
+        ) {
+            Ok(p) => p.serialize(),
+            Err(_) => return Err(SeedDefaultUserError::InternalServerError),
+        };
+        let password = hash.to_string();
+
+        if let Err(_) = self
+            ._user_repository
+            .raw_create(InsertRawUserParams {
+                password,
+                name: self._configuration.default_user_name.expose_secret().clone(),
+                email: self._configuration.default_user_email.expose_secret().clone(),
+                role_id: self._configuration.default_user_role_id,
+                is_email_confirmed: true,
+                status: UserStatus::Approved,
+                registration_reason: None,
+            })
+            .await
+        {
+            return Err(SeedDefaultUserError::InternalServerError);
         }
 
         Ok(())

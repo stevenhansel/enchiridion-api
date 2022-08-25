@@ -242,6 +242,43 @@
     },
     "query": "\n            update \"announcement\"\n            set \"status\" = $2\n            where \"id\" = $1\n            "
   },
+  "3ccb627c2a479d750c35a5dea3a17cfb7be04b410dc97938e1184d508f06de26": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Bytea",
+          "Text",
+          "Int4",
+          "Bool",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_for_approval",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "name": "user_status"
+            }
+          }
+        ]
+      }
+    },
+    "query": "\n            insert into \"user\" (\n                name,\n                email,\n                password,\n                registration_reason,\n                role_id,\n                is_email_confirmed,\n                status\n            )\n            values($1, $2, $3, $4, $5, $6, $7)\n            returning id\n            "
+  },
   "42b49a33def36e8baec37f9808e20ab37cae80c89bc70bbbf029b24f4299a15e": {
     "describe": {
       "columns": [
@@ -281,6 +318,19 @@
       }
     },
     "query": "\n            update \"request\"\n            set\n                \"approved_by_lsc\" = $2,\n                \"approved_by_bm\" = $3,\n                \"lsc_approver\" = $4,\n                \"bm_approver\" = $5\n            where \"id\" = $1\n            "
+  },
+  "61e16ac1b9a9323be5d27b89dfb5c84e2d13f4b50736f7d5c48723c4f99b5d9b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Bytea"
+        ]
+      }
+    },
+    "query": "\n                update \"user\"\n                set \"password\" = $2\n                where \"id\" = $1\n                "
   },
   "6a2123012a4cef962441b6d47e9c0002a2d701f01ca6e423c146a2f7ccc886e5": {
     "describe": {
@@ -357,6 +407,30 @@
       }
     },
     "query": "\n                delete from \"floor\"\n                where \"id\" = $1\n            "
+  },
+  "b29d89ab9343c77c4ab4c814ce69269a0a9eab8755c0fd29f2d92b202b9e97a7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_for_approval",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "name": "user_status"
+            }
+          }
+        ]
+      }
+    },
+    "query": "\n                update \"user\"\n                set \"status\" = $2\n                where \"id\" = $1\n                "
   },
   "b9c20a54d894511f510fa4aaf2206836523510f94a85c0979b71da1bcdff04bc": {
     "describe": {

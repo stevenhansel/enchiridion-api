@@ -117,3 +117,17 @@ impl std::fmt::Display for ChangePasswordError {
         }
     }
 }
+
+pub enum SeedDefaultUserError {
+    EmailAlreadyExists(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for SeedDefaultUserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SeedDefaultUserError::EmailAlreadyExists(message) => write!(f, "{}", message),
+            SeedDefaultUserError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}

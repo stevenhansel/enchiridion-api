@@ -1,6 +1,6 @@
-use std::env;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
+use std::{env, process};
 
 use aws_config::meta::region::RegionProviderChain;
 
@@ -19,7 +19,9 @@ use enchiridion_api::startup::run;
 use enchiridion_api::config::Configuration;
 use enchiridion_api::{cloud_storage, email};
 
-use enchiridion_api::auth::{AuthRepository, AuthService};
+use enchiridion_api::auth::{
+    AuthRepository, AuthService, AuthServiceInterface, SeedDefaultUserError,
+};
 use enchiridion_api::building::{BuildingRepository, BuildingService};
 use enchiridion_api::role::{RoleRepository, RoleService};
 use enchiridion_api::user::{UserRepository, UserService};
@@ -111,6 +113,14 @@ async fn main() -> std::io::Result<()> {
         request_service.clone(),
         cloud_storage,
     ));
+
+    auth_service
+        .seed_default_user()
+        .await
+        .unwrap_or_else(|e| match e {
+            SeedDefaultUserError::InternalServerError => process::exit(1),
+            _ => {}
+        });
 
     let listener = TcpListener::bind(config.address)?;
     run(

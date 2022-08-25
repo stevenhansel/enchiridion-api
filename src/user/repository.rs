@@ -21,6 +21,16 @@ pub struct InsertUserParams {
     pub role_id: i32,
 }
 
+pub struct InsertRawUserParams {
+    pub name: String,
+    pub email: String,
+    pub password: String,
+    pub registration_reason: Option<String>,
+    pub role_id: i32,
+    pub is_email_confirmed: bool,
+    pub status: UserStatus,
+}
+
 struct ListUserRow {
     pub count: i32,
     pub user_id: i32,
@@ -36,6 +46,7 @@ struct ListUserRow {
 #[async_trait]
 pub trait UserRepositoryInterface {
     async fn create(&self, params: InsertUserParams) -> Result<i32, sqlx::Error>;
+    async fn raw_create(&self, params: InsertRawUserParams) -> Result<i32, sqlx::Error>;
     async fn find(&self, params: FindUserParams) -> Result<PaginationResult<User>, sqlx::Error>;
     async fn find_one_by_id(&self, id: i32) -> Result<UserDetail, sqlx::Error>;
     async fn find_one_by_email(&self, email: String) -> Result<UserDetail, sqlx::Error>;
@@ -68,6 +79,35 @@ impl UserRepositoryInterface for UserRepository {
             params.password.as_bytes(),
             params.registration_reason,
             params.role_id,
+        )
+        .fetch_one(&self._db)
+        .await?;
+
+        Ok(result.id)
+    }
+
+    async fn raw_create(&self, params: InsertRawUserParams) -> Result<i32, sqlx::Error> {
+        let result = sqlx::query!(
+            r#"
+            insert into "user" (
+                name,
+                email,
+                password,
+                registration_reason,
+                role_id,
+                is_email_confirmed,
+                status
+            )
+            values($1, $2, $3, $4, $5, $6, $7)
+            returning id
+            "#,
+            params.name,
+            params.email,
+            params.password.as_bytes(),
+            params.registration_reason,
+            params.role_id,
+            params.is_email_confirmed,
+            params.status as _,
         )
         .fetch_one(&self._db)
         .await?;
