@@ -16,7 +16,7 @@ use crate::device::{http as device_http, DeviceServiceInterface};
 use crate::floor::http as floor_http;
 use crate::request::{http as request_http, RequestServiceInterface};
 use crate::role::{http as role_http, RoleServiceInterface};
-use crate::user::UserServiceInterface;
+use crate::user::{http as user_http, UserServiceInterface};
 
 #[derive(Serialize)]
 struct HealthCheckResponse {
@@ -307,6 +307,17 @@ pub fn run(
                                     ))
                                     .to(request_http::list_request),
                             ),
+                    )
+                    .service(
+                        web::scope("/v1/users").service(
+                            web::resource("")
+                                .guard(guard::Get())
+                                .wrap(AuthenticationMiddlewareFactory::new(
+                                    auth_service.clone(),
+                                    role_service.clone(),
+                                ))
+                                .to(user_http::list_user),
+                        ),
                     ),
             )
     })

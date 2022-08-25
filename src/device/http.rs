@@ -137,7 +137,7 @@ pub async fn get_device_by_id(
             GetDeviceDetailByIdError::InternalServerError => {
                 return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
                     DeviceErrorCode::InternalServerError.to_string(),
-                    vec![DeviceErrorCode::InternalServerError.to_string()],
+                    vec![GetDeviceDetailByIdError::InternalServerError.to_string()],
                 ))
             }
         },
