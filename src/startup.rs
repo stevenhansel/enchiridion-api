@@ -113,7 +113,6 @@ pub fn run(
                                     .guard(guard::Put())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(auth_http::change_password),
                             )
@@ -122,17 +121,13 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(auth_http::me),
                             ),
                     )
                     .service(
                         web::scope("/v1/logout")
-                            .wrap(AuthenticationMiddlewareFactory::new(
-                                auth_service.clone(),
-                                role_service.clone(),
-                            ))
+                            .wrap(AuthenticationMiddlewareFactory::new(auth_service.clone()))
                             .route("", web::get().to(auth_http::logout)),
                     )
                     .service(
@@ -142,7 +137,6 @@ pub fn run(
                                     .guard(guard::Put())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(building_http::update),
                             )
@@ -151,7 +145,6 @@ pub fn run(
                                     .guard(guard::Delete())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(building_http::delete),
                             )
@@ -160,7 +153,6 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(building_http::list_buildings),
                             )
@@ -169,7 +161,6 @@ pub fn run(
                                     .guard(guard::Post())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(building_http::create),
                             ),
@@ -181,7 +172,6 @@ pub fn run(
                                     .guard(guard::Put())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(floor_http::update_floor),
                             )
@@ -190,7 +180,6 @@ pub fn run(
                                     .guard(guard::Delete())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(floor_http::delete_floor),
                             )
@@ -199,7 +188,6 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(floor_http::list_floor),
                             )
@@ -208,7 +196,6 @@ pub fn run(
                                     .guard(guard::Post())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(floor_http::create_floor),
                             ),
@@ -220,7 +207,6 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(device_http::get_device_by_id),
                             )
@@ -229,7 +215,6 @@ pub fn run(
                                     .guard(guard::Put())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(device_http::update_device),
                             )
@@ -238,7 +223,6 @@ pub fn run(
                                     .guard(guard::Delete())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(device_http::delete_device),
                             )
@@ -247,7 +231,6 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(device_http::list_device),
                             )
@@ -256,7 +239,6 @@ pub fn run(
                                     .guard(guard::Post())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(device_http::create_device),
                             ),
@@ -268,7 +250,6 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(announcement_http::get_announcement_media_presigned_url),
                             )
@@ -277,7 +258,6 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(announcement_http::get_announcement_detail),
                             )
@@ -286,7 +266,6 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(announcement_http::list_announcement),
                             )
@@ -295,7 +274,6 @@ pub fn run(
                                     .guard(guard::Post())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(announcement_http::create_announcement),
                             ),
@@ -307,7 +285,6 @@ pub fn run(
                                     .guard(guard::Put())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(request_http::update_request_approval),
                             )
@@ -316,7 +293,6 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(request_http::list_request),
                             ),
@@ -328,7 +304,6 @@ pub fn run(
                                     .guard(guard::Put())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(user_http::update_user_approval),
                             )
@@ -337,7 +312,6 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(AuthenticationMiddlewareFactory::new(
                                         auth_service.clone(),
-                                        role_service.clone(),
                                     ))
                                     .to(user_http::list_user),
                             ),

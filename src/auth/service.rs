@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::str;
 use std::sync::Arc;
 
+use actix_web::cookie::Cookie;
 use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier},
     Argon2,
@@ -12,14 +13,14 @@ use jwt::{SignWithKey, VerifyWithKey};
 use secrecy::ExposeSecret;
 use sha2::Sha256;
 
-use crate::config::Configuration;
 use crate::database::DatabaseError;
 use crate::email::{self, EmailParams};
 use crate::user::{InsertRawUserParams, InsertUserParams, UserRepositoryInterface, UserStatus};
+use crate::{config::Configuration, role::RoleServiceInterface};
 
 use super::{
-    AuthEntity, AuthError, AuthRepositoryInterface, ChangePasswordError, RefreshTokenResult,
-    SeedDefaultUserError, UserAuthEntity,
+    AuthEntity, AuthError, AuthRepositoryInterface, AuthenticateError, ChangePasswordError,
+    RefreshTokenResult, SeedDefaultUserError, UserAuthEntity,
 };
 
 type HmacSha256 = Hmac<Sha256>;
@@ -72,11 +73,17 @@ pub trait AuthServiceInterface {
         new_password: String,
     ) -> Result<(), ChangePasswordError>;
     async fn seed_default_user(&self) -> Result<(), SeedDefaultUserError>;
+    async fn authenticate(
+        &self,
+        cookie: Option<Cookie<'static>>,
+        permission: Option<&'static str>,
+    ) -> Result<i32, AuthenticateError>;
 }
 
 pub struct AuthService {
     _user_repository: Arc<dyn UserRepositoryInterface + Send + Sync + 'static>,
     _auth_repository: Arc<dyn AuthRepositoryInterface + Send + Sync + 'static>,
+    _role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
     _email: email::Client,
     _configuration: Configuration,
 }
@@ -85,12 +92,14 @@ impl AuthService {
     pub fn new(
         _user_repository: Arc<dyn UserRepositoryInterface + Send + Sync + 'static>,
         _auth_repository: Arc<dyn AuthRepositoryInterface + Send + Sync + 'static>,
+        _role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
         _email: email::Client,
         _configuration: Configuration,
     ) -> AuthService {
         AuthService {
             _user_repository,
             _auth_repository,
+            _role_service,
             _email,
             _configuration,
         }
@@ -668,7 +677,12 @@ impl AuthServiceInterface for AuthService {
     async fn seed_default_user(&self) -> Result<(), SeedDefaultUserError> {
         match self
             ._user_repository
-            .find_one_by_email(self._configuration.default_user_email.expose_secret().clone())
+            .find_one_by_email(
+                self._configuration
+                    .default_user_email
+                    .expose_secret()
+                    .clone(),
+            )
             .await
         {
             Ok(_) => {
@@ -698,8 +712,16 @@ impl AuthServiceInterface for AuthService {
             ._user_repository
             .raw_create(InsertRawUserParams {
                 password,
-                name: self._configuration.default_user_name.expose_secret().clone(),
-                email: self._configuration.default_user_email.expose_secret().clone(),
+                name: self
+                    ._configuration
+                    .default_user_name
+                    .expose_secret()
+                    .clone(),
+                email: self
+                    ._configuration
+                    .default_user_email
+                    .expose_secret()
+                    .clone(),
                 role_id: self._configuration.default_user_role_id,
                 is_email_confirmed: true,
                 status: UserStatus::Approved,
@@ -711,5 +733,71 @@ impl AuthServiceInterface for AuthService {
         }
 
         Ok(())
+    }
+
+    async fn authenticate(
+        &self,
+        cookie: Option<Cookie<'static>>,
+        permission: Option<&'static str>,
+    ) -> Result<i32, AuthenticateError> {
+        let access_token = match cookie {
+            Some(cookie) => cookie.value().to_string(),
+            None => {
+                return Err(AuthenticateError::AuthenticationFailed(
+                    "Authentication failed, Token expired or invalid",
+                ))
+            }
+        };
+
+        let claims = match self.decode_access_token(access_token) {
+            Ok(claims) => claims,
+            Err(e) => match e {
+                AuthError::TokenInvalid(_) => {
+                    return Err(AuthenticateError::AuthenticationFailed(
+                        "Authentication failed, Token expired or invalid",
+                    ))
+                }
+                AuthError::TokenExpired(_) => {
+                    return Err(AuthenticateError::AuthenticationFailed(
+                        "Authentication failed, Token expired or invalid",
+                    ))
+                }
+                _ => return Err(AuthenticateError::InternalServerError),
+            },
+        };
+
+        let user_id = match claims["user_id"].parse::<i32>() {
+            Ok(id) => id,
+            Err(_) => {
+                return Err(AuthenticateError::AuthenticationFailed(
+                    "Authentication failed, Token expired or invalid",
+                ))
+            }
+        };
+
+        if let Some(permission) = permission {
+            let role_id = match claims["role_id"].parse::<i32>() {
+                Ok(id) => id,
+                Err(_) => {
+                    return Err(AuthenticateError::AuthenticationFailed(
+                        "Authentication failed, Token expired or invalid",
+                    ))
+                }
+            };
+
+            let permissions: Vec<String> =
+                match self._role_service.get_permissions_by_role_id(role_id).await {
+                    Ok(permissions) => permissions.into_iter().map(|p| p.name).collect(),
+                    Err(_) => return Err(AuthenticateError::InternalServerError),
+                };
+
+            if !permissions.contains(&permission.to_string()) {
+                return Err(AuthenticateError::ForbiddenPermission(
+                    "User doesn't have the permission to access the designated route",
+                ));
+            }
+        }
+
+        Ok(user_id)
     }
 }

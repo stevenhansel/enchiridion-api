@@ -1,10 +1,4 @@
-// the logic for the auth middleware
-// - get the access token jwt from bearer: Authorization
-// - decode the token and check whether the token is valid or not / still expired (auth service)
-// - return user_id so that it can be accessed in the controller level
-use core::fmt;
 use std::{
-    error,
     future::{ready, Ready},
     rc::Rc,
     sync::Arc,
@@ -18,64 +12,16 @@ use futures::future::LocalBoxFuture;
 use futures::FutureExt;
 
 use crate::{
-    auth::{AuthError, AuthServiceInterface},
+    auth::{AuthErrorCode, AuthServiceInterface, AuthenticateError},
     http::HttpErrorResponse,
-    role::RoleServiceInterface,
 };
 
-#[derive(Debug, Clone, Copy)]
-pub enum AuthenticationMiddlewareError<'a> {
-    AuthenticationFailed(&'a str),
-    ForbiddenPermission(&'a str),
-    InternalServerError,
-}
-
-#[derive(Debug)]
-pub enum AuthenticationMiddlewareErrorCode {
-    AuthenticationFailed,
-    ForbiddenPermission,
-    InternalServerError,
-}
-
-impl<'a> error::Error for AuthenticationMiddlewareError<'a> {}
-
-impl<'a> fmt::Display for AuthenticationMiddlewareError<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            AuthenticationMiddlewareError::AuthenticationFailed(message) => {
-                write!(f, "{}", message)
-            }
-            AuthenticationMiddlewareError::ForbiddenPermission(message) => write!(f, "{}", message),
-            AuthenticationMiddlewareError::InternalServerError => {
-                write!(f, "Internal Server Error")
-            }
-        }
-    }
-}
-
-impl fmt::Display for AuthenticationMiddlewareErrorCode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            AuthenticationMiddlewareErrorCode::AuthenticationFailed => {
-                write!(f, "AUTHENTICATION_FAILED")
-            }
-            AuthenticationMiddlewareErrorCode::ForbiddenPermission => {
-                write!(f, "FORBIDDEN_PERMISSION")
-            }
-            AuthenticationMiddlewareErrorCode::InternalServerError => {
-                write!(f, "INTERNAL_SERVER_ERROR")
-            }
-        }
-    }
-}
-
-pub type AuthenticationInfoResult<'a> = Result<i32, AuthenticationMiddlewareError<'a>>;
-pub type AuthenticationInfo<'a> = Rc<AuthenticationInfoResult<'a>>;
+pub type AuthenticationInfoResult = Result<i32, AuthenticateError>;
+pub type AuthenticationInfo = Rc<AuthenticationInfoResult>;
 
 pub struct AuthenticationMiddleware<S> {
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
-    role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
-    permission: Option<String>,
+    permission: Option<&'static str>,
     service: Rc<S>,
 }
 
@@ -92,75 +38,12 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let service = self.service.clone();
         let auth_service = self.auth_service.clone();
-        // let role_service = self.role_service.clone();
-        // let permission = self.permission.clone();
+        let permission = self.permission.clone();
 
         async move {
-            // TOOD: move the func to the service
-            let func = || {
-                let access_token = match req.cookie("access_token") {
-                    Some(cookie) => cookie.value().to_string(),
-                    None => {
-                        return Err(AuthenticationMiddlewareError::AuthenticationFailed(
-                            "Authentication failed, Token expired or invalid",
-                        ))
-                    }
-                };
-
-                let claims = match auth_service.decode_access_token(access_token) {
-                    Ok(claims) => claims,
-                    Err(e) => match e {
-                        AuthError::TokenInvalid(_) => {
-                            return Err(AuthenticationMiddlewareError::AuthenticationFailed(
-                                "Authentication failed, Token expired or invalid",
-                            ))
-                        }
-                        AuthError::TokenExpired(_) => {
-                            return Err(AuthenticationMiddlewareError::AuthenticationFailed(
-                                "Authentication failed, Token expired or invalid",
-                            ))
-                        }
-                        _ => return Err(AuthenticationMiddlewareError::InternalServerError),
-                    },
-                };
-
-                let user_id = match claims["user_id"].parse::<i32>() {
-                    Ok(id) => id,
-                    Err(_) => {
-                        return Err(AuthenticationMiddlewareError::AuthenticationFailed(
-                            "Authentication failed, Token expired or invalid",
-                        ))
-                    }
-                };
-
-                Ok(user_id)
-            };
-
-            // if let Some(permission) = permission {
-            //     let role_id = match claims["role_id"].parse::<i32>() {
-            //         Ok(id) => id,
-            //         Err(_) => {
-            //             return Err(AuthenticationMiddlewareError::AuthenticationFailed(
-            //                 "Authentication failed, Token expired or invalid",
-            //             ))
-            //         }
-            //     };
-
-            //     let permissions: Vec<String> = match role_service
-            //         .get_permissions_by_role_id(role_id).await
-            //     {
-            //         Ok(permissions) => permissions.into_iter().map(|p| p.name).collect(),
-            //         Err(_) => return Err(AuthenticationMiddlewareError::InternalServerError),
-            //     };
-
-            //     if !permissions.contains(&permission) {
-            //         return Err(AuthenticationMiddlewareError::ForbiddenPermission(
-            //             "User doesn't have the permission to access the designated route",
-            //         ));
-            //     }
-            // }
-
-            let result = func();
+            let result = auth_service
+                .authenticate(req.cookie("access_token"), permission)
+                .await;
             req.extensions_mut()
                 .insert::<AuthenticationInfo>(Rc::new(result));
 
@@ -172,24 +55,19 @@ where
 
 pub struct AuthenticationMiddlewareFactory {
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
-    role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
-    permission: Option<String>,
+    permission: Option<&'static str>,
 }
 
 impl AuthenticationMiddlewareFactory {
-    pub fn new(
-        auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
-        role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
-    ) -> Self {
+    pub fn new(auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>) -> Self {
         AuthenticationMiddlewareFactory {
             auth_service,
-            role_service,
             permission: None,
         }
     }
 
-    pub fn with_permission(mut self, permission: &str) -> Self {
-        self.permission = Some(permission.to_string());
+    pub fn with_permission(mut self, permission: &'static str) -> Self {
+        self.permission = Some(permission);
         self
     }
 }
@@ -207,16 +85,15 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(AuthenticationMiddleware {
             auth_service: self.auth_service.clone(),
-            role_service: self.role_service.clone(),
-            permission: self.permission.clone(),
+            permission: self.permission,
             service: Rc::new(service),
         }))
     }
 }
 
-pub struct AuthenticationContext<'a>(pub Option<AuthenticationInfo<'a>>);
+pub struct AuthenticationContext(pub Option<AuthenticationInfo>);
 
-impl FromRequest for AuthenticationContext<'_> {
+impl FromRequest for AuthenticationContext {
     type Error = Error;
     type Future = Ready<Result<Self, Self::Error>>;
 
@@ -229,46 +106,46 @@ impl FromRequest for AuthenticationContext<'_> {
     }
 }
 
-impl<'a> std::ops::Deref for AuthenticationContext<'a> {
-    type Target = Option<AuthenticationInfo<'a>>;
+impl std::ops::Deref for AuthenticationContext {
+    type Target = Option<AuthenticationInfo>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-pub fn derive_user_id(
-    auth: AuthenticationContext,
-) -> Result<i32, AuthenticationMiddlewareError> {
+pub fn derive_user_id(auth: AuthenticationContext) -> Result<i32, AuthenticateError> {
     if let Some(context) = auth.0 {
-        return match *context {
+        let ctx = Rc::try_unwrap(context).unwrap();
+
+        return match ctx {
             Ok(user_id) => Ok(user_id),
             Err(e) => Err(e),
         };
-    } 
+    }
 
     // TODO: if middleware doesn't exist
     Ok(-1)
 }
 
-pub fn derive_authentication_middleware_error(e: AuthenticationMiddlewareError) -> HttpResponse {
+pub fn derive_authentication_middleware_error(e: AuthenticateError) -> HttpResponse {
     match e {
-        AuthenticationMiddlewareError::AuthenticationFailed(message) => {
+        AuthenticateError::AuthenticationFailed(message) => {
             return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
-                AuthenticationMiddlewareErrorCode::AuthenticationFailed.to_string(),
+                AuthErrorCode::AuthenticationFailed.to_string(),
                 vec![message.to_string()],
             ))
         }
-        AuthenticationMiddlewareError::ForbiddenPermission(message) => {
+        AuthenticateError::ForbiddenPermission(message) => {
             return HttpResponse::Forbidden().json(HttpErrorResponse::new(
-                AuthenticationMiddlewareErrorCode::ForbiddenPermission.to_string(),
+                AuthErrorCode::ForbiddenPermission.to_string(),
                 vec![message.to_string()],
             ))
         }
-        AuthenticationMiddlewareError::InternalServerError => {
+        AuthenticateError::InternalServerError => {
             return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
-                AuthenticationMiddlewareErrorCode::InternalServerError.to_string(),
-                vec![AuthenticationMiddlewareError::InternalServerError.to_string()],
+                AuthErrorCode::InternalServerError.to_string(),
+                vec![AuthenticateError::InternalServerError.to_string()],
             ))
         }
     }

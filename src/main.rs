@@ -97,6 +97,7 @@ async fn main() -> std::io::Result<()> {
     let auth_service = Arc::new(AuthService::new(
         user_repository.clone(),
         auth_repository.clone(),
+        role_service.clone(),
         email_client,
         config.clone(),
     ));

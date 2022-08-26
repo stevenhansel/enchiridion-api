@@ -60,7 +60,7 @@ pub struct ListFloorDeviceContent {
 
 pub async fn list_floor(
     floor_service: web::Data<Arc<dyn FloorServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     query_params: web::Query<ListFloorQueryParams>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
@@ -137,8 +137,13 @@ pub struct CreateFloorBody {
 
 pub async fn create_floor(
     floor_service: web::Data<Arc<dyn FloorServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext,
     body: web::Json<CreateFloorBody>,
 ) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
     if let Err(e) = body.validate() {
         let e = ApiValidationError::new(e);
 
@@ -188,9 +193,14 @@ pub struct UpdateFloorBody {
 
 pub async fn update_floor(
     floor_service: web::Data<Arc<dyn FloorServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext,
     body: web::Json<CreateFloorBody>,
     path: web::Path<i32>,
 ) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
     let floor_id = path.into_inner();
 
     if let Err(e) = floor_service
@@ -230,8 +240,13 @@ pub async fn update_floor(
 
 pub async fn delete_floor(
     floor_service: web::Data<Arc<dyn FloorServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext,
     path: web::Path<i32>,
 ) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
     let floor_id = path.into_inner();
 
     if let Err(e) = floor_service.delete_floor(floor_id).await {

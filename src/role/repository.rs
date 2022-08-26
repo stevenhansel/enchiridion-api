@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use redis::{Commands, RedisError};
+use redis::Commands;
 use sqlx::{Pool, Postgres};
 
 use super::{Permission, Role};

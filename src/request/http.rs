@@ -77,7 +77,7 @@ pub struct ListRequestContentAction {
 
 pub async fn list_request(
     request_service: web::Data<Arc<dyn RequestServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     query_params: web::Query<ListRequestQueryParams>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
@@ -158,7 +158,7 @@ pub struct UpdateRequestApprovalBody {
 
 pub async fn update_request_approval(
     request_service: web::Data<Arc<dyn RequestServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     body: web::Json<UpdateRequestApprovalBody>,
     request_id: web::Path<i32>,
 ) -> HttpResponse {

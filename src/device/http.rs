@@ -46,7 +46,7 @@ pub struct ListDeviceContent {
 
 pub async fn list_device(
     device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     query_params: web::Query<ListDeviceQueryParams>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
@@ -116,7 +116,7 @@ pub struct DeviceDetailResponse {
 
 pub async fn get_device_by_id(
     device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     path: web::Path<i32>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
@@ -174,7 +174,7 @@ pub struct CreateDeviceResponse {
 
 pub async fn create_device(
     device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     body: web::Json<CreateDeviceBody>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
@@ -232,7 +232,7 @@ pub struct UpdateDeviceBody {
 
 pub async fn update_device(
     device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     body: web::Json<UpdateDeviceBody>,
     path: web::Path<i32>,
 ) -> HttpResponse {
@@ -286,7 +286,7 @@ pub async fn update_device(
 
 pub async fn delete_device(
     device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     path: web::Path<i32>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {

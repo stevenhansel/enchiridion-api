@@ -218,7 +218,7 @@ pub async fn parse_create_announcement_multipart(
 
 pub async fn create_announcement(
     announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     multipart: Multipart,
 ) -> HttpResponse {
     let user_id = match derive_user_id(auth) {
@@ -309,7 +309,7 @@ pub struct AnnouncementAuthorObject {
 
 pub async fn list_announcement(
     announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     query_params: web::Query<ListAnnouncementQueryParams>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
@@ -401,7 +401,7 @@ pub struct GetAnnouncementDetailDevice {
 
 pub async fn get_announcement_detail(
     announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     announcement_id: web::Path<i32>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
@@ -467,7 +467,7 @@ pub struct GetAnnouncementMediaPresignedURLResponse {
 
 pub async fn get_announcement_media_presigned_url(
     announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     announcement_id: web::Path<i32>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {

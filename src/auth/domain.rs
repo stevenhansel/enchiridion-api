@@ -45,6 +45,7 @@ pub enum AuthErrorCode {
     UserNotFound,
     UserNotVerified,
     UserInvalidOldPassword,
+    ForbiddenPermission,
     InternalServerError,
 }
 
@@ -60,6 +61,7 @@ impl fmt::Display for AuthErrorCode {
             AuthErrorCode::UserNotFound => write!(f, "USER_NOT_FOUND"),
             AuthErrorCode::UserNotVerified => write!(f, "USER_NOT_VERIFIED"),
             AuthErrorCode::UserInvalidOldPassword => write!(f, "USER_INVALID_OLD_PASSWORD"),
+            AuthErrorCode::ForbiddenPermission => write!(f, "FORBIDDEN_PERMISSION"),
             AuthErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
     }
@@ -128,6 +130,23 @@ impl std::fmt::Display for SeedDefaultUserError {
         match self {
             SeedDefaultUserError::EmailAlreadyExists(message) => write!(f, "{}", message),
             SeedDefaultUserError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum AuthenticateError {
+    AuthenticationFailed(&'static str),
+    ForbiddenPermission(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for AuthenticateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AuthenticateError::AuthenticationFailed(message) => write!(f, "{}", message),
+            AuthenticateError::ForbiddenPermission(message) => write!(f, "{}", message),
+            AuthenticateError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
 }

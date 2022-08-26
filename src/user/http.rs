@@ -54,7 +54,7 @@ pub struct ListUserContentStatus {
 
 pub async fn list_user(
     user_service: web::Data<Arc<dyn UserServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     query_params: web::Query<ListUserQueryParams>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
@@ -135,7 +135,7 @@ pub enum UserApprovalAction {
 
 pub async fn update_user_approval(
     user_service: web::Data<Arc<dyn UserServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     path: web::Path<String>,
     body: web::Json<UpdateUserApprovalBody>,
 ) -> HttpResponse {

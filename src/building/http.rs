@@ -30,7 +30,7 @@ pub struct ListBuildingsResponse {
 
 pub async fn list_buildings(
     building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
         return derive_authentication_middleware_error(e);
@@ -76,7 +76,7 @@ pub struct CreateBody {
 pub async fn create(
     body: web::Json<CreateBody>,
     building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
         return derive_authentication_middleware_error(e);
@@ -129,7 +129,7 @@ pub struct UpdateBody {
 
 pub async fn update(
     building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     path: web::Path<i32>,
     body: web::Json<UpdateBody>,
 ) -> HttpResponse {
@@ -180,7 +180,7 @@ pub async fn update(
 
 pub async fn delete(
     building_service: web::Data<Arc<dyn BuildingServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     path: web::Path<i32>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {

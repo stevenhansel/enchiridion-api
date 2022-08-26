@@ -432,7 +432,7 @@ pub async fn refresh_token(
 
 pub async fn me(
     auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
 ) -> HttpResponse {
     let user_id = match derive_user_id(auth) {
         Ok(id) => id,
@@ -489,7 +489,7 @@ pub async fn me(
 
 pub async fn logout(
     auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
 ) -> HttpResponse {
     let user_id = match derive_user_id(auth) {
         Ok(id) => id,
@@ -558,7 +558,7 @@ pub struct ChangePasswordBody {
 
 pub async fn change_password(
     auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
-    auth: AuthenticationContext<'_>,
+    auth: AuthenticationContext,
     body: web::Json<ChangePasswordBody>,
 ) -> HttpResponse {
     let user_id = match derive_user_id(auth) {
