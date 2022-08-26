@@ -7,8 +7,9 @@ use validator::Validate;
 
 use crate::http::{
     derive_authentication_middleware_error, derive_user_id, ApiValidationError,
-    AuthenticationContext, HttpErrorResponse,
+    AuthenticationContext, HttpErrorResponse, API_VALIDATION_ERROR_CODE,
 };
+use crate::role::RoleServiceInterface;
 
 use super::service::AuthServiceInterface;
 use super::{AuthError, AuthErrorCode, ChangePasswordError, LoginParams, RegisterParams};
@@ -26,11 +27,12 @@ pub struct RegisterBody {
     ))]
     password: String,
     reason: Option<String>,
-    role_id: i32,
+    role: String,
 }
 
 pub async fn register(
     auth_service: web::Data<Arc<dyn AuthServiceInterface + Send + Sync + 'static>>,
+    role_service: web::Data<Arc<dyn RoleServiceInterface + Send + Sync + 'static>>,
     body: web::Json<RegisterBody>,
 ) -> HttpResponse {
     if let Err(e) = body.validate() {
@@ -39,13 +41,26 @@ pub async fn register(
         return HttpResponse::BadRequest().json(HttpErrorResponse::new(e.code(), e.messages()));
     }
 
+    let role_values: Vec<&'static str> = role_service
+        .list_role()
+        .into_iter()
+        .map(|r| r.value)
+        .collect();
+
+    if !role_values.contains(&body.role.as_str()) {
+        return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+            API_VALIDATION_ERROR_CODE.to_string(),
+            vec!["Value of the role is invalid".into()],
+        ));
+    }
+
     if let Err(e) = auth_service
         .register(RegisterParams {
             name: body.name.to_string(),
             email: body.email.to_string(),
             password: body.password.to_string(),
             reason: body.reason.clone(),
-            role_id: body.role_id,
+            role: body.role.clone(),
         })
         .await
     {
@@ -191,20 +206,6 @@ pub async fn confirm_email(
         },
     };
 
-    let mut permissions: Vec<PermissionObject> = vec![];
-    for p in result.entity.role.permissions {
-        permissions.push(PermissionObject {
-            id: p.id,
-            name: p.name,
-        });
-    }
-
-    let role = RoleObject {
-        id: result.entity.role.id,
-        name: result.entity.role.name,
-        permissions,
-    };
-
     let response = AuthEntityObject {
         id: result.entity.id,
         name: result.entity.name,
@@ -215,7 +216,20 @@ pub async fn confirm_email(
             value: result.entity.user_status.clone().value().to_string(),
             label: result.entity.user_status.clone().label().to_string(),
         },
-        role,
+        role: RoleObject {
+            name: result.entity.role.name,
+            description: result.entity.role.description,
+            permissions: result
+                .entity
+                .role
+                .permissions
+                .into_iter()
+                .map(|p| PermissionObject {
+                    label: p.label,
+                    value: p.value,
+                })
+                .collect(),
+        },
     };
 
     let access_token_cookie = Cookie::build("access_token", result.access_token)
@@ -266,16 +280,16 @@ pub struct UserStatusObject {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoleObject {
-    pub id: i32,
-    pub name: String,
+    pub name: &'static str,
+    pub description: &'static str,
     pub permissions: Vec<PermissionObject>,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PermissionObject {
-    pub id: i32,
-    pub name: String,
+    pub label: &'static str,
+    pub value: &'static str,
 }
 
 pub async fn login(
@@ -318,20 +332,6 @@ pub async fn login(
         },
     };
 
-    let mut permissions: Vec<PermissionObject> = vec![];
-    for p in result.entity.role.permissions {
-        permissions.push(PermissionObject {
-            id: p.id,
-            name: p.name,
-        });
-    }
-
-    let role = RoleObject {
-        id: result.entity.role.id,
-        name: result.entity.role.name,
-        permissions,
-    };
-
     let response = AuthEntityObject {
         id: result.entity.id,
         name: result.entity.name,
@@ -342,7 +342,20 @@ pub async fn login(
             value: result.entity.user_status.clone().value().to_string(),
             label: result.entity.user_status.clone().label().to_string(),
         },
-        role,
+        role: RoleObject {
+            name: result.entity.role.name,
+            description: result.entity.role.description,
+            permissions: result
+                .entity
+                .role
+                .permissions
+                .into_iter()
+                .map(|p| PermissionObject {
+                    label: p.label,
+                    value: p.value,
+                })
+                .collect(),
+        },
     };
 
     let access_token_cookie = Cookie::build("access_token", result.access_token)
@@ -457,20 +470,6 @@ pub async fn me(
         },
     };
 
-    let mut permissions: Vec<PermissionObject> = vec![];
-    for p in entity.role.permissions {
-        permissions.push(PermissionObject {
-            id: p.id,
-            name: p.name,
-        });
-    }
-
-    let role = RoleObject {
-        id: entity.role.id,
-        name: entity.role.name,
-        permissions,
-    };
-
     let response = AuthEntityObject {
         id: entity.id,
         name: entity.name,
@@ -481,7 +480,19 @@ pub async fn me(
             value: entity.user_status.clone().value().to_string(),
             label: entity.user_status.clone().label().to_string(),
         },
-        role,
+        role: RoleObject {
+            name: entity.role.name,
+            description: entity.role.description,
+            permissions: entity
+                .role
+                .permissions
+                .into_iter()
+                .map(|p| PermissionObject {
+                    label: p.label,
+                    value: p.value,
+                })
+                .collect(),
+        },
     };
 
     HttpResponse::Ok().json(response)

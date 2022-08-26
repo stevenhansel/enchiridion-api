@@ -1,7 +1,10 @@
 use async_trait::async_trait;
 use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
-use crate::database::PaginationResult;
+use crate::{
+    database::PaginationResult,
+    role::{PermissionObject, RoleObject, DEFAULT_ROLES},
+};
 
 use super::domain::{User, UserDetail, UserStatus};
 
@@ -10,7 +13,7 @@ pub struct FindUserParams {
     pub limit: i32,
     pub query: Option<String>,
     pub status: Option<UserStatus>,
-    pub role_id: Option<i32>,
+    pub role: Option<String>,
 }
 
 pub struct InsertUserParams {
@@ -18,7 +21,7 @@ pub struct InsertUserParams {
     pub email: String,
     pub password: String,
     pub registration_reason: Option<String>,
-    pub role_id: i32,
+    pub role: String,
 }
 
 pub struct InsertRawUserParams {
@@ -26,7 +29,7 @@ pub struct InsertRawUserParams {
     pub email: String,
     pub password: String,
     pub registration_reason: Option<String>,
-    pub role_id: i32,
+    pub role: String,
     pub is_email_confirmed: bool,
     pub status: UserStatus,
 }
@@ -39,8 +42,7 @@ struct ListUserRow {
     pub user_status: UserStatus,
     pub user_is_email_confirmed: bool,
     pub user_registration_reason: Option<String>,
-    pub role_id: i32,
-    pub role_name: String,
+    pub user_role: String,
 }
 
 #[async_trait]
@@ -63,6 +65,27 @@ impl UserRepository {
     pub fn new(_db: Pool<Postgres>) -> UserRepository {
         UserRepository { _db }
     }
+
+    pub fn populate_role(&self, role: String) -> RoleObject {
+        let roles: Vec<RoleObject> = DEFAULT_ROLES
+            .into_iter()
+            .map(|r| RoleObject {
+                name: r.name,
+                value: r.value,
+                description: r.description,
+                permissions: r
+                    .permissions
+                    .into_iter()
+                    .map(|p| PermissionObject {
+                        label: p.label(),
+                        value: p.value(),
+                    })
+                    .collect(),
+            })
+            .collect();
+
+        roles.into_iter().find(|r| r.value == role).unwrap()
+    }
 }
 
 #[async_trait]
@@ -70,7 +93,7 @@ impl UserRepositoryInterface for UserRepository {
     async fn create(&self, params: InsertUserParams) -> Result<i32, sqlx::Error> {
         let result = sqlx::query!(
             r#"
-            insert into "user" (name, email, password, registration_reason, role_id)
+            insert into "user" (name, email, password, registration_reason, role)
             values($1, $2, $3, $4, $5)
             returning id
             "#,
@@ -78,7 +101,7 @@ impl UserRepositoryInterface for UserRepository {
             params.email,
             params.password.as_bytes(),
             params.registration_reason,
-            params.role_id,
+            params.role,
         )
         .fetch_one(&self._db)
         .await?;
@@ -94,7 +117,7 @@ impl UserRepositoryInterface for UserRepository {
                 email,
                 password,
                 registration_reason,
-                role_id,
+                role,
                 is_email_confirmed,
                 status
             )
@@ -105,7 +128,7 @@ impl UserRepositoryInterface for UserRepository {
             params.email,
             params.password.as_bytes(),
             params.registration_reason,
-            params.role_id,
+            params.role,
             params.is_email_confirmed,
             params.status as _,
         )
@@ -128,10 +151,8 @@ impl UserRepositoryInterface for UserRepository {
                 "user"."status" as "user_status",
                 "user"."is_email_confirmed" as "user_is_email_confirmed",
                 "user"."registration_reason" as "user_registration_reason",
-                "role"."id" as "role_id",
-                "role"."name" as "role_name"
+                "user"."role" as "user_role"
             from "user"
-            join "role" on "role"."id" = "user"."role_id"
             left join lateral (
                 select count(*) from "user"
                 where
@@ -143,7 +164,7 @@ impl UserRepositoryInterface for UserRepository {
                         "user"."name" ilike concat('%', $3, '%')
                     ) and
                     ($4::user_status is null or "user"."status" = $4) and
-                    ($5::integer is null or "user"."role_id" = $5)
+                    ($5::text is null or "user"."role" = $5)
             ) "result" on true
             where
                 (
@@ -154,7 +175,7 @@ impl UserRepositoryInterface for UserRepository {
                     "user"."name" ilike concat('%', $3, '%')
                 ) and
                 ($4::user_status is null or "user"."status" = $4) and
-                ($5::integer is null or "user"."role_id" = $5)
+                ($5::text is null or "user"."role" = $5)
             order by "user"."id" desc
             offset $1 limit $2
             "#,
@@ -163,7 +184,7 @@ impl UserRepositoryInterface for UserRepository {
         .bind(params.limit)
         .bind(params.query)
         .bind(params.status)
-        .bind(params.role_id)
+        .bind(params.role)
         .map(|row: PgRow| ListUserRow {
             count: row.get("count"),
             user_id: row.get("user_id"),
@@ -172,8 +193,7 @@ impl UserRepositoryInterface for UserRepository {
             user_status: row.get("user_status"),
             user_is_email_confirmed: row.get("user_is_email_confirmed"),
             user_registration_reason: row.get("user_registration_reason"),
-            role_id: row.get("role_id"),
-            role_name: row.get("role_name"),
+            user_role: row.get("user_role"),
         })
         .fetch_all(&self._db)
         .await?;
@@ -195,8 +215,7 @@ impl UserRepositoryInterface for UserRepository {
                 status: row.user_status,
                 registration_reason: row.user_registration_reason,
                 is_email_confirmed: row.user_is_email_confirmed,
-                role_id: row.role_id,
-                role_name: row.role_name,
+                role: self.populate_role(row.user_role),
             })
             .collect();
 
@@ -275,7 +294,7 @@ impl UserRepositoryInterface for UserRepository {
                 update "user"
                 set "status" = $2
                 where "id" = $1
-                "#,
+            "#,
             user_id,
             match approve {
                 true => UserStatus::Approved,

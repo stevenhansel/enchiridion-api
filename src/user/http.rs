@@ -23,7 +23,7 @@ pub struct ListUserQueryParams {
     pub limit: Option<i32>,
     pub query: Option<String>,
     pub status: Option<UserStatus>,
-    pub role_id: Option<i32>,
+    pub role: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -41,8 +41,9 @@ pub struct ListUserContentResponse {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListUserContentRole {
-    pub id: i32,
     pub name: String,
+    pub value: String,
+    pub description: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -75,7 +76,7 @@ pub async fn list_user(
         .list_user(ListUserParams {
             page,
             limit,
-            role_id: query_params.role_id,
+            role: query_params.role.clone(),
             query: query_params.query.clone(),
             status: query_params.status.clone(),
         })
@@ -104,8 +105,9 @@ pub async fn list_user(
                 name: u.name,
                 email: u.email,
                 role: ListUserContentRole {
-                    id: u.role_id,
-                    name: u.role_name,
+                    name: u.role.name.to_string(),
+                    value: u.role.value.to_string(),
+                    description: u.role.description.to_string(),
                 },
                 status: ListUserContentStatus {
                     label: u.status.clone().label().to_string(),

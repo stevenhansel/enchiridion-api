@@ -1,78 +1,59 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
+use strum::IntoEnumIterator;
 
-use super::{GetPermissionByUserIdError, Permission, Role, RoleError, RoleRepositoryInterface};
+use super::{ApplicationPermission, PermissionObject, RoleObject, DEFAULT_ROLES, GetRoleByNameError};
 
 #[async_trait]
 pub trait RoleServiceInterface {
-    async fn get_list_role(&self) -> Result<Vec<Role>, RoleError>;
-    async fn get_permissions_by_role_id(
-        &self,
-        role_id: i32,
-    ) -> Result<Vec<Permission>, GetPermissionByUserIdError>;
+    fn list_role(&self) -> Vec<RoleObject>;
+    fn get_role_by_value(&self, name: &str) -> Result<RoleObject, GetRoleByNameError>;
+    fn list_permission(&self) -> Vec<PermissionObject>;
 }
 
-pub struct RoleService {
-    _role_repository: Arc<dyn RoleRepositoryInterface + Send + Sync + 'static>,
-}
+pub struct RoleService {}
 
 impl RoleService {
-    pub fn new(
-        _role_repository: Arc<dyn RoleRepositoryInterface + Send + Sync + 'static>,
-    ) -> RoleService {
-        RoleService { _role_repository }
+    pub fn new() -> RoleService {
+        RoleService {}
     }
 }
 
 #[async_trait]
 impl RoleServiceInterface for RoleService {
-    async fn get_list_role(&self) -> Result<Vec<Role>, RoleError> {
-        let roles = match self._role_repository.find().await {
-            Ok(r) => r,
-            Err(e) => return Err(RoleError::InternalServerError(e.to_string())),
-        };
-
-        Ok(roles)
+    fn list_role(&self) -> Vec<RoleObject> {
+        DEFAULT_ROLES
+            .into_iter()
+            .map(|r| RoleObject {
+                name: r.name,
+                value: r.value,
+                description: r.description,
+                permissions: r
+                    .permissions
+                    .into_iter()
+                    .map(|p| PermissionObject {
+                        label: p.label(),
+                        value: p.value(),
+                    })
+                    .collect(),
+            })
+            .collect()
     }
 
-    async fn get_permissions_by_role_id(
-        &self,
-        role_id: i32,
-    ) -> Result<Vec<Permission>, GetPermissionByUserIdError> {
-        let permissions = match self._role_repository.get_role_permission_cache(role_id) {
-            Ok(permissions) => permissions,
-            Err(e) => {
-                return Err(GetPermissionByUserIdError::InternalServerError(
-                    e.to_string(),
-                ));
-            }
-        };
-        if permissions.len() != 0 {
-            return Ok(permissions);
+    fn get_role_by_value(&self, val: &str) -> Result<RoleObject, GetRoleByNameError> {
+        match self.list_role().into_iter().find(|r| r.value == val) {
+            Some(role) => Ok(role),
+            None => Err(GetRoleByNameError::RoleNotFound(
+                "Unable to find role within the system",
+            )),
         }
+    }
 
-        let permissions = match self
-            ._role_repository
-            .find_permissions_by_role_id(role_id)
-            .await
-        {
-            Ok(permissions) => permissions,
-            Err(e) => {
-                return Err(GetPermissionByUserIdError::InternalServerError(
-                    e.to_string(),
-                ))
-            }
-        };
-        if let Err(e) = self
-            ._role_repository
-            .set_role_permission_cache(role_id, &permissions)
-        {
-            return Err(GetPermissionByUserIdError::InternalServerError(
-                e.to_string(),
-            ));
-        }
-
-        Ok(permissions)
+    fn list_permission(&self) -> Vec<PermissionObject> {
+        ApplicationPermission::iter()
+            .map(|p| PermissionObject {
+                label: p.label(),
+                value: p.value(),
+            })
+            .collect()
     }
 }

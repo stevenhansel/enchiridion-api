@@ -15,8 +15,8 @@ use crate::building::{http as building_http, BuildingServiceInterface};
 use crate::device::{http as device_http, DeviceServiceInterface};
 use crate::floor::http as floor_http;
 use crate::request::{http as request_http, RequestServiceInterface};
-use crate::role::{http as role_http, RoleServiceInterface};
-use crate::user::{http as user_http, UserServiceInterface};
+use crate::role::{http as role_http, ApplicationPermission, RoleServiceInterface};
+use crate::user::{http as user_http, UserServiceInterface, UserStatus};
 
 #[derive(Serialize)]
 struct HealthCheckResponse {
@@ -135,33 +135,47 @@ pub fn run(
                             .service(
                                 web::resource("/{building_id}")
                                     .guard(guard::Put())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::UpdateBuilding)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(building_http::update),
                             )
                             .service(
                                 web::resource("/{building_id}")
                                     .guard(guard::Delete())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::DeleteBuilding)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(building_http::delete),
                             )
                             .service(
                                 web::resource("")
                                     .guard(guard::Get())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(
+                                                ApplicationPermission::ViewListBuilding,
+                                            )
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(building_http::list_buildings),
                             )
                             .service(
                                 web::resource("")
                                     .guard(guard::Post())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::CreateBuilding)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(building_http::create),
                             ),
                     )
@@ -170,33 +184,46 @@ pub fn run(
                             .service(
                                 web::resource("/{floor_id}")
                                     .guard(guard::Put())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::UpdateFloor)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+
+                                    )
                                     .to(floor_http::update_floor),
                             )
                             .service(
                                 web::resource("/{floor_id}")
                                     .guard(guard::Delete())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::DeleteFloor)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(floor_http::delete_floor),
                             )
                             .service(
                                 web::resource("")
                                     .guard(guard::Get())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::ViewListFloor)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(floor_http::list_floor),
                             )
                             .service(
                                 web::resource("")
                                     .guard(guard::Post())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::CreateFloor)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(floor_http::create_floor),
                             ),
                     )
@@ -205,41 +232,58 @@ pub fn run(
                             .service(
                                 web::resource("/{device_id}")
                                     .guard(guard::Get())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::ViewDeviceDetail)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+
+                                    )
                                     .to(device_http::get_device_by_id),
                             )
                             .service(
                                 web::resource("/{device_id}")
                                     .guard(guard::Put())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::UpdateDevice)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(device_http::update_device),
                             )
                             .service(
                                 web::resource("/{device_id}")
                                     .guard(guard::Delete())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::DeleteDevice)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(device_http::delete_device),
                             )
                             .service(
                                 web::resource("")
                                     .guard(guard::Get())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::ViewListDevice)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+
+                                    )
                                     .to(device_http::list_device),
                             )
                             .service(
                                 web::resource("")
                                     .guard(guard::Post())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::CreateDevice)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(device_http::create_device),
                             ),
                     )
@@ -248,33 +292,45 @@ pub fn run(
                             .service(
                                 web::resource("/{announcement_id}/media")
                                     .guard(guard::Get())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::ViewAnnouncementMedia)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(announcement_http::get_announcement_media_presigned_url),
                             )
                             .service(
                                 web::resource("/{announcement_id}")
                                     .guard(guard::Get())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::ViewAnnouncementDetail)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(announcement_http::get_announcement_detail),
                             )
                             .service(
                                 web::resource("")
                                     .guard(guard::Get())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::ViewListAnnouncement)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(announcement_http::list_announcement),
                             )
                             .service(
                                 web::resource("")
                                     .guard(guard::Post())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::CreateAnnouncement)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(announcement_http::create_announcement),
                             ),
                     )
@@ -283,17 +339,23 @@ pub fn run(
                             .service(
                                 web::resource("/{request_id}/approval")
                                     .guard(guard::Put())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::UpdateRequestApproval)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(request_http::update_request_approval),
                             )
                             .service(
                                 web::resource("")
                                     .guard(guard::Get())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::ViewListRequest)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(request_http::list_request),
                             ),
                     )
@@ -302,17 +364,23 @@ pub fn run(
                             .service(
                                 web::resource("/{user_id}/approval")
                                     .guard(guard::Put())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::UpdateUserApproval)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(user_http::update_user_approval),
                             )
                             .service(
                                 web::resource("")
                                     .guard(guard::Get())
-                                    .wrap(AuthenticationMiddlewareFactory::new(
-                                        auth_service.clone(),
-                                    ))
+                                    .wrap(
+                                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                            .with_permission(ApplicationPermission::ViewListUser)
+                                            .with_status(UserStatus::Approved)
+                                            .with_require_email_confirmed(true),
+                                    )
                                     .to(user_http::list_user),
                             ),
                     ),

@@ -4,9 +4,13 @@ use async_trait::async_trait;
 use redis::Commands;
 use sqlx::{Pool, Postgres};
 
-use crate::{config::Configuration, user::UserStatus};
+use crate::{
+    config::Configuration,
+    role::{PermissionObject, RoleObject, DEFAULT_ROLES},
+    user::UserStatus,
+};
 
-use super::{PermissionAuthEntity, RoleAuthEntity, UserAuthEntity};
+use super::UserAuthEntity;
 
 pub struct RawAuthEntity {
     user_id: i32,
@@ -15,10 +19,7 @@ pub struct RawAuthEntity {
     user_profile_picture: Option<String>,
     user_is_email_confirmed: bool,
     user_status: UserStatus,
-    role_id: i32,
-    role_name: String,
-    permission_id: i32,
-    permission_name: String,
+    user_role: String,
 }
 
 #[async_trait]
@@ -55,33 +56,36 @@ impl AuthRepository {
         }
     }
 
-    fn refresh_token_key_builder(user_id: i32) -> String {
+    fn refresh_token_key_builder(&self, user_id: i32) -> String {
         format!("refresh_token_{}", user_id)
     }
 
-    fn map_user_auth_entity(raw: &Vec<RawAuthEntity>) -> UserAuthEntity {
-        let mut permissions: Vec<PermissionAuthEntity> = vec![];
-        for data in raw {
-            permissions.push(PermissionAuthEntity {
-                id: data.permission_id,
-                name: data.permission_name.to_string(),
+    fn map_user_auth_entity(&self, raw: RawAuthEntity) -> UserAuthEntity {
+        let roles: Vec<RoleObject> = DEFAULT_ROLES
+            .into_iter()
+            .map(|r| RoleObject {
+                name: r.name,
+                value: r.value,
+                description: r.description,
+                permissions: r
+                    .permissions
+                    .into_iter()
+                    .map(|p| PermissionObject {
+                        label: p.label(),
+                        value: p.value(),
+                    })
+                    .collect(),
             })
-        }
-
-        let role = RoleAuthEntity {
-            id: raw[0].role_id,
-            name: raw[0].role_name.to_string(),
-            permissions,
-        };
+            .collect();
 
         let entity = UserAuthEntity {
-            id: raw[0].user_id,
-            name: raw[0].user_name.to_string(),
-            email: raw[0].user_email.to_string(),
-            profile_picture: raw[0].user_profile_picture.clone(),
-            is_email_confirmed: raw[0].user_is_email_confirmed,
-            user_status: raw[0].user_status.clone(),
-            role,
+            id: raw.user_id,
+            name: raw.user_name.to_string(),
+            email: raw.user_email.to_string(),
+            profile_picture: raw.user_profile_picture.clone(),
+            is_email_confirmed: raw.user_is_email_confirmed,
+            user_status: raw.user_status.clone(),
+            role: roles.into_iter().find(|r| r.value == raw.user_role).unwrap(),
         };
 
         entity
@@ -104,26 +108,16 @@ impl AuthRepositoryInterface for AuthRepository {
                 "user"."profile_picture" as "user_profile_picture",
                 "user"."is_email_confirmed" as "user_is_email_confirmed",
                 "user"."status" as "user_status: UserStatus",
-                "role"."id" as "role_id",
-                "role"."name" as "role_name",
-                "permission"."id" as "permission_id",
-                "permission"."name" as "permission_name"
+                "user"."role" as "user_role"
             from "user"
-            join "role" on "role"."id" = "user"."role_id"
-            join "role_permission" on "role_permission"."role_id" = "role"."id"
-            join "permission" on "permission"."id" = "role_permission"."permission_id"
             where email = $1
             "#,
             email,
         )
-        .fetch_all(&self._db)
+        .fetch_one(&self._db)
         .await?;
 
-        if raw.len() == 0 {
-            return Err(sqlx::Error::RowNotFound);
-        }
-
-        Ok(AuthRepository::map_user_auth_entity(&raw))
+        Ok(self.map_user_auth_entity(raw))
     }
 
     async fn find_one_auth_entity_by_id(&self, id: i32) -> Result<UserAuthEntity, sqlx::Error> {
@@ -137,26 +131,16 @@ impl AuthRepositoryInterface for AuthRepository {
                 "user"."profile_picture" as "user_profile_picture",
                 "user"."is_email_confirmed" as "user_is_email_confirmed",
                 "user"."status" as "user_status: UserStatus",
-                "role"."id" as "role_id",
-                "role"."name" as "role_name",
-                "permission"."id" as "permission_id",
-                "permission"."name" as "permission_name"
+                "user"."role" as "user_role"
             from "user"
-            join "role" on "role"."id" = "user"."role_id"
-            join "role_permission" on "role_permission"."role_id" = "role"."id"
-            join "permission" on "permission"."id" = "role_permission"."permission_id"
             where "user"."id" = $1
             "#,
             id,
         )
-        .fetch_all(&self._db)
+        .fetch_one(&self._db)
         .await?;
 
-        if raw.len() == 0 {
-            return Err(sqlx::Error::RowNotFound);
-        }
-
-        Ok(AuthRepository::map_user_auth_entity(&raw))
+        Ok(self.map_user_auth_entity(raw))
     }
 
     async fn set_user_refresh_token(
@@ -166,7 +150,7 @@ impl AuthRepositoryInterface for AuthRepository {
     ) -> Result<(), redis::RedisError> {
         let mut redis = self._redis.lock().expect("Cannot get redis connection");
 
-        let key = AuthRepository::refresh_token_key_builder(user_id);
+        let key = self.refresh_token_key_builder(user_id);
         let expire_at = (chrono::Utc::now()
             + chrono::Duration::seconds(self._configuration.email_confirmation_expiration_seconds))
         .timestamp();
@@ -180,7 +164,7 @@ impl AuthRepositoryInterface for AuthRepository {
     async fn delete_user_refresh_token(&self, user_id: i32) -> Result<(), redis::RedisError> {
         let mut redis = self._redis.lock().expect("Cannot get redis connection");
 
-        let key = AuthRepository::refresh_token_key_builder(user_id);
+        let key = self.refresh_token_key_builder(user_id);
 
         redis.del(key)?;
 

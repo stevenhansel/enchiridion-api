@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::role::RoleObject;
+
 #[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "user_status", rename_all = "snake_case")]
@@ -31,8 +33,7 @@ pub struct User {
     pub id: i32,
     pub name: String,
     pub email: String,
-    pub role_id: i32,
-    pub role_name: String,
+    pub role: RoleObject,
     pub status: UserStatus,
     pub is_email_confirmed: bool,
     pub registration_reason: Option<String>,

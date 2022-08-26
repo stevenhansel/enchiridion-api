@@ -23,7 +23,7 @@ use enchiridion_api::auth::{
     AuthRepository, AuthService, AuthServiceInterface, SeedDefaultUserError,
 };
 use enchiridion_api::building::{BuildingRepository, BuildingService};
-use enchiridion_api::role::{RoleRepository, RoleService};
+use enchiridion_api::role::RoleService;
 use enchiridion_api::user::{UserRepository, UserService};
 
 #[tokio::main]
@@ -76,7 +76,6 @@ async fn main() -> std::io::Result<()> {
     let s3_adapter = S3Adapter::new(s3_client, config.aws_s3_bucket_name.clone());
     let cloud_storage = cloud_storage::Client::new(Box::new(s3_adapter));
 
-    let role_repository = Arc::new(RoleRepository::new(pool.clone(), redis_connection.clone()));
     let building_repository = Arc::new(BuildingRepository::new(pool.clone()));
     let user_repository = Arc::new(UserRepository::new(pool.clone()));
     let auth_repository = Arc::new(AuthRepository::new(
@@ -91,7 +90,7 @@ async fn main() -> std::io::Result<()> {
 
     let announcement_queue = Arc::new(AnnouncementQueue::new(redis_connection.clone()));
 
-    let role_service = Arc::new(RoleService::new(role_repository.clone()));
+    let role_service = Arc::new(RoleService::new());
     let building_service = Arc::new(BuildingService::new(building_repository.clone()));
     let user_service = Arc::new(UserService::new(user_repository.clone()));
     let auth_service = Arc::new(AuthService::new(

@@ -16,7 +16,7 @@ use sha2::Sha256;
 use crate::database::DatabaseError;
 use crate::email::{self, EmailParams};
 use crate::user::{InsertRawUserParams, InsertUserParams, UserRepositoryInterface, UserStatus};
-use crate::{config::Configuration, role::RoleServiceInterface};
+use crate::{config::Configuration, role::ApplicationPermission, role::RoleServiceInterface};
 
 use super::{
     AuthEntity, AuthError, AuthRepositoryInterface, AuthenticateError, ChangePasswordError,
@@ -30,7 +30,7 @@ pub struct RegisterParams {
     pub email: String,
     pub password: String,
     pub reason: Option<String>,
-    pub role_id: i32,
+    pub role: String,
 }
 
 pub struct LoginParams {
@@ -43,7 +43,7 @@ pub trait AuthServiceInterface {
     fn generate_access_token(
         &self,
         user_id: i32,
-        role_id: i32,
+        role: String,
         status: UserStatus,
     ) -> Result<String, AuthError>;
     fn generate_refresh_token(&self, user_id: i32) -> Result<String, AuthError>;
@@ -76,7 +76,9 @@ pub trait AuthServiceInterface {
     async fn authenticate(
         &self,
         cookie: Option<Cookie<'static>>,
-        permission: Option<&'static str>,
+        permission: Option<ApplicationPermission>,
+        require_email_confirmed: Option<bool>,
+        status: Option<UserStatus>,
     ) -> Result<i32, AuthenticateError>;
 }
 
@@ -111,7 +113,7 @@ impl AuthServiceInterface for AuthService {
     fn generate_access_token(
         &self,
         user_id: i32,
-        role_id: i32,
+        role: String,
         status: UserStatus,
     ) -> Result<String, AuthError> {
         let access_token_key = match HmacSha256::new_from_slice(
@@ -126,7 +128,7 @@ impl AuthServiceInterface for AuthService {
 
         let mut access_token_claims = BTreeMap::new();
         access_token_claims.insert("user_id", user_id.to_string());
-        access_token_claims.insert("role_id", role_id.to_string());
+        access_token_claims.insert("role", role);
         access_token_claims.insert("status", status.value().to_string());
         access_token_claims.insert("iat", chrono::Utc::now().timestamp().to_string());
         access_token_claims.insert(
@@ -283,7 +285,7 @@ impl AuthServiceInterface for AuthService {
                 email: params.email.to_string(),
                 registration_reason: params.reason,
                 password: hash.to_string(),
-                role_id: params.role_id,
+                role: params.role,
             })
             .await
         {
@@ -460,8 +462,11 @@ impl AuthServiceInterface for AuthService {
             },
         };
 
-        let access_token =
-            self.generate_access_token(entity.id, entity.role.id, entity.user_status.clone())?;
+        let access_token = self.generate_access_token(
+            entity.id,
+            entity.role.value.to_string(),
+            entity.user_status.clone(),
+        )?;
         let refresh_token = self.generate_refresh_token(entity.id)?;
 
         if let Err(_) = self
@@ -534,8 +539,11 @@ impl AuthServiceInterface for AuthService {
             },
         };
 
-        let access_token =
-            self.generate_access_token(entity.id, entity.role.id, entity.user_status.clone())?;
+        let access_token = self.generate_access_token(
+            entity.id,
+            entity.role.value.to_string(),
+            entity.user_status.clone(),
+        )?;
         let refresh_token = self.generate_refresh_token(user.id)?;
 
         if let Err(_) = self
@@ -574,8 +582,11 @@ impl AuthServiceInterface for AuthService {
             },
         };
 
-        let access_token =
-            self.generate_access_token(entity.id, entity.role.id, entity.user_status.clone())?;
+        let access_token = self.generate_access_token(
+            entity.id,
+            entity.role.value.to_string(),
+            entity.user_status.clone(),
+        )?;
         let refresh_token = self.generate_refresh_token(user_id)?;
 
         Ok(RefreshTokenResult {
@@ -722,7 +733,7 @@ impl AuthServiceInterface for AuthService {
                     .default_user_email
                     .expose_secret()
                     .clone(),
-                role_id: self._configuration.default_user_role_id,
+                role: self._configuration.default_user_role.clone(),
                 is_email_confirmed: true,
                 status: UserStatus::Approved,
                 registration_reason: None,
@@ -738,7 +749,9 @@ impl AuthServiceInterface for AuthService {
     async fn authenticate(
         &self,
         cookie: Option<Cookie<'static>>,
-        permission: Option<&'static str>,
+        permission: Option<ApplicationPermission>,
+        require_email_confirmed: Option<bool>,
+        status: Option<UserStatus>,
     ) -> Result<i32, AuthenticateError> {
         let access_token = match cookie {
             Some(cookie) => cookie.value().to_string(),
@@ -775,25 +788,41 @@ impl AuthServiceInterface for AuthService {
             }
         };
 
+        let user = match self._user_repository.find_one_by_id(user_id).await {
+            Ok(user) => user,
+            Err(_) => return Err(AuthenticateError::InternalServerError),
+        };
+
         if let Some(permission) = permission {
-            let role_id = match claims["role_id"].parse::<i32>() {
-                Ok(id) => id,
-                Err(_) => {
-                    return Err(AuthenticateError::AuthenticationFailed(
-                        "Authentication failed, Token expired or invalid",
-                    ))
-                }
+            let role = match self
+                ._role_service
+                .get_role_by_value(claims["role"].as_str())
+            {
+                Ok(role) => role,
+                Err(_) => return Err(AuthenticateError::InternalServerError),
             };
+            let role_permissions: Vec<&'static str> =
+                role.permissions.into_iter().map(|p| p.value).collect();
 
-            let permissions: Vec<String> =
-                match self._role_service.get_permissions_by_role_id(role_id).await {
-                    Ok(permissions) => permissions.into_iter().map(|p| p.name).collect(),
-                    Err(_) => return Err(AuthenticateError::InternalServerError),
-                };
-
-            if !permissions.contains(&permission.to_string()) {
+            if !role_permissions.contains(&permission.value()) {
                 return Err(AuthenticateError::ForbiddenPermission(
                     "User doesn't have the permission to access the designated route",
+                ));
+            }
+        }
+
+        if let Some(require_email_confirmed) = require_email_confirmed {
+            if user.is_email_confirmed != require_email_confirmed {
+                return Err(AuthenticateError::ForbiddenPermission(
+                    "User email has not been confirmed yet",
+                ));
+            }
+        }
+
+        if let Some(status) = status {
+            if user.status != status {
+                return Err(AuthenticateError::ForbiddenPermission(
+                    "User has been approved yet by admin",
                 ));
             }
         }

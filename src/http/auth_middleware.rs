@@ -1,7 +1,7 @@
 use std::{
     future::{ready, Ready},
     rc::Rc,
-    sync::Arc,
+    sync::Arc, borrow::Borrow,
 };
 
 use actix_web::{
@@ -14,6 +14,8 @@ use futures::FutureExt;
 use crate::{
     auth::{AuthErrorCode, AuthServiceInterface, AuthenticateError},
     http::HttpErrorResponse,
+    role::ApplicationPermission,
+    user::UserStatus,
 };
 
 pub type AuthenticationInfoResult = Result<i32, AuthenticateError>;
@@ -21,7 +23,9 @@ pub type AuthenticationInfo = Rc<AuthenticationInfoResult>;
 
 pub struct AuthenticationMiddleware<S> {
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
-    permission: Option<&'static str>,
+    permission: Option<ApplicationPermission>,
+    require_email_confirmed: Option<bool>,
+    status: Option<UserStatus>,
     service: Rc<S>,
 }
 
@@ -39,10 +43,17 @@ where
         let service = self.service.clone();
         let auth_service = self.auth_service.clone();
         let permission = self.permission.clone();
+        let require_email_confirmed = self.require_email_confirmed.clone();
+        let status = self.status.clone();
 
         async move {
             let result = auth_service
-                .authenticate(req.cookie("access_token"), permission)
+                .authenticate(
+                    req.cookie("access_token"),
+                    permission,
+                    require_email_confirmed,
+                    status,
+                )
                 .await;
             req.extensions_mut()
                 .insert::<AuthenticationInfo>(Rc::new(result));
@@ -55,7 +66,9 @@ where
 
 pub struct AuthenticationMiddlewareFactory {
     auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
-    permission: Option<&'static str>,
+    permission: Option<ApplicationPermission>,
+    require_email_confirmed: Option<bool>,
+    status: Option<UserStatus>,
 }
 
 impl AuthenticationMiddlewareFactory {
@@ -63,11 +76,23 @@ impl AuthenticationMiddlewareFactory {
         AuthenticationMiddlewareFactory {
             auth_service,
             permission: None,
+            require_email_confirmed: None,
+            status: None,
         }
     }
 
-    pub fn with_permission(mut self, permission: &'static str) -> Self {
+    pub fn with_permission(mut self, permission: ApplicationPermission) -> Self {
         self.permission = Some(permission);
+        self
+    }
+
+    pub fn with_require_email_confirmed(mut self, require_email_confirmed: bool) -> Self {
+        self.require_email_confirmed = Some(require_email_confirmed);
+        self
+    }
+
+    pub fn with_status(mut self, status: UserStatus) -> Self {
+        self.status = Some(status);
         self
     }
 }
@@ -85,7 +110,9 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(AuthenticationMiddleware {
             auth_service: self.auth_service.clone(),
-            permission: self.permission,
+            permission: self.permission.clone(),
+            require_email_confirmed: self.require_email_confirmed,
+            status: self.status.clone(),
             service: Rc::new(service),
         }))
     }
@@ -116,11 +143,9 @@ impl std::ops::Deref for AuthenticationContext {
 
 pub fn derive_user_id(auth: AuthenticationContext) -> Result<i32, AuthenticateError> {
     if let Some(context) = auth.0 {
-        let ctx = Rc::try_unwrap(context).unwrap();
-
-        return match ctx {
-            Ok(user_id) => Ok(user_id),
-            Err(e) => Err(e),
+        return match context.borrow() {
+            Ok(user_id) => Ok(*user_id),
+            Err(e) => Err(*e),
         };
     }
 

@@ -1,6 +1,7 @@
 use std::error;
 use std::fmt;
 
+use crate::role::RoleObject;
 use crate::user::UserStatus;
 
 #[derive(Debug)]
@@ -85,18 +86,7 @@ pub struct UserAuthEntity {
     pub profile_picture: Option<String>,
     pub is_email_confirmed: bool,
     pub user_status: UserStatus,
-    pub role: RoleAuthEntity,
-}
-
-pub struct RoleAuthEntity {
-    pub id: i32,
-    pub name: String,
-    pub permissions: Vec<PermissionAuthEntity>,
-}
-
-pub struct PermissionAuthEntity {
-    pub id: i32,
-    pub name: String,
+    pub role: RoleObject,
 }
 
 pub struct RefreshTokenResult {
@@ -134,7 +124,7 @@ impl std::fmt::Display for SeedDefaultUserError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum AuthenticateError {
     AuthenticationFailed(&'static str),
     ForbiddenPermission(&'static str),

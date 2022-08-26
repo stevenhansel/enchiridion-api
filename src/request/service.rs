@@ -164,8 +164,8 @@ impl RequestServiceInterface for RequestService {
             },
         };
 
-        let approval_whitelist: Vec<&str> = vec!["LSC", "BM"];
-        if !approval_whitelist.contains(&approver.role.name.as_str()) {
+        let approval_whitelist: Vec<&str> = vec!["lsc", "bm"];
+        if !approval_whitelist.contains(&approver.role.value) {
             return Err(UpdateRequestApprovalError::UserForbiddenToApprove(
                 "User is not allowed to approve a request".into(),
             ));
@@ -176,7 +176,7 @@ impl RequestServiceInterface for RequestService {
         let mut approved_by_bm = request.approved_by_bm;
         let mut bm_approver = request.bm_approver;
 
-        if approver.role.name.as_str() == "LSC" {
+        if approver.role.value == "lsc" {
             if request.approved_by_lsc == Some(true) || request.approved_by_lsc == Some(false) {
                 return Err(UpdateRequestApprovalError::RequestAlreadyApproved(
                     "Request already approved".into(),
@@ -185,7 +185,7 @@ impl RequestServiceInterface for RequestService {
 
             approved_by_lsc = Some(params.approval);
             lsc_approver = Some(approver.id);
-        } else if approver.role.name.as_str() == "BM" {
+        } else if approver.role.name == "bm" {
             if request.approved_by_bm == Some(true) || request.approved_by_bm == Some(false) {
                 return Err(UpdateRequestApprovalError::RequestAlreadyApproved(
                     "Request already approved".into(),

@@ -14,7 +14,7 @@ pub struct ListUserParams {
     pub limit: i32,
     pub query: Option<String>,
     pub status: Option<UserStatus>,
-    pub role_id: Option<i32>,
+    pub role: Option<String>,
 }
 
 #[async_trait]
@@ -57,7 +57,7 @@ impl UserServiceInterface for UserService {
                 limit: params.limit,
                 query: params.query.clone(),
                 status: params.status.clone(),
-                role_id: params.role_id.clone(),
+                role: params.role.clone(),
             })
             .await
         {

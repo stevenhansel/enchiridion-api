@@ -78,7 +78,7 @@ pub struct Configuration {
     pub default_user_name: Secret<String>,
     pub default_user_email: Secret<String>,
     pub default_user_password: Secret<String>,
-    pub default_user_role_id: i32,
+    pub default_user_role: String,
 }
 
 impl Configuration {
@@ -120,7 +120,7 @@ impl Configuration {
             default_user_name: Secret::new(dotenvy::var("DEFAULT_USER_NAME")?),
             default_user_email: Secret::new(dotenvy::var("DEFAULT_USER_EMAIL")?),
             default_user_password: Secret::new(dotenvy::var("DEFAULT_USER_PASSWORD")?),
-            default_user_role_id: dotenvy::var("DEFAULT_USER_ROLE_ID")?.parse()?,
+            default_user_role: dotenvy::var("DEFAULT_USER_ROLE")?,
         })
     }
 
@@ -161,7 +161,7 @@ impl Configuration {
             default_user_name: Secret::new(env::var("DEFAULT_USER_NAME")?),
             default_user_email: Secret::new(env::var("DEFAULT_USER_EMAIL")?),
             default_user_password: Secret::new(env::var("DEFAULT_USER_PASSWORD")?),
-            default_user_role_id: env::var("DEFAULT_USER_ROLE_ID")?.parse()?,
+            default_user_role: env::var("DEFAULT_USER_ROLE")?,
 
         })
     }

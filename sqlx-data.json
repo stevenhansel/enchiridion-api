@@ -23,6 +23,30 @@
     },
     "query": "\n            insert into \"device\" (\"name\", \"description\", \"floor_id\", \"is_linked\")\n            values ($1, $2, $3, $4)\n            returning \"id\"\n            "
   },
+  "06299be1916dad601218ccb7ea902a285f2c54168978440769049151235d632a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_for_approval",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "name": "user_status"
+            }
+          }
+        ]
+      }
+    },
+    "query": "\n                update \"user\"\n                set \"status\" = $2\n                where \"id\" = $1\n            "
+  },
   "0bbdee3a9cb8a79078b61d1bb80886885a4e38f7d61c9371bf27e8a6f1858775": {
     "describe": {
       "columns": [
@@ -111,91 +135,6 @@
     },
     "query": "\n            insert into \"building\" (name, color)\n            values($1, $2)\n            returning id\n            "
   },
-  "2705b12c74713b1d0ecca83bd70a43cc4046c961d3b994c482ebc4cf49dc0fd4": {
-    "describe": {
-      "columns": [
-        {
-          "name": "user_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "user_name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "user_email",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "user_profile_picture",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "user_is_email_confirmed",
-          "ordinal": 4,
-          "type_info": "Bool"
-        },
-        {
-          "name": "user_status: UserStatus",
-          "ordinal": 5,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "waiting_for_approval",
-                  "approved",
-                  "rejected"
-                ]
-              },
-              "name": "user_status"
-            }
-          }
-        },
-        {
-          "name": "role_id",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "role_name",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "permission_id",
-          "ordinal": 8,
-          "type_info": "Int4"
-        },
-        {
-          "name": "permission_name",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n            select \n                \"user\".\"id\" as \"user_id\",\n                \"user\".\"name\" as \"user_name\",\n                \"user\".\"email\" as \"user_email\",\n                \"user\".\"profile_picture\" as \"user_profile_picture\",\n                \"user\".\"is_email_confirmed\" as \"user_is_email_confirmed\",\n                \"user\".\"status\" as \"user_status: UserStatus\",\n                \"role\".\"id\" as \"role_id\",\n                \"role\".\"name\" as \"role_name\",\n                \"permission\".\"id\" as \"permission_id\",\n                \"permission\".\"name\" as \"permission_name\"\n            from \"user\"\n            join \"role\" on \"role\".\"id\" = \"user\".\"role_id\"\n            join \"role_permission\" on \"role_permission\".\"role_id\" = \"role\".\"id\"\n            join \"permission\" on \"permission\".\"id\" = \"role_permission\".\"permission_id\"\n            where \"user\".\"id\" = $1\n            "
-  },
   "321a391f4a5ae6fb5ccacd66aba1e6554948fc47657fcedec34768c1208dc3c6": {
     "describe": {
       "columns": [
@@ -241,67 +180,6 @@
       }
     },
     "query": "\n            update \"announcement\"\n            set \"status\" = $2\n            where \"id\" = $1\n            "
-  },
-  "3ccb627c2a479d750c35a5dea3a17cfb7be04b410dc97938e1184d508f06de26": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Bytea",
-          "Text",
-          "Int4",
-          "Bool",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "waiting_for_approval",
-                  "approved",
-                  "rejected"
-                ]
-              },
-              "name": "user_status"
-            }
-          }
-        ]
-      }
-    },
-    "query": "\n            insert into \"user\" (\n                name,\n                email,\n                password,\n                registration_reason,\n                role_id,\n                is_email_confirmed,\n                status\n            )\n            values($1, $2, $3, $4, $5, $6, $7)\n            returning id\n            "
-  },
-  "42b49a33def36e8baec37f9808e20ab37cae80c89bc70bbbf029b24f4299a15e": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Bytea",
-          "Text",
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n            insert into \"user\" (name, email, password, registration_reason, role_id)\n            values($1, $2, $3, $4, $5)\n            returning id\n            "
   },
   "4ebd75f8f60cd9c98a01a4477f3631f0d10a95b227415edb89df000c292cc18d": {
     "describe": {
@@ -384,6 +262,30 @@
     },
     "query": "\n            update \"user\"\n            set is_email_confirmed = true\n            where id = $1\n            "
   },
+  "905c5e7f2a7355dfddb746f9b4765af66801881d2fce620b700e33589e163780": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Bytea",
+          "Text",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n            insert into \"user\" (name, email, password, registration_reason, role)\n            values($1, $2, $3, $4, $5)\n            returning id\n            "
+  },
   "91965e0e4dc9531189e958a1f55c1937c19a5c756ae4d3a4305a983c906a4886": {
     "describe": {
       "columns": [],
@@ -408,13 +310,26 @@
     },
     "query": "\n                delete from \"floor\"\n                where \"id\" = $1\n            "
   },
-  "b29d89ab9343c77c4ab4c814ce69269a0a9eab8755c0fd29f2d92b202b9e97a7": {
+  "a5fd3f7346571195fb836e6489745426838f49eb672c166fcb7c640b00846b34": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
       "parameters": {
         "Left": [
-          "Int4",
+          "Varchar",
+          "Varchar",
+          "Bytea",
+          "Text",
+          "Varchar",
+          "Bool",
           {
             "Custom": {
               "kind": {
@@ -430,7 +345,74 @@
         ]
       }
     },
-    "query": "\n                update \"user\"\n                set \"status\" = $2\n                where \"id\" = $1\n                "
+    "query": "\n            insert into \"user\" (\n                name,\n                email,\n                password,\n                registration_reason,\n                role,\n                is_email_confirmed,\n                status\n            )\n            values($1, $2, $3, $4, $5, $6, $7)\n            returning id\n            "
+  },
+  "ada2105cbd1c945d13fc9882e9d5f5cca4af322df22c2ba5f0f54e9fa5c0732f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "user_name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "user_email",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "user_profile_picture",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "user_is_email_confirmed",
+          "ordinal": 4,
+          "type_info": "Bool"
+        },
+        {
+          "name": "user_status: UserStatus",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_for_approval",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "name": "user_status"
+            }
+          }
+        },
+        {
+          "name": "user_role",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            select \n                \"user\".\"id\" as \"user_id\",\n                \"user\".\"name\" as \"user_name\",\n                \"user\".\"email\" as \"user_email\",\n                \"user\".\"profile_picture\" as \"user_profile_picture\",\n                \"user\".\"is_email_confirmed\" as \"user_is_email_confirmed\",\n                \"user\".\"status\" as \"user_status: UserStatus\",\n                \"user\".\"role\" as \"user_role\"\n            from \"user\"\n            where email = $1\n            "
   },
   "b9c20a54d894511f510fa4aaf2206836523510f94a85c0979b71da1bcdff04bc": {
     "describe": {
@@ -452,38 +434,6 @@
       }
     },
     "query": "\n                insert into \"floor\" (\"name\", \"building_id\")\n                values ($1, $2)\n                returning \"id\"\n            "
-  },
-  "c9095d2c9da1d413c963c2021aab7e23b1087b2367630f3b5eecada2ff31984e": {
-    "describe": {
-      "columns": [
-        {
-          "name": "permission_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "permission_name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "permission_label",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n                select\n                    \"permission\".\"id\" as \"permission_id\",\n                    \"permission\".\"name\" as \"permission_name\",\n                    \"permission\".\"label\" as \"permission_label\"\n                from \"role\"\n                join \"role_permission\" on \"role_permission\".\"role_id\" = \"role\".\"id\"\n                join \"permission\" on \"permission\".\"id\" = \"role_permission\".\"permission_id\"\n                where \"role\".\"id\" = $1\n            "
   },
   "cdec90e6669804a0787f119b8112d877fb82c1b1cdd61d9a4b53f50f99be19b3": {
     "describe": {
@@ -604,36 +554,6 @@
     },
     "query": "\n            select id, name, color\n            from \"building\"\n            order by id desc\n            "
   },
-  "d9dd3209500e513e7ee40bc811e7b7a09af001629739ce30883a401cde6e6ea1": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "description",
-          "ordinal": 2,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n            select id, name, description\n            from role\n            "
-  },
   "db901f040e6c7fd575c8d9a0418bed74fb59684a52ba394fb9b91d4e243acaf2": {
     "describe": {
       "columns": [
@@ -670,22 +590,7 @@
     },
     "query": "\n            insert into \"request\" (\"action\", \"description\", \"announcement_id\", \"user_id\")\n            values ($1, $2, $3, $4)\n            returning \"id\"\n            "
   },
-  "f51f3506de47b9539777dd3b559926a94d76c44f8aa942338bb20fd0bfc682b2": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Varchar",
-          "Text",
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n            update \"device\"\n            set \n                \"name\" = $2,\n                \"description\" = $3,\n                \"floor_id\" = $4\n            where \"id\" = $1\n            "
-  },
-  "fd9e13b243ac0483a0a28ace02a38891e3695c8306aaffdca533eb031b674579": {
+  "dd85c218b9d104fde09d2d2cb6c3424110394cd3ad1101c43a388e75adb1b9f4": {
     "describe": {
       "columns": [
         {
@@ -730,23 +635,8 @@
           }
         },
         {
-          "name": "role_id",
+          "name": "user_role",
           "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "role_name",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "permission_id",
-          "ordinal": 8,
-          "type_info": "Int4"
-        },
-        {
-          "name": "permission_name",
-          "ordinal": 9,
           "type_info": "Varchar"
         }
       ],
@@ -757,17 +647,29 @@
         true,
         false,
         false,
-        false,
-        false,
-        false,
         false
       ],
       "parameters": {
         "Left": [
-          "Text"
+          "Int4"
         ]
       }
     },
-    "query": "\n            select \n                \"user\".\"id\" as \"user_id\",\n                \"user\".\"name\" as \"user_name\",\n                \"user\".\"email\" as \"user_email\",\n                \"user\".\"profile_picture\" as \"user_profile_picture\",\n                \"user\".\"is_email_confirmed\" as \"user_is_email_confirmed\",\n                \"user\".\"status\" as \"user_status: UserStatus\",\n                \"role\".\"id\" as \"role_id\",\n                \"role\".\"name\" as \"role_name\",\n                \"permission\".\"id\" as \"permission_id\",\n                \"permission\".\"name\" as \"permission_name\"\n            from \"user\"\n            join \"role\" on \"role\".\"id\" = \"user\".\"role_id\"\n            join \"role_permission\" on \"role_permission\".\"role_id\" = \"role\".\"id\"\n            join \"permission\" on \"permission\".\"id\" = \"role_permission\".\"permission_id\"\n            where email = $1\n            "
+    "query": "\n            select \n                \"user\".\"id\" as \"user_id\",\n                \"user\".\"name\" as \"user_name\",\n                \"user\".\"email\" as \"user_email\",\n                \"user\".\"profile_picture\" as \"user_profile_picture\",\n                \"user\".\"is_email_confirmed\" as \"user_is_email_confirmed\",\n                \"user\".\"status\" as \"user_status: UserStatus\",\n                \"user\".\"role\" as \"user_role\"\n            from \"user\"\n            where \"user\".\"id\" = $1\n            "
+  },
+  "f51f3506de47b9539777dd3b559926a94d76c44f8aa942338bb20fd0bfc682b2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Text",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            update \"device\"\n            set \n                \"name\" = $2,\n                \"description\" = $3,\n                \"floor_id\" = $4\n            where \"id\" = $1\n            "
   }
 }
