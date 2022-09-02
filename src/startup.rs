@@ -5,6 +5,7 @@ use actix_cors::Cors;
 use actix_web::dev::Server;
 use actix_web::{guard, web, App, HttpResponse, HttpServer};
 use serde::Serialize;
+use tokio::sync::mpsc;
 
 use crate::floor::FloorServiceInterface;
 use crate::http::AuthenticationMiddlewareFactory;
@@ -30,6 +31,7 @@ async fn health_check() -> HttpResponse {
 }
 
 pub fn run(
+    shutdown_complete_tx: mpsc::Sender<()>,
     listener: TcpListener,
     role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
     building_service: Arc<dyn BuildingServiceInterface + Send + Sync + 'static>,

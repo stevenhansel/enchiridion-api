@@ -3,28 +3,59 @@ use std::sync::{Arc, Mutex};
 use std::{env, process};
 
 use aws_config::meta::region::RegionProviderChain;
+use secrecy::ExposeSecret;
+use sqlx::PgPool;
+use tokio::sync::mpsc::Sender;
+use tokio::time::{sleep, Duration};
+use tokio::{
+    signal,
+    sync::{broadcast, mpsc},
+};
 
 use enchiridion_api::announcement::{
     AnnouncementQueue, AnnouncementRepository, AnnouncementService,
 };
-use enchiridion_api::cloud_storage::s3::S3Adapter;
-use enchiridion_api::device::{DeviceRepository, DeviceService};
-use enchiridion_api::floor::{FloorRepository, FloorService};
-use enchiridion_api::request::{RequestRepository, RequestService};
-use secrecy::ExposeSecret;
-use sqlx::PgPool;
-
-use enchiridion_api::startup::run;
-
-use enchiridion_api::config::Configuration;
-use enchiridion_api::{cloud_storage, email};
-
 use enchiridion_api::auth::{
     AuthRepository, AuthService, AuthServiceInterface, SeedDefaultUserError,
 };
 use enchiridion_api::building::{BuildingRepository, BuildingService};
+use enchiridion_api::cloud_storage::s3::S3Adapter;
+use enchiridion_api::config::Configuration;
+use enchiridion_api::device::{DeviceRepository, DeviceService};
+use enchiridion_api::floor::{FloorRepository, FloorService};
+use enchiridion_api::request::{RequestRepository, RequestService};
 use enchiridion_api::role::RoleService;
+use enchiridion_api::startup::run;
 use enchiridion_api::user::{UserRepository, UserService};
+use enchiridion_api::{cloud_storage, email};
+
+#[derive(Debug)]
+pub struct Shutdown {
+    shutdown: bool,
+    notify: broadcast::Receiver<()>,
+}
+
+impl Shutdown {
+    pub(crate) fn new(notify: broadcast::Receiver<()>) -> Shutdown {
+        Shutdown {
+            shutdown: false,
+            notify,
+        }
+    }
+
+    pub(crate) fn is_shutdown(&self) -> bool {
+        self.shutdown
+    }
+
+    pub(crate) async fn recv(&mut self) {
+        if self.shutdown {
+            return;
+        }
+
+        let _ = self.notify.recv().await;
+        self.shutdown = true;
+    }
+}
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -122,8 +153,13 @@ async fn main() -> std::io::Result<()> {
             _ => {}
         });
 
+    let (notify_shutdown, _) = broadcast::channel::<()>(1);
+    let mut shutdown = Shutdown::new(notify_shutdown.subscribe());
+    let (shutdown_complete_tx, mut shutdown_complete_rx) = mpsc::channel::<()>(1);
+
     let listener = TcpListener::bind(config.address)?;
-    run(
+    let server = run(
+        shutdown_complete_tx.clone(),
         listener,
         role_service.clone(),
         building_service.clone(),
@@ -133,6 +169,31 @@ async fn main() -> std::io::Result<()> {
         device_service.clone(),
         request_service.clone(),
         announcement_service.clone(),
-    )?
-    .await
+    )?;
+
+    tokio::spawn(async move {
+        tokio::select! {
+            result = server => {
+                if let Err(e) = result {
+                    eprintln!("Something went wrong when running the server: {}", e.to_string());
+                    return Err(());
+                }
+                Ok(())
+            },
+            _ = shutdown.recv() => Ok(())
+        }
+    });
+
+    match signal::ctrl_c().await {
+        Ok(()) => {
+            drop(notify_shutdown);
+            drop(shutdown_complete_tx)
+        }
+        Err(err) => {
+            eprintln!("Unable to listen for shutdown signal: {}", err);
+        }
+    }
+
+    let _ = shutdown_complete_rx.recv().await;
+    Ok(())
 }
