@@ -5,7 +5,7 @@ use actix_cors::Cors;
 use actix_web::dev::Server;
 use actix_web::{guard, web, App, HttpResponse, HttpServer};
 use serde::Serialize;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, broadcast};
 
 use crate::floor::FloorServiceInterface;
 use crate::http::AuthenticationMiddlewareFactory;
@@ -19,6 +19,34 @@ use crate::request::{http as request_http, RequestServiceInterface};
 use crate::role::{http as role_http, ApplicationPermission, RoleServiceInterface};
 use crate::user::{http as user_http, UserServiceInterface, UserStatus};
 
+#[derive(Debug)]
+pub struct Shutdown {
+    shutdown: bool,
+    notify: broadcast::Receiver<()>,
+}
+
+impl Shutdown {
+    pub fn new(notify: broadcast::Receiver<()>) -> Shutdown {
+        Shutdown {
+            shutdown: false,
+            notify,
+        }
+    }
+
+    pub fn is_shutdown(&self) -> bool {
+        self.shutdown
+    }
+
+    pub async fn recv(&mut self) {
+        if self.shutdown {
+            return;
+        }
+
+        let _ = self.notify.recv().await;
+        self.shutdown = true;
+    }
+}
+
 #[derive(Serialize)]
 struct HealthCheckResponse {
     status: String,
@@ -30,8 +58,7 @@ async fn health_check() -> HttpResponse {
     })
 }
 
-pub fn run(
-    _shutdown_complete_tx: mpsc::Sender<()>,
+pub fn assemble_server(
     listener: TcpListener,
     role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
     building_service: Arc<dyn BuildingServiceInterface + Send + Sync + 'static>,
@@ -191,7 +218,6 @@ pub fn run(
                                             .with_permission(ApplicationPermission::UpdateFloor)
                                             .with_status(UserStatus::Approved)
                                             .with_require_email_confirmed(true),
-
                                     )
                                     .to(floor_http::update_floor),
                             )
@@ -236,10 +262,11 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(
                                         AuthenticationMiddlewareFactory::new(auth_service.clone())
-                                            .with_permission(ApplicationPermission::ViewDeviceDetail)
+                                            .with_permission(
+                                                ApplicationPermission::ViewDeviceDetail,
+                                            )
                                             .with_status(UserStatus::Approved)
                                             .with_require_email_confirmed(true),
-
                                     )
                                     .to(device_http::get_device_by_id),
                             )
@@ -273,7 +300,6 @@ pub fn run(
                                             .with_permission(ApplicationPermission::ViewListDevice)
                                             .with_status(UserStatus::Approved)
                                             .with_require_email_confirmed(true),
-
                                     )
                                     .to(device_http::list_device),
                             )
@@ -296,7 +322,9 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(
                                         AuthenticationMiddlewareFactory::new(auth_service.clone())
-                                            .with_permission(ApplicationPermission::ViewAnnouncementMedia)
+                                            .with_permission(
+                                                ApplicationPermission::ViewAnnouncementMedia,
+                                            )
                                             .with_status(UserStatus::Approved)
                                             .with_require_email_confirmed(true),
                                     )
@@ -307,7 +335,9 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(
                                         AuthenticationMiddlewareFactory::new(auth_service.clone())
-                                            .with_permission(ApplicationPermission::ViewAnnouncementDetail)
+                                            .with_permission(
+                                                ApplicationPermission::ViewAnnouncementDetail,
+                                            )
                                             .with_status(UserStatus::Approved)
                                             .with_require_email_confirmed(true),
                                     )
@@ -318,7 +348,9 @@ pub fn run(
                                     .guard(guard::Get())
                                     .wrap(
                                         AuthenticationMiddlewareFactory::new(auth_service.clone())
-                                            .with_permission(ApplicationPermission::ViewListAnnouncement)
+                                            .with_permission(
+                                                ApplicationPermission::ViewListAnnouncement,
+                                            )
                                             .with_status(UserStatus::Approved)
                                             .with_require_email_confirmed(true),
                                     )
@@ -329,7 +361,9 @@ pub fn run(
                                     .guard(guard::Post())
                                     .wrap(
                                         AuthenticationMiddlewareFactory::new(auth_service.clone())
-                                            .with_permission(ApplicationPermission::CreateAnnouncement)
+                                            .with_permission(
+                                                ApplicationPermission::CreateAnnouncement,
+                                            )
                                             .with_status(UserStatus::Approved)
                                             .with_require_email_confirmed(true),
                                     )
@@ -343,7 +377,9 @@ pub fn run(
                                     .guard(guard::Put())
                                     .wrap(
                                         AuthenticationMiddlewareFactory::new(auth_service.clone())
-                                            .with_permission(ApplicationPermission::UpdateRequestApproval)
+                                            .with_permission(
+                                                ApplicationPermission::UpdateRequestApproval,
+                                            )
                                             .with_status(UserStatus::Approved)
                                             .with_require_email_confirmed(true),
                                     )
@@ -368,7 +404,9 @@ pub fn run(
                                     .guard(guard::Put())
                                     .wrap(
                                         AuthenticationMiddlewareFactory::new(auth_service.clone())
-                                            .with_permission(ApplicationPermission::UpdateUserApproval)
+                                            .with_permission(
+                                                ApplicationPermission::UpdateUserApproval,
+                                            )
                                             .with_status(UserStatus::Approved)
                                             .with_require_email_confirmed(true),
                                     )
@@ -389,9 +427,62 @@ pub fn run(
             )
     })
     .listen(listener)?
+    .disable_signals()
     .run();
 
-    println!("Server is starting on http://localhost:8080");
-
     Ok(server)
+}
+
+pub async fn run(
+    mut shutdown: Shutdown,
+    _sender: mpsc::Sender<()>,
+    listener: TcpListener,
+    role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
+    building_service: Arc<dyn BuildingServiceInterface + Send + Sync + 'static>,
+    user_service: Arc<dyn UserServiceInterface + Send + Sync + 'static>,
+    auth_service: Arc<dyn AuthServiceInterface + Send + Sync + 'static>,
+    floor_service: Arc<dyn FloorServiceInterface + Send + Sync + 'static>,
+    device_service: Arc<dyn DeviceServiceInterface + Send + Sync + 'static>,
+    request_service: Arc<dyn RequestServiceInterface + Send + Sync + 'static>,
+    announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
+) {
+    let server = match assemble_server(
+        listener,
+        role_service,
+        building_service,
+        user_service,
+        auth_service,
+        floor_service,
+        device_service,
+        request_service,
+        announcement_service,
+    ) {
+        Ok(server) => server,
+        Err(e) => {
+            eprintln!("Something when wrong when assembling the server: {:?}", e);
+            return;
+        }
+    };
+    let handle = server.handle();
+
+    let runtime = tokio::spawn(async move {
+        println!("Server is starting on http://localhost:8080");
+
+        if let Err(e) = server.await {
+            eprintln!("Something when wrong when running the server: {:?}", e);
+            return;
+        }
+    });
+
+    let shutdown_listener = tokio::spawn(async move {
+        let _ = shutdown.recv().await;
+        println!("shutdown 1 start");
+
+        handle.stop(true).await;
+
+        println!("shutdown 1 end");
+    });
+
+    runtime.await.unwrap();
+    shutdown_listener.await.unwrap();
 }

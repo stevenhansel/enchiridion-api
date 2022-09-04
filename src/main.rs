@@ -24,7 +24,7 @@ use enchiridion_api::device::{DeviceRepository, DeviceService};
 use enchiridion_api::floor::{FloorRepository, FloorService};
 use enchiridion_api::request::{RequestRepository, RequestService};
 use enchiridion_api::role::RoleService;
-use enchiridion_api::startup::run;
+use enchiridion_api::startup::{run, Shutdown};
 use enchiridion_api::user::{UserRepository, UserService};
 use enchiridion_api::{cloud_storage, email};
 
@@ -43,7 +43,7 @@ async fn some_operation(mut shutdown: Shutdown, _sender: mpsc::Sender<()>) {
             }
 
             println!("running operation and waiting");
-            sleep(Duration::from_millis(5000)).await;
+            sleep(Duration::from_millis(1000)).await;
             println!("task finished");
         }
     });
@@ -69,34 +69,6 @@ async fn some_operation(mut shutdown: Shutdown, _sender: mpsc::Sender<()>) {
 
     main_task.await.unwrap();
     shutdown_listener.await.unwrap();
-}
-
-#[derive(Debug)]
-pub struct Shutdown {
-    shutdown: bool,
-    notify: broadcast::Receiver<()>,
-}
-
-impl Shutdown {
-    pub fn new(notify: broadcast::Receiver<()>) -> Shutdown {
-        Shutdown {
-            shutdown: false,
-            notify,
-        }
-    }
-
-    pub fn is_shutdown(&self) -> bool {
-        self.shutdown
-    }
-
-    pub async fn recv(&mut self) {
-        if self.shutdown {
-            return;
-        }
-
-        let _ = self.notify.recv().await;
-        self.shutdown = true;
-    }
 }
 
 #[tokio::main]
@@ -197,42 +169,32 @@ async fn main() -> std::io::Result<()> {
 
     let (notify_shutdown, _) = broadcast::channel::<()>(1);
 
-    let mut shutdown_1 = Shutdown::new(notify_shutdown.subscribe());
+    let shutdown_1 = Shutdown::new(notify_shutdown.subscribe());
     let shutdown_2 = Shutdown::new(notify_shutdown.subscribe());
 
     let (shutdown_complete_tx, mut shutdown_complete_rx) = mpsc::channel::<()>(1);
+    let shutdown_complete_tx_1 = shutdown_complete_tx.clone();
+    let shutdown_complete_tx_2 = shutdown_complete_tx.clone();
 
     let listener = TcpListener::bind(config.address)?;
-    let server = run(
-        shutdown_complete_tx.clone(),
-        listener,
-        role_service.clone(),
-        building_service.clone(),
-        user_service.clone(),
-        auth_service.clone(),
-        floor_service.clone(),
-        device_service.clone(),
-        request_service.clone(),
-        announcement_service.clone(),
-    )?;
 
     tokio::spawn(async move {
-        tokio::select! {
-            result = server => {
-                if let Err(e) = result {
-                    eprintln!("Something went wrong when running the server: {}", e.to_string());
-                    return Err(());
-                }
-                Ok(())
-            },
-            _ = shutdown_1.recv() => {
-                println!("shutdown 1");
-                Ok(())
-            }
-        }
+        run(
+            shutdown_1,
+            shutdown_complete_tx_1,
+            listener,
+            role_service.clone(),
+            building_service.clone(),
+            user_service.clone(),
+            auth_service.clone(),
+            floor_service.clone(),
+            device_service.clone(),
+            request_service.clone(),
+            announcement_service.clone(),
+        )
+        .await;
     });
 
-    let shutdown_complete_tx_2 = shutdown_complete_tx.clone();
     tokio::spawn(async move { some_operation(shutdown_2, shutdown_complete_tx_2).await });
 
     match signal::ctrl_c().await {
