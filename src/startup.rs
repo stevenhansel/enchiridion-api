@@ -31,7 +31,7 @@ async fn health_check() -> HttpResponse {
 }
 
 pub fn run(
-    shutdown_complete_tx: mpsc::Sender<()>,
+    _shutdown_complete_tx: mpsc::Sender<()>,
     listener: TcpListener,
     role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
     building_service: Arc<dyn BuildingServiceInterface + Send + Sync + 'static>,

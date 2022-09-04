@@ -5,11 +5,10 @@ use std::{env, process};
 use aws_config::meta::region::RegionProviderChain;
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
-use tokio::sync::mpsc::Sender;
 use tokio::time::{sleep, Duration};
 use tokio::{
     signal,
-    sync::{broadcast, mpsc},
+    sync::{broadcast, mpsc, oneshot},
 };
 
 use enchiridion_api::announcement::{
@@ -29,6 +28,49 @@ use enchiridion_api::startup::run;
 use enchiridion_api::user::{UserRepository, UserService};
 use enchiridion_api::{cloud_storage, email};
 
+async fn some_operation(mut shutdown: Shutdown, _sender: mpsc::Sender<()>) {
+    let (tx, mut rx) = mpsc::channel::<oneshot::Sender<bool>>(32);
+    let tx_2 = tx.clone();
+    println!("before tokio select");
+
+    let main_task = tokio::spawn(async move {
+        println!("running here");
+        loop {
+            if let Ok(resp) = rx.try_recv() {
+                println!("break happened");
+                let _ = resp.send(true);
+                break;
+            }
+
+            println!("running operation and waiting");
+            sleep(Duration::from_millis(5000)).await;
+            println!("task finished");
+        }
+    });
+
+    let shutdown_listener = tokio::spawn(async move {
+        let _ = shutdown.recv().await;
+
+        println!("shutdown 2 start");
+
+        let (resp_tx, resp_rx) = oneshot::channel::<bool>();
+        if let Err(e) = tx_2.send(resp_tx).await {
+            eprintln!(
+                "Something went wrong when sending shutdown signal: {}",
+                e.to_string()
+            );
+            return;
+        }
+
+        let _ = resp_rx.await;
+
+        println!("shutdown 2 end");
+    });
+
+    main_task.await.unwrap();
+    shutdown_listener.await.unwrap();
+}
+
 #[derive(Debug)]
 pub struct Shutdown {
     shutdown: bool,
@@ -36,18 +78,18 @@ pub struct Shutdown {
 }
 
 impl Shutdown {
-    pub(crate) fn new(notify: broadcast::Receiver<()>) -> Shutdown {
+    pub fn new(notify: broadcast::Receiver<()>) -> Shutdown {
         Shutdown {
             shutdown: false,
             notify,
         }
     }
 
-    pub(crate) fn is_shutdown(&self) -> bool {
+    pub fn is_shutdown(&self) -> bool {
         self.shutdown
     }
 
-    pub(crate) async fn recv(&mut self) {
+    pub async fn recv(&mut self) {
         if self.shutdown {
             return;
         }
@@ -154,7 +196,10 @@ async fn main() -> std::io::Result<()> {
         });
 
     let (notify_shutdown, _) = broadcast::channel::<()>(1);
-    let mut shutdown = Shutdown::new(notify_shutdown.subscribe());
+
+    let mut shutdown_1 = Shutdown::new(notify_shutdown.subscribe());
+    let shutdown_2 = Shutdown::new(notify_shutdown.subscribe());
+
     let (shutdown_complete_tx, mut shutdown_complete_rx) = mpsc::channel::<()>(1);
 
     let listener = TcpListener::bind(config.address)?;
@@ -180,14 +225,20 @@ async fn main() -> std::io::Result<()> {
                 }
                 Ok(())
             },
-            _ = shutdown.recv() => Ok(())
+            _ = shutdown_1.recv() => {
+                println!("shutdown 1");
+                Ok(())
+            }
         }
     });
+
+    let shutdown_complete_tx_2 = shutdown_complete_tx.clone();
+    tokio::spawn(async move { some_operation(shutdown_2, shutdown_complete_tx_2).await });
 
     match signal::ctrl_c().await {
         Ok(()) => {
             drop(notify_shutdown);
-            drop(shutdown_complete_tx)
+            drop(shutdown_complete_tx);
         }
         Err(err) => {
             eprintln!("Unable to listen for shutdown signal: {}", err);
@@ -195,5 +246,6 @@ async fn main() -> std::io::Result<()> {
     }
 
     let _ = shutdown_complete_rx.recv().await;
+
     Ok(())
 }
