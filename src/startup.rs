@@ -1,9 +1,14 @@
 use std::net::TcpListener;
 use std::sync::Arc;
 
+use signal_hook::{
+    consts::{SIGINT, SIGTERM},
+    iterator::Signals,
+};
 use tokio::sync::{broadcast, mpsc};
 
 use crate::http::WebServer;
+use crate::shutdown::Shutdown;
 
 use crate::features::{
     announcement::AnnouncementServiceInterface, auth::AuthServiceInterface,
@@ -12,37 +17,7 @@ use crate::features::{
     user::UserServiceInterface,
 };
 
-#[derive(Debug)]
-pub struct Shutdown {
-    shutdown: bool,
-    notify: broadcast::Receiver<()>,
-}
-
-impl Shutdown {
-    pub fn new(notify: broadcast::Receiver<()>) -> Shutdown {
-        Shutdown {
-            shutdown: false,
-            notify,
-        }
-    }
-
-    pub fn is_shutdown(&self) -> bool {
-        self.shutdown
-    }
-
-    pub async fn recv(&mut self) {
-        if self.shutdown {
-            return;
-        }
-
-        let _ = self.notify.recv().await;
-        self.shutdown = true;
-    }
-}
-
 pub async fn run(
-    mut shutdown: Shutdown,
-    _sender: mpsc::Sender<()>,
     listener: TcpListener,
     role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
     building_service: Arc<dyn BuildingServiceInterface + Send + Sync + 'static>,
@@ -52,48 +27,61 @@ pub async fn run(
     device_service: Arc<dyn DeviceServiceInterface + Send + Sync + 'static>,
     request_service: Arc<dyn RequestServiceInterface + Send + Sync + 'static>,
     announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
-) {
-    let web_server = match WebServer::build(
-        listener,
-        role_service,
-        building_service,
-        user_service,
-        auth_service,
-        floor_service,
-        device_service,
-        request_service,
-        announcement_service,
-    ) {
-        Ok(server) => server,
-        Err(e) => {
-            eprintln!(
-                "[error] Something when wrong when assembling the server: {:?}",
-                e
-            );
-            return;
-        }
-    };
-    let handle = web_server.get_handle();
-    let server = web_server.server;
+) -> Result<(), std::io::Error> {
+    let (notify_shutdown, _) = broadcast::channel::<()>(1);
 
-    let runtime = tokio::spawn(async move {
-        println!("[info] Server is starting on http://localhost:8080");
+    let shutdown_1 = Shutdown::new(notify_shutdown.subscribe());
+    // let shutdown_2 = Shutdown::new(notify_shutdown.subscribe());
 
-        if let Err(e) = server.await {
+    let (shutdown_complete_tx, mut shutdown_complete_rx) = mpsc::channel::<()>(1);
+    let shutdown_complete_tx_1 = shutdown_complete_tx.clone();
+    // let shutdown_complete_tx_2 = shutdown_complete_tx.clone();
+
+    tokio::spawn(async move {
+        let server = match WebServer::build(
+            listener,
+            role_service,
+            building_service,
+            user_service,
+            auth_service,
+            floor_service,
+            device_service,
+            request_service,
+            announcement_service,
+        ) {
+            Ok(server) => server,
+            Err(e) => {
+                eprintln!(
+                    "[error] Something went wrong when building the server: {:?}",
+                    e
+                );
+                return;
+            }
+        };
+
+        if let Err(e) = server.run(shutdown_1, shutdown_complete_tx_1).await {
             eprintln!(
-                "[error] Something when wrong when running the server: {:?}",
+                "[error] Something went wrong when running the server: {:?}",
                 e
             );
             return;
         }
     });
 
-    let shutdown_listener = tokio::spawn(async move {
-        let _ = shutdown.recv().await;
-
-        handle.stop(true).await;
+    let mut signals = Signals::new(&[SIGTERM, SIGINT])?;
+    let signal_listener = tokio::spawn(async move {
+        for _ in signals.forever() {
+            println!("[info] Commencing application shutdown");
+            break;
+        }
     });
 
-    runtime.await.unwrap();
-    shutdown_listener.await.unwrap();
+    signal_listener.await.unwrap();
+
+    drop(notify_shutdown);
+    drop(shutdown_complete_tx);
+
+    let _ = shutdown_complete_rx.recv().await;
+
+    Ok(())
 }

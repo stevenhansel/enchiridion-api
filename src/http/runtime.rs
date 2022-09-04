@@ -1,13 +1,20 @@
 use std::{net::TcpListener, sync::Arc};
 
 use actix_cors::Cors;
-use actix_web::{dev::{Server, ServerHandle}, web, App, HttpServer};
+use actix_web::{
+    dev::{Server, ServerHandle},
+    web, App, HttpServer,
+};
+use tokio::sync::mpsc;
 
-use crate::features::{
-    announcement::AnnouncementServiceInterface, auth::AuthServiceInterface,
-    building::BuildingServiceInterface, device::DeviceServiceInterface,
-    floor::FloorServiceInterface, request::RequestServiceInterface, role::RoleServiceInterface,
-    user::UserServiceInterface,
+use crate::{
+    features::{
+        announcement::AnnouncementServiceInterface, auth::AuthServiceInterface,
+        building::BuildingServiceInterface, device::DeviceServiceInterface,
+        floor::FloorServiceInterface, request::RequestServiceInterface, role::RoleServiceInterface,
+        user::UserServiceInterface,
+    },
+    shutdown::Shutdown,
 };
 
 use super::routes::{dashboard_routes, device_routes};
@@ -59,8 +66,36 @@ impl WebServer {
         Ok(WebServer { server })
     }
 
-    pub async fn run(self) -> Result<(), std::io::Error> {
-        self.server.await
+    pub async fn run(
+        self,
+        mut shutdown: Shutdown,
+        _sender: mpsc::Sender<()>,
+    ) -> Result<(), std::io::Error> {
+        let handle = self.get_handle();
+
+        let runtime = tokio::spawn(async move {
+            println!("[info] Server is starting on http://localhost:8080");
+
+            if let Err(e) = self.server.await {
+                eprintln!(
+                    "[error] Something when wrong when running the server: {:?}",
+                    e
+                );
+                return;
+            }
+        });
+
+        let shutdown_listener = tokio::spawn(async move {
+            let _ = shutdown.recv().await;
+
+            handle.stop(true).await;
+            println!("[info] Web service finished shutting down");
+        });
+
+        runtime.await.unwrap();
+        shutdown_listener.await.unwrap();
+
+        Ok(())
     }
 
     pub fn get_handle(&self) -> ServerHandle {
