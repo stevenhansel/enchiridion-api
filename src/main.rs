@@ -23,49 +23,6 @@ use enchiridion_api::{
     startup::run,
 };
 
-// async fn some_operation(mut shutdown: Shutdown, _sender: mpsc::Sender<()>) {
-//     let (tx, mut rx) = mpsc::channel::<oneshot::Sender<bool>>(32);
-//     let tx_2 = tx.clone();
-//     println!("before tokio select");
-
-//     let main_task = tokio::spawn(async move {
-//         println!("running here");
-//         loop {
-//             if let Ok(resp) = rx.try_recv() {
-//                 println!("break happened");
-//                 let _ = resp.send(true);
-//                 break;
-//             }
-
-//             println!("running operation and waiting");
-//             sleep(Duration::from_millis(1000)).await;
-//             println!("task finished");
-//         }
-//     });
-
-//     let shutdown_listener = tokio::spawn(async move {
-//         let _ = shutdown.recv().await;
-
-//         println!("shutdown 2 start");
-
-//         let (resp_tx, resp_rx) = oneshot::channel::<bool>();
-//         if let Err(e) = tx_2.send(resp_tx).await {
-//             eprintln!(
-//                 "Something went wrong when sending shutdown signal: {}",
-//                 e.to_string()
-//             );
-//             return;
-//         }
-
-//         let _ = resp_rx.await;
-
-//         println!("shutdown 2 end");
-//     });
-
-//     main_task.await.unwrap();
-//     shutdown_listener.await.unwrap();
-// }
-
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     let environment = match env::var("ENVIRONMENT") {
@@ -175,5 +132,4 @@ async fn main() -> std::io::Result<()> {
         announcement_service.clone(),
     )
     .await
-    // tokio::spawn(async move { some_operation(shutdown_2, shutdown_complete_tx_2).await });
 }

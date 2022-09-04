@@ -7,3 +7,4 @@ pub mod queue;
 pub mod cloud_storage;
 pub mod features;
 pub mod shutdown;
+pub mod scheduler;

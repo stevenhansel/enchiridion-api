@@ -7,8 +7,8 @@ use signal_hook::{
 };
 use tokio::sync::{broadcast, mpsc};
 
-use crate::http::WebServer;
 use crate::shutdown::Shutdown;
+use crate::{http::WebServer, scheduler};
 
 use crate::features::{
     announcement::AnnouncementServiceInterface, auth::AuthServiceInterface,
@@ -31,11 +31,11 @@ pub async fn run(
     let (notify_shutdown, _) = broadcast::channel::<()>(1);
 
     let shutdown_1 = Shutdown::new(notify_shutdown.subscribe());
-    // let shutdown_2 = Shutdown::new(notify_shutdown.subscribe());
+    let shutdown_2 = Shutdown::new(notify_shutdown.subscribe());
 
     let (shutdown_complete_tx, mut shutdown_complete_rx) = mpsc::channel::<()>(1);
     let shutdown_complete_tx_1 = shutdown_complete_tx.clone();
-    // let shutdown_complete_tx_2 = shutdown_complete_tx.clone();
+    let shutdown_complete_tx_2 = shutdown_complete_tx.clone();
 
     tokio::spawn(async move {
         let server = match WebServer::build(
@@ -66,6 +66,10 @@ pub async fn run(
             );
             return;
         }
+    });
+
+    tokio::spawn(async move {
+        scheduler::run(shutdown_2, shutdown_complete_tx_2).await;
     });
 
     let mut signals = Signals::new(&[SIGTERM, SIGINT])?;
