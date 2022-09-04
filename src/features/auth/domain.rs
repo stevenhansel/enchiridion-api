@@ -1,8 +1,7 @@
 use std::error;
 use std::fmt;
 
-use crate::role::RoleObject;
-use crate::user::UserStatus;
+use crate::features::{role::RoleObject, user::UserStatus};
 
 #[derive(Debug)]
 pub enum AuthError {

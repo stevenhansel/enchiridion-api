@@ -2,8 +2,10 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::building::{BuildingRepositoryInterface, InsertBuildingParams, UpdateBuildingParams};
-use crate::database::DatabaseError;
+use crate::{
+    database::DatabaseError,
+    features::building::{BuildingRepositoryInterface, InsertBuildingParams, UpdateBuildingParams},
+};
 
 use super::{domain::Building, BuildingError};
 
@@ -132,7 +134,8 @@ impl BuildingServiceInterface for BuildingService {
                         let code = code.to_string();
                         if code == DatabaseError::ForeignKeyError.to_string() {
                             return Err(BuildingError::BuildingCascadeConstraint(
-                                "Unable to delete building because it still have existing floors".into(),
+                                "Unable to delete building because it still have existing floors"
+                                    .into(),
                             ));
                         }
                     }

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::role::RoleObject;
+use crate::features::role::RoleObject;
 
 #[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

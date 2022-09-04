@@ -10,8 +10,8 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    announcement::CreateAnnouncementError,
     cloud_storage::TmpFile,
+    features::announcement::CreateAnnouncementError,
     http::{
         derive_authentication_middleware_error, derive_user_id, AuthenticationContext,
         HttpErrorResponse,

@@ -4,11 +4,12 @@ use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::building::service::{CreateParams, UpdateParams};
-
-use crate::http::{
-    derive_authentication_middleware_error, derive_user_id, ApiValidationError,
-    AuthenticationContext, HttpErrorResponse,
+use crate::{
+    features::building::service::{CreateParams, UpdateParams},
+    http::{
+        derive_authentication_middleware_error, derive_user_id, ApiValidationError,
+        AuthenticationContext, HttpErrorResponse,
+    },
 };
 
 use super::service::BuildingServiceInterface;

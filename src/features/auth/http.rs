@@ -5,11 +5,13 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::http::{
-    derive_authentication_middleware_error, derive_user_id, ApiValidationError,
-    AuthenticationContext, HttpErrorResponse, API_VALIDATION_ERROR_CODE,
+use crate::{
+    features::role::RoleServiceInterface,
+    http::{
+        derive_authentication_middleware_error, derive_user_id, ApiValidationError,
+        AuthenticationContext, HttpErrorResponse, API_VALIDATION_ERROR_CODE,
+    },
 };
-use crate::role::RoleServiceInterface;
 
 use super::service::AuthServiceInterface;
 use super::{AuthError, AuthErrorCode, ChangePasswordError, LoginParams, RegisterParams};

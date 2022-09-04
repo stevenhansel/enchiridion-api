@@ -13,10 +13,15 @@ use jwt::{SignWithKey, VerifyWithKey};
 use secrecy::ExposeSecret;
 use sha2::Sha256;
 
-use crate::database::DatabaseError;
-use crate::email::{self, EmailParams};
-use crate::user::{InsertRawUserParams, InsertUserParams, UserRepositoryInterface, UserStatus};
-use crate::{config::Configuration, role::ApplicationPermission, role::RoleServiceInterface};
+use crate::{
+    config::Configuration,
+    database::DatabaseError,
+    email::{self, EmailParams},
+    features::{
+        role::{ApplicationPermission, RoleServiceInterface},
+        user::{InsertRawUserParams, InsertUserParams, UserRepositoryInterface, UserStatus},
+    },
+};
 
 use super::{
     AuthEntity, AuthError, AuthRepositoryInterface, AuthenticateError, ChangePasswordError,

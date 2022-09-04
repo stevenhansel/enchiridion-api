@@ -5,15 +5,14 @@ use async_trait::async_trait;
 use crate::{
     cloud_storage::{self, TmpFile},
     database::{DatabaseError, PaginationResult},
-    request::{
-        CreateRequestParams, RequestActionType, RequestServiceInterface,
-    },
+    features::request::{CreateRequestParams, RequestActionType, RequestServiceInterface},
 };
 
 use super::{
-    Announcement, AnnouncementDetail, AnnouncementRepositoryInterface, AnnouncementStatus,
-    CreateAnnouncementError, FindListAnnouncementParams, GetAnnouncementDetailError,
-    GetAnnouncementMediaPresignedURLError, InsertAnnouncementParams, ListAnnouncementError, AnnouncementMediaObject,
+    Announcement, AnnouncementDetail, AnnouncementMediaObject, AnnouncementRepositoryInterface,
+    AnnouncementStatus, CreateAnnouncementError, FindListAnnouncementParams,
+    GetAnnouncementDetailError, GetAnnouncementMediaPresignedURLError, InsertAnnouncementParams,
+    ListAnnouncementError,
 };
 
 pub struct ListAnnouncementParams {
@@ -210,12 +209,14 @@ impl AnnouncementServiceInterface for AnnouncementService {
             Err(_) => return Err(GetAnnouncementMediaPresignedURLError::InternalServerError),
         };
 
-        let splits: Vec<String> = result.media.clone().split("/").map(|m| m.to_string()).collect();
+        let splits: Vec<String> = result
+            .media
+            .clone()
+            .split("/")
+            .map(|m| m.to_string())
+            .collect();
         let filename = splits[1].clone();
 
-        Ok(AnnouncementMediaObject{
-            filename,
-            media,
-        })
+        Ok(AnnouncementMediaObject { filename, media })
     }
 }

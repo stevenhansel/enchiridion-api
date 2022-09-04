@@ -12,22 +12,22 @@ use sqlx::PgPool;
 use tokio::sync::{broadcast, mpsc, oneshot};
 use tokio::time::{sleep, Duration};
 
-use enchiridion_api::announcement::{
-    AnnouncementQueue, AnnouncementRepository, AnnouncementService,
+use enchiridion_api::{
+    cloud_storage::{self, s3::S3Adapter},
+    config::Configuration,
+    email,
+    features::{
+        announcement::{AnnouncementQueue, AnnouncementRepository, AnnouncementService},
+        auth::{AuthRepository, AuthService, AuthServiceInterface, SeedDefaultUserError},
+        building::{BuildingRepository, BuildingService},
+        device::{DeviceRepository, DeviceService},
+        floor::{FloorRepository, FloorService},
+        request::{RequestRepository, RequestService},
+        role::RoleService,
+        user::{UserRepository, UserService},
+    },
+    startup::{run, Shutdown},
 };
-use enchiridion_api::auth::{
-    AuthRepository, AuthService, AuthServiceInterface, SeedDefaultUserError,
-};
-use enchiridion_api::building::{BuildingRepository, BuildingService};
-use enchiridion_api::cloud_storage::s3::S3Adapter;
-use enchiridion_api::config::Configuration;
-use enchiridion_api::device::{DeviceRepository, DeviceService};
-use enchiridion_api::floor::{FloorRepository, FloorService};
-use enchiridion_api::request::{RequestRepository, RequestService};
-use enchiridion_api::role::RoleService;
-use enchiridion_api::startup::{run, Shutdown};
-use enchiridion_api::user::{UserRepository, UserService};
-use enchiridion_api::{cloud_storage, email};
 
 async fn some_operation(mut shutdown: Shutdown, _sender: mpsc::Sender<()>) {
     let (tx, mut rx) = mpsc::channel::<oneshot::Sender<bool>>(32);

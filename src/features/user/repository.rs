@@ -3,7 +3,7 @@ use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
 use crate::{
     database::PaginationResult,
-    role::{PermissionObject, RoleObject, DEFAULT_ROLES},
+    features::role::{PermissionObject, RoleObject, DEFAULT_ROLES},
 };
 
 use super::domain::{User, UserDetail, UserStatus};

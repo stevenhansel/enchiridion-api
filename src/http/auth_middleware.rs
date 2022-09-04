@@ -12,10 +12,12 @@ use futures::future::LocalBoxFuture;
 use futures::FutureExt;
 
 use crate::{
-    auth::{AuthErrorCode, AuthServiceInterface, AuthenticateError},
     http::HttpErrorResponse,
-    role::ApplicationPermission,
-    user::UserStatus,
+    features::{
+        auth::{AuthErrorCode, AuthServiceInterface, AuthenticateError},
+        role::ApplicationPermission,
+        user::UserStatus,
+    },
 };
 
 pub type AuthenticationInfoResult = Result<i32, AuthenticateError>;

@@ -6,8 +6,10 @@ use sqlx::{Pool, Postgres};
 
 use crate::{
     config::Configuration,
-    role::{PermissionObject, RoleObject, DEFAULT_ROLES},
-    user::UserStatus,
+    features::{
+        role::{PermissionObject, RoleObject, DEFAULT_ROLES},
+        user::UserStatus,
+    },
 };
 
 use super::UserAuthEntity;
@@ -85,7 +87,10 @@ impl AuthRepository {
             profile_picture: raw.user_profile_picture.clone(),
             is_email_confirmed: raw.user_is_email_confirmed,
             user_status: raw.user_status.clone(),
-            role: roles.into_iter().find(|r| r.value == raw.user_role).unwrap(),
+            role: roles
+                .into_iter()
+                .find(|r| r.value == raw.user_role)
+                .unwrap(),
         };
 
         entity

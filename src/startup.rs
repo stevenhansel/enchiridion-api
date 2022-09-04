@@ -7,17 +7,18 @@ use actix_web::{guard, web, App, HttpResponse, HttpServer};
 use serde::Serialize;
 use tokio::sync::{mpsc, broadcast};
 
-use crate::floor::FloorServiceInterface;
 use crate::http::AuthenticationMiddlewareFactory;
 
-use crate::announcement::{http as announcement_http, AnnouncementServiceInterface};
-use crate::auth::{http as auth_http, AuthServiceInterface};
-use crate::building::{http as building_http, BuildingServiceInterface};
-use crate::device::{http as device_http, DeviceServiceInterface};
-use crate::floor::http as floor_http;
-use crate::request::{http as request_http, RequestServiceInterface};
-use crate::role::{http as role_http, ApplicationPermission, RoleServiceInterface};
-use crate::user::{http as user_http, UserServiceInterface, UserStatus};
+use crate::features::{
+    announcement::{http as announcement_http, AnnouncementServiceInterface},
+    auth::{http as auth_http, AuthServiceInterface},
+    building::{http as building_http, BuildingServiceInterface},
+    device::{http as device_http, DeviceServiceInterface},
+    floor::{http as floor_http, FloorServiceInterface},
+    request::{http as request_http, RequestServiceInterface},
+    role::{http as role_http, ApplicationPermission, RoleServiceInterface},
+    user::{http as user_http, UserServiceInterface, UserStatus},
+};
 
 #[derive(Debug)]
 pub struct Shutdown {

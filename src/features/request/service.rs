@@ -3,11 +3,13 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use crate::{
-    announcement::{
-        AnnouncementQueueInterface, AnnouncementRepositoryInterface, AnnouncementStatus,
-    },
-    auth::AuthRepositoryInterface,
     database::{DatabaseError, PaginationResult},
+    features::{
+        announcement::{
+            AnnouncementQueueInterface, AnnouncementRepositoryInterface, AnnouncementStatus,
+        },
+        auth::AuthRepositoryInterface,
+    },
 };
 
 use super::{
