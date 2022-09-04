@@ -4,12 +4,13 @@ use std::{env, process};
 
 use aws_config::meta::region::RegionProviderChain;
 use secrecy::ExposeSecret;
-use sqlx::PgPool;
-use tokio::time::{sleep, Duration};
-use tokio::{
-    signal,
-    sync::{broadcast, mpsc, oneshot},
+use signal_hook::{
+    consts::{SIGINT, SIGTERM},
+    iterator::Signals,
 };
+use sqlx::PgPool;
+use tokio::sync::{broadcast, mpsc, oneshot};
+use tokio::time::{sleep, Duration};
 
 use enchiridion_api::announcement::{
     AnnouncementQueue, AnnouncementRepository, AnnouncementService,
@@ -79,9 +80,9 @@ async fn main() -> std::io::Result<()> {
     };
     let config = match environment.as_str() {
         "production" => {
-            Configuration::with_os_environment_vars().expect("Failed to read configuration")
+            Configuration::with_os_environment_vars().expect("[error] Failed to read configuration")
         }
-        _ => Configuration::with_env_file().expect("Failed to read configuration"),
+        _ => Configuration::with_env_file().expect("[error] Failed to read configuration"),
     };
 
     let pool = PgPool::connect(config.database_url.expose_secret())
@@ -89,11 +90,11 @@ async fn main() -> std::io::Result<()> {
         .unwrap();
 
     let redis_instance = redis::Client::open(config.redis_url.expose_secret().to_string())
-        .expect("Failed to create redis instance");
+        .expect("[error] Failed to create redis instance");
     let redis_connection = Arc::new(Mutex::new(
         redis_instance
             .get_connection()
-            .expect("Failed to open redis connection"),
+            .expect("[error] Failed to open redis connection"),
     ));
 
     let mailgun_adapter = email::MailgunAdapter::new(
@@ -197,15 +198,18 @@ async fn main() -> std::io::Result<()> {
 
     tokio::spawn(async move { some_operation(shutdown_2, shutdown_complete_tx_2).await });
 
-    match signal::ctrl_c().await {
-        Ok(()) => {
-            drop(notify_shutdown);
-            drop(shutdown_complete_tx);
+    let mut signals = Signals::new(&[SIGTERM, SIGINT])?;
+    let signal_listener = tokio::spawn(async move {
+        for _ in signals.forever() {
+            println!("[info] Commencing application shutdown");
+            break;
         }
-        Err(err) => {
-            eprintln!("Unable to listen for shutdown signal: {}", err);
-        }
-    }
+    });
+
+    signal_listener.await.unwrap();
+
+    drop(notify_shutdown);
+    drop(shutdown_complete_tx);
 
     let _ = shutdown_complete_rx.recv().await;
 

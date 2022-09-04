@@ -459,28 +459,25 @@ pub async fn run(
     ) {
         Ok(server) => server,
         Err(e) => {
-            eprintln!("Something when wrong when assembling the server: {:?}", e);
+            eprintln!("[error] Something when wrong when assembling the server: {:?}", e);
             return;
         }
     };
     let handle = server.handle();
 
     let runtime = tokio::spawn(async move {
-        println!("Server is starting on http://localhost:8080");
+        println!("[info] Server is starting on http://localhost:8080");
 
         if let Err(e) = server.await {
-            eprintln!("Something when wrong when running the server: {:?}", e);
+            eprintln!("[error] Something when wrong when running the server: {:?}", e);
             return;
         }
     });
 
     let shutdown_listener = tokio::spawn(async move {
         let _ = shutdown.recv().await;
-        println!("shutdown 1 start");
 
         handle.stop(true).await;
-
-        println!("shutdown 1 end");
     });
 
     runtime.await.unwrap();
