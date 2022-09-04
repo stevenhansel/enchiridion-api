@@ -17,7 +17,7 @@ pub async fn run(mut shutdown: Shutdown, _sender: mpsc::Sender<()>) {
     let cron = tokio::spawn(async move {
         println!("[info] Announcement Scheduler is starting");
 
-        let schedule = Schedule::from_str("1/10 * * * * *").unwrap();
+        let schedule = Schedule::from_str("0 0 0 * * *").unwrap();
         let now = Utc::now().naive_utc();
         let mut last_tick = Jakarta.from_utc_datetime(&now);
 
