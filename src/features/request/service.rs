@@ -283,7 +283,7 @@ impl RequestServiceInterface for RequestService {
         if approval.approved_by_bm == Some(true) && approval.approved_by_lsc == Some(true) {
             if let Err(_) = self
                 ._announcement_repository
-                .update_status(announcement.id, AnnouncementStatus::Active)
+                .update_status(announcement.id, AnnouncementStatus::WaitingForSync)
                 .await
             {
                 return Err(UpdateRequestApprovalError::InternalServerError);
