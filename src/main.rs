@@ -119,7 +119,6 @@ async fn main() -> std::io::Result<()> {
             _ => {}
         });
 
-
     run(
         TcpListener::bind(config.address)?,
         role_service.clone(),

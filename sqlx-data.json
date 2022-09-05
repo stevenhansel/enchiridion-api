@@ -347,6 +347,26 @@
     },
     "query": "\n            insert into \"user\" (\n                name,\n                email,\n                password,\n                registration_reason,\n                role,\n                is_email_confirmed,\n                status\n            )\n            values($1, $2, $3, $4, $5, $6, $7)\n            returning id\n            "
   },
+  "ab1bc773e0ed791355335d8fdb87a3259a4ce358bd30e84e32d914122244c372": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n            select \"id\"\n            from \"announcement\"\n            where\n                \"status\" = 'waiting_for_approval' and\n                \"start_date\" < $1\n            "
+  },
   "ada2105cbd1c945d13fc9882e9d5f5cca4af322df22c2ba5f0f54e9fa5c0732f": {
     "describe": {
       "columns": [
