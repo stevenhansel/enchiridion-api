@@ -236,6 +236,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
     async fn handle_waiting_for_approval_announcements(
         &self,
     ) -> Result<(), HandleScheduledAnnouncementsError> {
+        println!("bp 1");
         let announcement_ids = match self
             ._announcement_repository
             .find_expired_waiting_for_approval_announcement_ids(chrono::Utc::now())
@@ -247,9 +248,13 @@ impl AnnouncementServiceInterface for AnnouncementService {
             }
         };
 
-        if announcement_ids.len() == 0 {
+        println!("bp 2");
+       if announcement_ids.len() == 0 {
             return Ok(());
         }
+
+        println!("bp 3");
+
 
         if let Err(_) = self
             ._announcement_repository
@@ -259,6 +264,9 @@ impl AnnouncementServiceInterface for AnnouncementService {
             return Err(HandleScheduledAnnouncementsError::InternalServerError);
         }
 
+        println!("bp 4");
+
+
         if let Err(_) = self
             ._request_service
             .batch_reject_requests_from_announcement_ids(announcement_ids.clone())
@@ -266,6 +274,9 @@ impl AnnouncementServiceInterface for AnnouncementService {
         {
             return Err(HandleScheduledAnnouncementsError::InternalServerError);
         }
+
+        println!("bp 5");
+
 
         Ok(())
     }
