@@ -287,7 +287,6 @@ impl RequestServiceInterface for RequestService {
         {
             Ok(_) => Ok(()),
             Err(e) => {
-                println!("error: {}", e);
                 Err(BatchRejectRequestsFromAnnouncementIdsError::InternalServerError)
             }
         }

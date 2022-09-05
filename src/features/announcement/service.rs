@@ -107,7 +107,6 @@ impl AnnouncementServiceInterface for AnnouncementService {
         {
             Ok(result) => Ok(result),
             Err(e) => {
-                println!("e: {}", e.to_string());
                 return Err(ListAnnouncementError::InternalServerError);
             }
         }
@@ -244,7 +243,6 @@ impl AnnouncementServiceInterface for AnnouncementService {
         {
             Ok(ids) => ids,
             Err(e) => {
-                println!("e1: {}", e);
                 return Err(HandleScheduledAnnouncementsError::InternalServerError);
             }
         };
@@ -258,7 +256,6 @@ impl AnnouncementServiceInterface for AnnouncementService {
             .batch_update_status(announcement_ids.clone(), AnnouncementStatus::Rejected)
             .await
         {
-            println!("e2: {}", e);
             return Err(HandleScheduledAnnouncementsError::InternalServerError);
         }
 
@@ -267,7 +264,6 @@ impl AnnouncementServiceInterface for AnnouncementService {
             .batch_reject_requests_from_announcement_ids(announcement_ids.clone())
             .await
         {
-            println!("e3: {}", e);
             return Err(HandleScheduledAnnouncementsError::InternalServerError);
         }
 

@@ -286,7 +286,6 @@ impl RequestRepositoryInterface for RequestRepository {
         .rows_affected();
 
         if rows_affected == 0 {
-            println!("rows affected: {}", rows_affected);
             return Err(sqlx::Error::RowNotFound);
         }
 
