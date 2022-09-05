@@ -1,6 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
-use chrono::Utc;
+use chrono::{NaiveTime, TimeZone, Utc};
+use chrono_tz::{Asia::Jakarta, Tz};
 use cron::Schedule;
 use tokio::{
     sync::{mpsc, oneshot},
@@ -72,32 +73,46 @@ pub async fn run(
         println!("[info] Announcement Scheduler is starting");
 
         let schedule = Schedule::from_str("0 0 */12 * * *").unwrap();
-        let mut last_tick = Utc::now();
 
+        let mut last_tick: Option<chrono::DateTime<Tz>> = None;
         loop {
             if let Ok(resp) = rx.try_recv() {
                 let _ = resp.send(true);
                 break;
             }
 
-            let now = Utc::now();
+            if last_tick == None {
+                let today_utc = (Utc::today() - chrono::Duration::days(1))
+                    .and_time(NaiveTime::from_hms(17, 0, 0))
+                    .unwrap();
 
-            if let Some(event) = schedule.after(&last_tick).take(1).next() {
-                if now > event {
-                    println!(
-                        "[info] Announcement scheduler started processing at {}",
-                        now
-                    );
+                last_tick = Some(Jakarta.from_utc_datetime(&today_utc.naive_utc()));
 
-                    if let Err(e) = execute_announcement_scheduler(announcement_service.clone()).await {
-                        eprintln!("[error] Something went wrong when executing the announcement scheduler: {}", e);
-                    }
-
-                    println!("[info] Announcement scheduler finished processing");
-                }
+                continue;
             }
 
-            last_tick = now;
+            let utc_now = Utc::now().naive_utc();
+            let now = Jakarta.from_utc_datetime(&utc_now);
+
+            if let Some(event) = schedule.after(&last_tick.unwrap()).take(1).next() {
+                if event > now {
+                    sleep(Duration::from_millis(1000)).await;
+                    continue;
+                }
+
+                println!(
+                    "[info] Announcement scheduler started processing at {}",
+                    now
+                );
+
+                if let Err(e) = execute_announcement_scheduler(announcement_service.clone()).await {
+                    eprintln!("[error] Something went wrong when executing the announcement scheduler: {}", e);
+                }
+
+                println!("[info] Announcement scheduler finished processing");
+            }
+
+            last_tick = Some(now);
             sleep(Duration::from_millis(1000)).await;
         }
     });
