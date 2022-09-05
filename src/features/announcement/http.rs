@@ -14,7 +14,7 @@ use crate::{
     features::announcement::CreateAnnouncementError,
     http::{
         derive_authentication_middleware_error, derive_user_id, AuthenticationContext,
-        HttpErrorResponse,
+        HttpErrorResponse, API_VALIDATION_ERROR_CODE,
     },
 };
 
@@ -23,6 +23,20 @@ use super::{
     AnnouncementStatusObject, CreateAnnouncementParams, GetAnnouncementDetailError,
     GetAnnouncementMediaPresignedURLError, ListAnnouncementError, ListAnnouncementParams,
 };
+
+pub fn validate_date_format(
+    date_string: &str,
+    format: &'static str,
+) -> Result<chrono::DateTime<chrono::Utc>, &'static str> {
+    let naive_date = match NaiveDate::parse_from_str(date_string, format) {
+        Ok(date) => date,
+        Err(_) => return Err("Invalid date format"),
+    };
+    let naive_time = NaiveTime::from_hms(0, 0, 0);
+    let naive_date_time = NaiveDateTime::new(naive_date, naive_time);
+
+    Ok(chrono::Utc.from_utc_datetime(&naive_date_time))
+}
 
 #[derive(Debug)]
 pub struct CreateAnnouncementFormData {
@@ -276,6 +290,8 @@ pub struct ListAnnouncementQueryParams {
     pub status: Option<AnnouncementStatus>,
     pub user_id: Option<i32>,
     pub device_id: Option<i32>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -316,6 +332,34 @@ pub async fn list_announcement(
         return derive_authentication_middleware_error(e);
     }
 
+    let start_date: Option<chrono::DateTime<chrono::Utc>> =
+        if let Some(start_date) = &query_params.start_date {
+            if let Ok(date) = validate_date_format(start_date.as_str(), "%Y-%m-%d") {
+                Some(date)
+            } else {
+                return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+                    API_VALIDATION_ERROR_CODE.to_string(),
+                    vec!["start_date must follow yyyy-mm-dd format".to_string()],
+                ));
+            }
+        } else {
+            None
+        };
+
+    let end_date: Option<chrono::DateTime<chrono::Utc>> =
+        if let Some(end_date) = &query_params.end_date {
+            if let Ok(date) = validate_date_format(end_date.as_str(), "%Y-%m-%d") {
+                Some(date)
+            } else {
+                return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+                    API_VALIDATION_ERROR_CODE.to_string(),
+                    vec!["end_date must follow yyyy-mm-dd format".to_string()],
+                ));
+            }
+        } else {
+            None
+        };
+
     let mut page = 1;
     if let Some(raw_page) = query_params.page {
         page = raw_page;
@@ -334,6 +378,8 @@ pub async fn list_announcement(
             status: query_params.status.clone(),
             user_id: query_params.user_id.clone(),
             device_id: query_params.device_id.clone(),
+            start_date,
+            end_date,
         })
         .await
     {

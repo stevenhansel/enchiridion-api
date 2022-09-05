@@ -56,6 +56,10 @@ pub trait RequestRepositoryInterface {
     async fn find_one(&self, request_id: i32) -> Result<Request, sqlx::Error>;
     async fn insert(&self, params: InsertRequestParams) -> Result<i32, sqlx::Error>;
     async fn update_approval(&self, params: UpdateApprovalParams) -> Result<(), sqlx::Error>;
+    async fn batch_reject_requests_from_announcement_ids(
+        &self,
+        announcement_ids: Vec<i32>,
+    ) -> Result<(), sqlx::Error>;
 }
 
 pub struct RequestRepository {
@@ -257,6 +261,32 @@ impl RequestRepositoryInterface for RequestRepository {
         .rows_affected();
 
         if rows_affected == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
+    }
+
+    async fn batch_reject_requests_from_announcement_ids(
+        &self,
+        announcement_ids: Vec<i32>,
+    ) -> Result<(), sqlx::Error> {
+        let rows_affected = sqlx::query(
+            r#"
+            update "request"
+            set
+                "approved_by_lsc" = false,
+                "approved_by_bm" = false
+            where "announcement_id" = any($1)
+            "#
+        )
+        .bind(&announcement_ids)
+        .execute(&self._db)
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            println!("rows affected: {}", rows_affected);
             return Err(sqlx::Error::RowNotFound);
         }
 

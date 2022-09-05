@@ -1,25 +1,78 @@
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
-use chrono::{TimeZone, Utc};
-use chrono_tz::Asia::Jakarta;
+use chrono::Utc;
 use cron::Schedule;
 use tokio::{
     sync::{mpsc, oneshot},
     time::{sleep, Duration},
 };
 
-use crate::shutdown::Shutdown;
+use crate::{
+    features::{AnnouncementServiceInterface, HandleScheduledAnnouncementsError},
+    shutdown::Shutdown,
+};
 
-pub async fn run(mut shutdown: Shutdown, _sender: mpsc::Sender<()>) {
+pub async fn execute_announcement_scheduler(
+    announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
+) -> Result<(), HandleScheduledAnnouncementsError> {
+    let announcement_service_1 = announcement_service.clone();
+    let announcement_service_2 = announcement_service.clone();
+    let announcement_service_3 = announcement_service.clone();
+
+    let waiting_for_approval_handler = tokio::spawn(async move {
+        announcement_service_1
+            .handle_waiting_for_approval_announcements()
+            .await
+    });
+    let waiting_for_sync_handler = tokio::spawn(async move {
+        announcement_service_2
+            .handle_waiting_for_sync_announcements()
+            .await
+    });
+    let active_handler =
+        tokio::spawn(async move { announcement_service_3.handle_active_announcements().await });
+
+    if let Ok(result) = waiting_for_approval_handler.await {
+        if let Err(e) = result {
+            return Err(e);
+        }
+    } else {
+        return Err(HandleScheduledAnnouncementsError::BrokenThread);
+    }
+
+    if let Ok(result) = waiting_for_sync_handler.await {
+        if let Err(e) = result {
+            return Err(e);
+        }
+    } else {
+        return Err(HandleScheduledAnnouncementsError::BrokenThread);
+    }
+
+    if let Ok(result) = active_handler.await {
+        if let Err(e) = result {
+            return Err(e);
+        }
+    } else {
+        return Err(HandleScheduledAnnouncementsError::BrokenThread);
+    }
+
+    Ok(())
+}
+
+pub async fn run(
+    mut shutdown: Shutdown,
+    _sender: mpsc::Sender<()>,
+    announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
+) {
+    // TODO: refactor scheduler in the future so can have more than one cron
     let (tx, mut rx) = mpsc::channel::<oneshot::Sender<bool>>(32);
     let tx_2 = tx.clone();
 
     let cron = tokio::spawn(async move {
         println!("[info] Announcement Scheduler is starting");
 
-        let schedule = Schedule::from_str("0 0 0 * * *").unwrap();
-        let now = Utc::now().naive_utc();
-        let mut last_tick = Jakarta.from_utc_datetime(&now);
+        let schedule = Schedule::from_str("0 0 */12 * * *").unwrap();
+        let mut last_tick = Utc::now();
 
         loop {
             if let Ok(resp) = rx.try_recv() {
@@ -27,16 +80,20 @@ pub async fn run(mut shutdown: Shutdown, _sender: mpsc::Sender<()>) {
                 break;
             }
 
-            let now = Utc::now().naive_utc();
-            let now = Jakarta.from_utc_datetime(&now);
+            let now = Utc::now();
 
             if let Some(event) = schedule.after(&last_tick).take(1).next() {
                 if now > event {
-                    println!("cron start processing");
+                    println!(
+                        "[info] Announcement scheduler started processing at {}",
+                        now
+                    );
 
-                    sleep(Duration::from_millis(5000)).await;
+                    if let Err(e) = execute_announcement_scheduler(announcement_service.clone()).await {
+                        eprintln!("[error] Something went wrong when executing the announcement scheduler: {}", e);
+                    }
 
-                    println!("cron finished processing");
+                    println!("[info] Announcement scheduler finished processing");
                 }
             }
 

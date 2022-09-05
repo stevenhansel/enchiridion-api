@@ -37,6 +37,7 @@ pub async fn run(
     let shutdown_complete_tx_1 = shutdown_complete_tx.clone();
     let shutdown_complete_tx_2 = shutdown_complete_tx.clone();
 
+    let announcement_service_1 = announcement_service.clone();
     tokio::spawn(async move {
         let server = match WebServer::build(
             listener,
@@ -47,7 +48,7 @@ pub async fn run(
             floor_service,
             device_service,
             request_service,
-            announcement_service,
+            announcement_service_1,
         ) {
             Ok(server) => server,
             Err(e) => {
@@ -68,8 +69,14 @@ pub async fn run(
         }
     });
 
+    let announcement_service_2 = announcement_service.clone();
     tokio::spawn(async move {
-        scheduler::run(shutdown_2, shutdown_complete_tx_2).await;
+        scheduler::run(
+            shutdown_2,
+            shutdown_complete_tx_2,
+            announcement_service_2,
+        )
+        .await;
     });
 
     let mut signals = Signals::new(&[SIGTERM, SIGINT])?;

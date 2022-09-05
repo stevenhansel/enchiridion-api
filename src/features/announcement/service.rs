@@ -11,8 +11,8 @@ use crate::{
 use super::{
     Announcement, AnnouncementDetail, AnnouncementMediaObject, AnnouncementRepositoryInterface,
     AnnouncementStatus, CreateAnnouncementError, FindListAnnouncementParams,
-    GetAnnouncementDetailError, GetAnnouncementMediaPresignedURLError, InsertAnnouncementParams,
-    ListAnnouncementError,
+    GetAnnouncementDetailError, GetAnnouncementMediaPresignedURLError,
+    HandleScheduledAnnouncementsError, InsertAnnouncementParams, ListAnnouncementError,
 };
 
 pub struct ListAnnouncementParams {
@@ -22,6 +22,8 @@ pub struct ListAnnouncementParams {
     pub status: Option<AnnouncementStatus>,
     pub user_id: Option<i32>,
     pub device_id: Option<i32>,
+    pub start_date: Option<chrono::DateTime<chrono::Utc>>,
+    pub end_date: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 pub struct CreateAnnouncementParams {
@@ -52,6 +54,13 @@ pub trait AnnouncementServiceInterface {
         &self,
         announcement_id: i32,
     ) -> Result<AnnouncementMediaObject, GetAnnouncementMediaPresignedURLError>;
+    async fn handle_waiting_for_approval_announcements(
+        &self,
+    ) -> Result<(), HandleScheduledAnnouncementsError>;
+    async fn handle_waiting_for_sync_announcements(
+        &self,
+    ) -> Result<(), HandleScheduledAnnouncementsError>;
+    async fn handle_active_announcements(&self) -> Result<(), HandleScheduledAnnouncementsError>;
 }
 
 pub struct AnnouncementService {
@@ -89,11 +98,16 @@ impl AnnouncementServiceInterface for AnnouncementService {
                 status: params.status.clone(),
                 user_id: params.user_id.clone(),
                 device_id: params.device_id.clone(),
+                start_date_gte: params.start_date.clone(),
+                end_date_lte: params.end_date.clone(),
+
+                start_date_lt: None,
             })
             .await
         {
             Ok(result) => Ok(result),
-            Err(_) => {
+            Err(e) => {
+                println!("e: {}", e.to_string());
                 return Err(ListAnnouncementError::InternalServerError);
             }
         }
@@ -218,5 +232,55 @@ impl AnnouncementServiceInterface for AnnouncementService {
         let filename = splits[1].clone();
 
         Ok(AnnouncementMediaObject { filename, media })
+    }
+
+    async fn handle_waiting_for_approval_announcements(
+        &self,
+    ) -> Result<(), HandleScheduledAnnouncementsError> {
+        let announcement_ids = match self
+            ._announcement_repository
+            .find_expired_waiting_for_approval_announcement_ids(chrono::Utc::now())
+            .await
+        {
+            Ok(ids) => ids,
+            Err(e) => {
+                println!("e1: {}", e);
+                return Err(HandleScheduledAnnouncementsError::InternalServerError);
+            }
+        };
+
+        if announcement_ids.len() == 0 {
+            return Ok(());
+        }
+
+        if let Err(e) = self
+            ._announcement_repository
+            .batch_update_status(announcement_ids.clone(), AnnouncementStatus::Rejected)
+            .await
+        {
+            println!("e2: {}", e);
+            return Err(HandleScheduledAnnouncementsError::InternalServerError);
+        }
+
+        if let Err(e) = self
+            ._request_service
+            .batch_reject_requests_from_announcement_ids(announcement_ids.clone())
+            .await
+        {
+            println!("e3: {}", e);
+            return Err(HandleScheduledAnnouncementsError::InternalServerError);
+        }
+
+        Ok(())
+    }
+
+    async fn handle_waiting_for_sync_announcements(
+        &self,
+    ) -> Result<(), HandleScheduledAnnouncementsError> {
+        Ok(())
+    }
+
+    async fn handle_active_announcements(&self) -> Result<(), HandleScheduledAnnouncementsError> {
+        Ok(())
     }
 }

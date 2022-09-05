@@ -5,6 +5,18 @@ use crate::database::PaginationResult;
 
 use super::{Announcement, AnnouncementDetail, AnnouncementDetailDevices, AnnouncementStatus};
 
+pub struct CountAnnouncementParams {
+    pub query: Option<String>,
+    pub status: Option<AnnouncementStatus>,
+    pub user_id: Option<i32>,
+    pub device_id: Option<i32>,
+
+    pub start_date_gte: Option<chrono::DateTime<chrono::Utc>>,
+    pub start_date_lt: Option<chrono::DateTime<chrono::Utc>>,
+
+    pub end_date_lte: Option<chrono::DateTime<chrono::Utc>>,
+}
+
 pub struct FindListAnnouncementParams {
     pub page: i32,
     pub limit: i32,
@@ -12,6 +24,11 @@ pub struct FindListAnnouncementParams {
     pub status: Option<AnnouncementStatus>,
     pub user_id: Option<i32>,
     pub device_id: Option<i32>,
+
+    pub start_date_gte: Option<chrono::DateTime<chrono::Utc>>,
+    pub start_date_lt: Option<chrono::DateTime<chrono::Utc>>,
+
+    pub end_date_lte: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 pub struct InsertAnnouncementParams {
@@ -58,6 +75,7 @@ pub struct AnnouncementDetailRow {
 
 #[async_trait]
 pub trait AnnouncementRepositoryInterface {
+    async fn count(&self, params: CountAnnouncementParams) -> Result<i32, sqlx::Error>;
     async fn find(
         &self,
         params: FindListAnnouncementParams,
@@ -69,8 +87,16 @@ pub trait AnnouncementRepositoryInterface {
         announcement_id: i32,
         status: AnnouncementStatus,
     ) -> Result<(), sqlx::Error>;
+    async fn batch_update_status(
+        &self,
+        announcement_ids: Vec<i32>,
+        status: AnnouncementStatus,
+    ) -> Result<(), sqlx::Error>;
+    async fn find_expired_waiting_for_approval_announcement_ids(
+        &self,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Vec<i32>, sqlx::Error>;
 }
-
 pub struct AnnouncementRepository {
     _db: Pool<Postgres>,
 }
@@ -83,6 +109,44 @@ impl AnnouncementRepository {
 
 #[async_trait]
 impl AnnouncementRepositoryInterface for AnnouncementRepository {
+    async fn count(&self, params: CountAnnouncementParams) -> Result<i32, sqlx::Error> {
+        let result: i32 = sqlx::query(
+            r#"
+            select
+                cast("result"."count" as integer) as "count",
+            from "announcement"
+            join "user" on "user"."id" = "announcement"."user_id"
+            join "device_announcement" on "device_announcement"."announcement_id" = "announcement"."id"
+            where
+                (
+                    $3::text is null or 
+                    "announcement"."id" = cast(
+                        (coalesce(nullif(regexp_replace($3, '[^0-9]+', '', 'g'), ''), '0')) as integer    
+                    ) or
+                    "announcement"."title" ilike concat('%', $3, '%')
+                ) and
+                ($4::text is null or "announcement"."status" = $4) and
+                ($5::integer is null or "announcement"."user_id" = $5) and 
+                ($6::integer is null or "device_announcement"."device_id" = $6)
+                ($7::timestamp is null or "announcement"."start_date" >= $7) and
+                ($8::timestamp is null or "announcement"."start_date" < $8) and
+                ($9::timestamp is null or "announcement"."end_date" <= $9)
+            "#,
+        )
+        .bind(params.query.clone())
+        .bind(params.status.clone())
+        .bind(params.user_id.clone())
+        .bind(params.device_id.clone())
+        .bind(params.start_date_gte.clone())
+        .bind(params.start_date_lt.clone())
+        .bind(params.end_date_lte.clone())
+        .map(|row: PgRow| row.get("count"))
+        .fetch_one(&self._db)
+        .await?;
+
+        Ok(result)
+    }
+
     async fn find(
         &self,
         params: FindListAnnouncementParams,
@@ -118,7 +182,10 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                     ) and
                     ($4::text is null or "announcement"."status" = $4) and
                     ($5::integer is null or "announcement"."user_id" = $5) and 
-                    ($6::integer is null or "device_announcement"."device_id" = $6)
+                    ($6::integer is null or "device_announcement"."device_id" = $6) and
+                    ($7::timestamp is null or "announcement"."start_date" >= $7) and
+                    ($8::timestamp is null or "announcement"."start_date" < $8) and
+                    ($9::timestamp is null or "announcement"."end_date" <= $9)
             ) "result" on true
             where
                 (
@@ -130,7 +197,10 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 ) and
                 ($4::text is null or "announcement"."status" = $4) and
                 ($5::integer is null or "announcement"."user_id" = $5) and 
-                ($6::integer is null or "device_announcement"."device_id" = $6)
+                ($6::integer is null or "device_announcement"."device_id" = $6) and
+                ($7::timestamp is null or "announcement"."start_date" >= $7) and
+                ($8::timestamp is null or "announcement"."start_date" < $8) and
+                ($9::timestamp is null or "announcement"."end_date" <= $9)
             order by "announcement"."id" desc
             offset $1 limit $2
             "#,
@@ -141,6 +211,9 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         .bind(params.status.clone())
         .bind(params.user_id.clone())
         .bind(params.device_id.clone())
+        .bind(params.start_date_gte.clone())
+        .bind(params.start_date_lt.clone())
+        .bind(params.end_date_lte.clone())
         .map(|row: PgRow| ListAnnouncementRow {
             count: row.get("count"),
             announcement_id: row.get("announcement_id"),
@@ -314,5 +387,50 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         }
 
         Ok(())
+    }
+
+    async fn batch_update_status(
+        &self,
+        announcement_ids: Vec<i32>,
+        status: AnnouncementStatus,
+    ) -> Result<(), sqlx::Error> {
+        let rows_affected = sqlx::query(
+            r#"
+            update "announcement"
+            set "status" = $2
+            where "id" = any($1)
+            "#
+        )
+        .bind(&announcement_ids)
+        .bind(status)
+        .execute(&self._db)
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
+    }
+
+    async fn find_expired_waiting_for_approval_announcement_ids(
+        &self,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Vec<i32>, sqlx::Error> {
+        let result = sqlx::query!(
+            r#"
+            select "id"
+            from "announcement"
+            where
+                "status" = 'waiting_for_approval' and
+                "start_date" < $1
+            "#,
+            now,
+        )
+        .fetch_all(&self._db)
+        .await?;
+
+        Ok(result.into_iter().map(|row| row.id).collect())
     }
 }

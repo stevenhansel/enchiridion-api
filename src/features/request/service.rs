@@ -13,9 +13,9 @@ use crate::{
 };
 
 use super::{
-    CreateRequestError, FindRequestParams, InsertRequestParams, ListRequestError, Request,
-    RequestActionType, RequestRepositoryInterface, UpdateApprovalParams,
-    UpdateRequestApprovalError,
+    BatchRejectRequestsFromAnnouncementIdsError, CreateRequestError, FindRequestParams,
+    InsertRequestParams, ListRequestError, Request, RequestActionType, RequestRepositoryInterface,
+    UpdateApprovalParams, UpdateRequestApprovalError,
 };
 
 pub struct ListRequestParams {
@@ -49,11 +49,14 @@ pub trait RequestServiceInterface {
         params: ListRequestParams,
     ) -> Result<PaginationResult<Request>, ListRequestError>;
     async fn create_request(&self, params: CreateRequestParams) -> Result<(), CreateRequestError>;
-
     async fn update_request_approval(
         &self,
         params: UpdateRequestApprovalParams,
     ) -> Result<(), UpdateRequestApprovalError>;
+    async fn batch_reject_requests_from_announcement_ids(
+        &self,
+        announcement_ids: Vec<i32>,
+    ) -> Result<(), BatchRejectRequestsFromAnnouncementIdsError>;
 }
 
 pub struct RequestService {
@@ -271,5 +274,22 @@ impl RequestServiceInterface for RequestService {
         }
 
         Ok(())
+    }
+
+    async fn batch_reject_requests_from_announcement_ids(
+        &self,
+        announcement_ids: Vec<i32>,
+    ) -> Result<(), BatchRejectRequestsFromAnnouncementIdsError> {
+        match self
+            ._request_repository
+            .batch_reject_requests_from_announcement_ids(announcement_ids)
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                println!("error: {}", e);
+                Err(BatchRejectRequestsFromAnnouncementIdsError::InternalServerError)
+            }
+        }
     }
 }

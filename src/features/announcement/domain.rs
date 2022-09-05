@@ -159,3 +159,22 @@ impl std::fmt::Display for GetAnnouncementMediaPresignedURLError {
         }
     }
 }
+
+pub enum HandleScheduledAnnouncementsError {
+    BrokenThread,
+    InternalServerError,
+}
+
+impl std::fmt::Display for HandleScheduledAnnouncementsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HandleScheduledAnnouncementsError::BrokenThread => {
+                write!(f, "Thread closed unexpectedly")
+            },
+            HandleScheduledAnnouncementsError::InternalServerError => {
+                write!(f, "Internal Server Error")
+            }
+        }
+    }
+}
+
