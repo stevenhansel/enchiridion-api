@@ -56,6 +56,7 @@ pub trait AnnouncementServiceInterface {
     ) -> Result<AnnouncementMediaObject, GetAnnouncementMediaPresignedURLError>;
     async fn handle_waiting_for_approval_announcements(
         &self,
+        now: chrono::DateTime<chrono::Utc>,
     ) -> Result<(), HandleScheduledAnnouncementsError>;
     async fn handle_waiting_for_sync_announcements(
         &self,
@@ -235,11 +236,12 @@ impl AnnouncementServiceInterface for AnnouncementService {
 
     async fn handle_waiting_for_approval_announcements(
         &self,
+        now: chrono::DateTime<chrono::Utc>,
     ) -> Result<(), HandleScheduledAnnouncementsError> {
         println!("bp 1");
         let announcement_ids = match self
             ._announcement_repository
-            .find_expired_waiting_for_approval_announcement_ids(chrono::Utc::now())
+            .find_expired_waiting_for_approval_announcement_ids(now)
             .await
         {
             Ok(ids) => ids,

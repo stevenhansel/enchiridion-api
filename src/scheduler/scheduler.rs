@@ -15,6 +15,7 @@ use crate::{
 
 pub async fn execute_announcement_scheduler(
     announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
+    now: chrono::DateTime<Utc>,
 ) -> Result<(), HandleScheduledAnnouncementsError> {
     let announcement_service_1 = announcement_service.clone();
     let announcement_service_2 = announcement_service.clone();
@@ -22,7 +23,7 @@ pub async fn execute_announcement_scheduler(
 
     let waiting_for_approval_handler = tokio::spawn(async move {
         announcement_service_1
-            .handle_waiting_for_approval_announcements()
+            .handle_waiting_for_approval_announcements(now)
             .await
     });
     let waiting_for_sync_handler = tokio::spawn(async move {
@@ -105,7 +106,7 @@ pub async fn run(
                     now
                 );
 
-                if let Err(e) = execute_announcement_scheduler(announcement_service.clone()).await {
+                if let Err(e) = execute_announcement_scheduler(announcement_service.clone(), now.with_timezone(&chrono::Utc)).await {
                     eprintln!("[error] Something went wrong when executing the announcement scheduler: {}", e);
                 }
 
