@@ -106,7 +106,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             .await
         {
             Ok(result) => Ok(result),
-            Err(e) => {
+            Err(_) => {
                 return Err(ListAnnouncementError::InternalServerError);
             }
         }
@@ -242,7 +242,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             .await
         {
             Ok(ids) => ids,
-            Err(e) => {
+            Err(_) => {
                 return Err(HandleScheduledAnnouncementsError::InternalServerError);
             }
         };
@@ -251,7 +251,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             return Ok(());
         }
 
-        if let Err(e) = self
+        if let Err(_) = self
             ._announcement_repository
             .batch_update_status(announcement_ids.clone(), AnnouncementStatus::Rejected)
             .await
@@ -259,7 +259,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             return Err(HandleScheduledAnnouncementsError::InternalServerError);
         }
 
-        if let Err(e) = self
+        if let Err(_) = self
             ._request_service
             .batch_reject_requests_from_announcement_ids(announcement_ids.clone())
             .await
@@ -273,6 +273,8 @@ impl AnnouncementServiceInterface for AnnouncementService {
     async fn handle_waiting_for_sync_announcements(
         &self,
     ) -> Result<(), HandleScheduledAnnouncementsError> {
+        // TODO: fetch announcements that have waiting_for_sync status and call
+        // announcement_sync_queue service
         Ok(())
     }
 

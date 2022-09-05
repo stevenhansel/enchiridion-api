@@ -44,6 +44,7 @@ pub struct AnnouncementMediaObject {
 #[sqlx(type_name = "announcement_status", rename_all = "snake_case")]
 pub enum AnnouncementStatus {
     WaitingForApproval,
+    WaitingForSync,
     Active,
     Done,
     Canceled,
@@ -61,6 +62,7 @@ impl AnnouncementStatus {
     pub fn label(self) -> &'static str {
         match self {
             AnnouncementStatus::WaitingForApproval => "Waiting For Approval",
+            AnnouncementStatus::WaitingForSync => "Waiting For Sync",
             AnnouncementStatus::Active => "Active",
             AnnouncementStatus::Done => "Done",
             AnnouncementStatus::Canceled => "Canceled",
@@ -71,6 +73,7 @@ impl AnnouncementStatus {
     pub fn value(self) -> &'static str {
         match self {
             AnnouncementStatus::WaitingForApproval => "waiting_for_approval",
+            AnnouncementStatus::WaitingForSync => "waiting_for_sync",
             AnnouncementStatus::Active => "active",
             AnnouncementStatus::Done => "done",
             AnnouncementStatus::Canceled => "canceled",

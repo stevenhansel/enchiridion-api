@@ -167,6 +167,7 @@
               "kind": {
                 "Enum": [
                   "waiting_for_approval",
+                  "waiting_for_sync",
                   "active",
                   "done",
                   "canceled",

@@ -15,6 +15,13 @@ pub struct Request {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+pub struct RequestApproval {
+    pub approved_by_lsc: Option<bool>,
+    pub approved_by_bm: Option<bool>,
+    pub lsc_approver: Option<i32>,
+    pub bm_approver: Option<i32>,
+}
+
 #[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize, Deserialize)]
 #[sqlx(type_name = "request_action_type", rename_all = "snake_case")]
 pub enum RequestActionType {

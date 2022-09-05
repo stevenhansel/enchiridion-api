@@ -9,13 +9,14 @@ use crate::{
             AnnouncementQueueInterface, AnnouncementRepositoryInterface, AnnouncementStatus,
         },
         auth::AuthRepositoryInterface,
+        AnnouncementDetail,
     },
 };
 
 use super::{
     BatchRejectRequestsFromAnnouncementIdsError, CreateRequestError, FindRequestParams,
-    InsertRequestParams, ListRequestError, Request, RequestActionType, RequestRepositoryInterface,
-    UpdateApprovalParams, UpdateRequestApprovalError,
+    InsertRequestParams, ListRequestError, Request, RequestActionType, RequestApproval,
+    RequestRepositoryInterface, UpdateApprovalParams, UpdateRequestApprovalError,
 };
 
 pub struct ListRequestParams {
@@ -52,6 +53,12 @@ pub trait RequestServiceInterface {
     async fn update_request_approval(
         &self,
         params: UpdateRequestApprovalParams,
+    ) -> Result<(), UpdateRequestApprovalError>;
+    async fn handle_update_request_approval_create(
+        &self,
+        announcement: AnnouncementDetail,
+        request: Request,
+        approval: RequestApproval,
     ) -> Result<(), UpdateRequestApprovalError>;
     async fn batch_reject_requests_from_announcement_ids(
         &self,
@@ -169,7 +176,7 @@ impl RequestServiceInterface for RequestService {
             },
         };
 
-        let approval_whitelist: Vec<&str> = vec!["lsc", "bm"];
+        let approval_whitelist: Vec<&str> = vec!["lsc", "bm", "admin"];
         if !approval_whitelist.contains(&approver.role.value) {
             return Err(UpdateRequestApprovalError::UserForbiddenToApprove(
                 "User is not allowed to approve a request".into(),
@@ -182,7 +189,7 @@ impl RequestServiceInterface for RequestService {
         let mut bm_approver = request.bm_approver;
 
         if approver.role.value == "lsc" {
-            if request.approved_by_lsc == Some(true) || request.approved_by_lsc == Some(false) {
+            if request.approved_by_lsc.is_some() {
                 return Err(UpdateRequestApprovalError::RequestAlreadyApproved(
                     "Request already approved".into(),
                 ));
@@ -191,7 +198,7 @@ impl RequestServiceInterface for RequestService {
             approved_by_lsc = Some(params.approval);
             lsc_approver = Some(approver.id);
         } else if approver.role.name == "bm" {
-            if request.approved_by_bm == Some(true) || request.approved_by_bm == Some(false) {
+            if request.approved_by_bm.is_some() {
                 return Err(UpdateRequestApprovalError::RequestAlreadyApproved(
                     "Request already approved".into(),
                 ));
@@ -199,6 +206,21 @@ impl RequestServiceInterface for RequestService {
 
             approved_by_bm = Some(params.approval);
             bm_approver = Some(approver.id);
+        } else if approver.role.value == "admin" {
+            if request.approved_by_lsc.is_some() && request.approved_by_bm.is_some() {
+                return Err(UpdateRequestApprovalError::RequestAlreadyApproved(
+                    "Request already approved".into(),
+                ));
+            }
+
+            if request.approved_by_lsc.is_none() {
+                approved_by_lsc = Some(params.approval);
+                lsc_approver = Some(approver.id);
+            }
+            if request.approved_by_bm.is_none() {
+                approved_by_bm = Some(params.approval);
+                bm_approver = Some(approver.id);
+            }
         }
 
         let announcement = match self
@@ -217,60 +239,64 @@ impl RequestServiceInterface for RequestService {
             },
         };
 
-        if request.action == RequestActionType::Create {
-            if announcement.status != AnnouncementStatus::WaitingForApproval {
-                return Err(UpdateRequestApprovalError::InvalidAnnouncementStatus(
-                    "Announcement status should be Waiting for Approval".into(),
-                ));
-            }
+        let approval = RequestApproval {
+            approved_by_bm,
+            approved_by_lsc,
+            bm_approver,
+            lsc_approver,
+        };
 
+        match request.action {
+            RequestActionType::Create => {
+                self.handle_update_request_approval_create(announcement, request, approval).await
+            }
+            _ => return Ok(()),
+        }
+    }
+
+    async fn handle_update_request_approval_create(
+        &self,
+        announcement: AnnouncementDetail,
+        request: Request,
+        approval: RequestApproval,
+    ) -> Result<(), UpdateRequestApprovalError> {
+        if announcement.status != AnnouncementStatus::WaitingForApproval {
+            return Err(UpdateRequestApprovalError::InvalidAnnouncementStatus(
+                "Announcement status should be Waiting for Approval".into(),
+            ));
+        }
+
+        if let Err(_) = self
+            ._request_repository
+            .update_approval(UpdateApprovalParams {
+                request_id: request.id,
+                approved_by_lsc: approval.approved_by_lsc,
+                approved_by_bm: approval.approved_by_bm,
+                lsc_approver: approval.lsc_approver,
+                bm_approver: approval.bm_approver,
+            })
+            .await
+        {
+            return Err(UpdateRequestApprovalError::InternalServerError);
+        }
+
+        if approval.approved_by_bm == Some(true) && approval.approved_by_lsc == Some(true) {
             if let Err(_) = self
-                ._request_repository
-                .update_approval(UpdateApprovalParams {
-                    request_id: request.id,
-                    approved_by_lsc,
-                    approved_by_bm,
-                    lsc_approver,
-                    bm_approver,
-                })
+                ._announcement_repository
+                .update_status(announcement.id, AnnouncementStatus::Active)
                 .await
             {
                 return Err(UpdateRequestApprovalError::InternalServerError);
             }
-
-            if approved_by_bm == Some(true) && approved_by_lsc == Some(true) {
-                if let Err(_) = self
-                    ._announcement_repository
-                    .update_status(announcement.id, AnnouncementStatus::Active)
-                    .await
-                {
-                    return Err(UpdateRequestApprovalError::InternalServerError);
-                }
-                let announcement_queue = self._announcement_queue.clone();
-
-                let device_ids: Vec<i32> = announcement
-                    .devices
-                    .into_iter()
-                    .map(|device| device.id)
-                    .collect();
-                let announcement_id = announcement.id;
-                if let Err(_) = announcement_queue
-                    .synchronize_create_announcement_action_to_devices(device_ids, announcement_id)
-                {
-                    // TODO: handle the Error
-                };
-                // TODO: sync to devices queue
-            } else if approved_by_bm == Some(false) || approved_by_lsc == Some(false) {
-                if let Err(_) = self
-                    ._announcement_repository
-                    .update_status(announcement.id, AnnouncementStatus::Rejected)
-                    .await
-                {
-                    return Err(UpdateRequestApprovalError::InternalServerError);
-                }
+        } else if approval.approved_by_bm == Some(false) || approval.approved_by_lsc == Some(false)
+        {
+            if let Err(_) = self
+                ._announcement_repository
+                .update_status(announcement.id, AnnouncementStatus::Rejected)
+                .await
+            {
+                return Err(UpdateRequestApprovalError::InternalServerError);
             }
-        } else if request.action == RequestActionType::Delete {
-            // TODO: handle delete here
         }
 
         Ok(())
@@ -286,9 +312,7 @@ impl RequestServiceInterface for RequestService {
             .await
         {
             Ok(_) => Ok(()),
-            Err(e) => {
-                Err(BatchRejectRequestsFromAnnouncementIdsError::InternalServerError)
-            }
+            Err(_) => Err(BatchRejectRequestsFromAnnouncementIdsError::InternalServerError),
         }
     }
 }
