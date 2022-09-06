@@ -89,7 +89,7 @@ pub async fn run(
                 break;
             }
 
-            sleep(Duration::from_millis(1000)).await;
+            sleep(Duration::from_millis(250)).await;
 
             if last_tick == None {
                 let today_utc = (Utc::today() - chrono::Duration::days(1))
