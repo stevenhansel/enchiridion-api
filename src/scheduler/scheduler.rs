@@ -80,7 +80,7 @@ pub async fn run(
     let cron = tokio::spawn(async move {
         println!("[info] Announcement Scheduler is starting");
 
-        let schedule = Schedule::from_str("0 */1 * * * *").unwrap();
+        let schedule = Schedule::from_str("*/30 * * * * *").unwrap();
 
         let mut last_tick: Option<chrono::DateTime<Tz>> = None;
         loop {
