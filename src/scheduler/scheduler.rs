@@ -26,6 +26,7 @@ pub async fn execute_announcement_scheduler(
             .handle_waiting_for_approval_announcements(now)
             .await
     });
+
     let waiting_for_sync_handler = tokio::spawn(async move {
         announcement_service_2
             .handle_waiting_for_sync_announcements()
@@ -34,6 +35,7 @@ pub async fn execute_announcement_scheduler(
     let active_handler =
         tokio::spawn(async move { announcement_service_3.handle_active_announcements().await });
 
+    println!("upper bp 1");
     if let Ok(result) = waiting_for_approval_handler.await {
         if let Err(e) = result {
             return Err(e);
@@ -42,6 +44,8 @@ pub async fn execute_announcement_scheduler(
         return Err(HandleScheduledAnnouncementsError::BrokenThread);
     }
 
+    println!("upper bp 2");
+
     if let Ok(result) = waiting_for_sync_handler.await {
         if let Err(e) = result {
             return Err(e);
@@ -49,6 +53,7 @@ pub async fn execute_announcement_scheduler(
     } else {
         return Err(HandleScheduledAnnouncementsError::BrokenThread);
     }
+    println!("upper bp 3");
 
     if let Ok(result) = active_handler.await {
         if let Err(e) = result {
@@ -57,6 +62,8 @@ pub async fn execute_announcement_scheduler(
     } else {
         return Err(HandleScheduledAnnouncementsError::BrokenThread);
     }
+    println!("upper bp 4");
+
 
     Ok(())
 }
@@ -73,7 +80,7 @@ pub async fn run(
     let cron = tokio::spawn(async move {
         println!("[info] Announcement Scheduler is starting");
 
-        let schedule = Schedule::from_str("0 0 */12 * * *").unwrap();
+        let schedule = Schedule::from_str("0 */1 * * * *").unwrap();
 
         let mut last_tick: Option<chrono::DateTime<Tz>> = None;
         loop {
@@ -81,6 +88,8 @@ pub async fn run(
                 let _ = resp.send(true);
                 break;
             }
+
+            sleep(Duration::from_millis(1000)).await;
 
             if last_tick == None {
                 let today_utc = (Utc::today() - chrono::Duration::days(1))
@@ -97,7 +106,6 @@ pub async fn run(
 
             if let Some(event) = schedule.after(&last_tick.unwrap()).take(1).next() {
                 if event > now {
-                    sleep(Duration::from_millis(1000)).await;
                     continue;
                 }
 
@@ -114,7 +122,6 @@ pub async fn run(
             }
 
             last_tick = Some(now);
-            sleep(Duration::from_millis(1000)).await;
         }
     });
 
