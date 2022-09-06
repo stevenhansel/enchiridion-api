@@ -36,36 +36,14 @@ pub async fn execute_announcement_scheduler(
         tokio::spawn(async move { announcement_service_3.handle_active_announcements().await });
 
     println!("upper bp 1");
-    if let Ok(result) = waiting_for_approval_handler.await {
-        if let Err(e) = result {
-            return Err(e);
-        }
-    } else {
-        return Err(HandleScheduledAnnouncementsError::BrokenThread);
+    match tokio::try_join!(
+        waiting_for_approval_handler,
+        waiting_for_sync_handler,
+        active_handler
+    ) {
+        Ok(_result) => Ok(()),
+        Err(_) => Err(HandleScheduledAnnouncementsError::InternalServerError),
     }
-
-    println!("upper bp 2");
-
-    if let Ok(result) = waiting_for_sync_handler.await {
-        if let Err(e) = result {
-            return Err(e);
-        }
-    } else {
-        return Err(HandleScheduledAnnouncementsError::BrokenThread);
-    }
-    println!("upper bp 3");
-
-    if let Ok(result) = active_handler.await {
-        if let Err(e) = result {
-            return Err(e);
-        }
-    } else {
-        return Err(HandleScheduledAnnouncementsError::BrokenThread);
-    }
-    println!("upper bp 4");
-
-
-    Ok(())
 }
 
 pub async fn run(
@@ -114,7 +92,12 @@ pub async fn run(
                     now
                 );
 
-                if let Err(e) = execute_announcement_scheduler(announcement_service.clone(), now.with_timezone(&chrono::Utc)).await {
+                if let Err(e) = execute_announcement_scheduler(
+                    announcement_service.clone(),
+                    now.with_timezone(&chrono::Utc),
+                )
+                .await
+                {
                     eprintln!("[error] Something went wrong when executing the announcement scheduler: {}", e);
                 }
 
@@ -141,6 +124,5 @@ pub async fn run(
         println!("[info] Announcement Scheduler finished shutting down");
     });
 
-    cron.await.unwrap();
-    shutdown_listener.await.unwrap();
+    tokio::try_join!(cron, shutdown_listener).unwrap();
 }
