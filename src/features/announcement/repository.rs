@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use async_trait::async_trait;
 use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
@@ -96,6 +98,10 @@ pub trait AnnouncementRepositoryInterface {
         &self,
         now: chrono::DateTime<chrono::Utc>,
     ) -> Result<Vec<i32>, sqlx::Error>;
+    async fn find_announcement_device_map(
+        &self,
+        announcement_ids: Vec<i32>,
+    ) -> Result<BTreeMap<i32, Vec<i32>>, sqlx::Error>;
 }
 pub struct AnnouncementRepository {
     _db: Pool<Postgres>,
@@ -399,7 +405,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             update "announcement"
             set "status" = $2
             where "id" = any($1)
-            "#
+            "#,
         )
         .bind(&announcement_ids)
         .bind(status)
@@ -432,5 +438,33 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         .await?;
 
         Ok(result.into_iter().map(|row| row.id).collect())
+    }
+
+    async fn find_announcement_device_map(
+        &self,
+        announcement_ids: Vec<i32>,
+    ) -> Result<BTreeMap<i32, Vec<i32>>, sqlx::Error> {
+        let result = sqlx::query!(
+            r#"
+            select "announcement_id", "device_id" 
+            from "device_announcement"
+            where "announcement_id" = any($1)
+            "#,
+            &announcement_ids
+        )
+        .fetch_all(&self._db)
+        .await?;
+
+        let mut map: BTreeMap<i32, Vec<i32>> = BTreeMap::new();
+        for res in result {
+            if !map.contains_key(&res.announcement_id) {
+                map.insert(res.announcement_id, Vec::new());
+            }
+
+            let mut val = map.get_mut(&res.announcement_id).unwrap();
+            val.push(res.device_id.into());
+        }
+
+        Ok(map)
     }
 }

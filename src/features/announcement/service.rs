@@ -1,17 +1,19 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
+use std::sync::Arc;
 
 use crate::{
     cloud_storage::{self, TmpFile},
     database::{DatabaseError, PaginationResult},
-    features::request::{CreateRequestParams, RequestActionType, RequestServiceInterface},
+    features::{
+        request::{CreateRequestParams, RequestActionType, RequestServiceInterface},
+        AnnouncementQueueInterface,
+    },
 };
 
 use super::{
     Announcement, AnnouncementDetail, AnnouncementMediaObject, AnnouncementRepositoryInterface,
-    AnnouncementStatus, CreateAnnouncementError, FindListAnnouncementParams,
-    GetAnnouncementDetailError, GetAnnouncementMediaPresignedURLError,
+    AnnouncementStatus, CountAnnouncementParams, CreateAnnouncementError,
+    FindListAnnouncementParams, GetAnnouncementDetailError, GetAnnouncementMediaPresignedURLError,
     HandleScheduledAnnouncementsError, InsertAnnouncementParams, ListAnnouncementError,
 };
 
@@ -60,12 +62,14 @@ pub trait AnnouncementServiceInterface {
     ) -> Result<(), HandleScheduledAnnouncementsError>;
     async fn handle_waiting_for_sync_announcements(
         &self,
+        now: chrono::DateTime<chrono::Utc>,
     ) -> Result<(), HandleScheduledAnnouncementsError>;
     async fn handle_active_announcements(&self) -> Result<(), HandleScheduledAnnouncementsError>;
 }
 
 pub struct AnnouncementService {
     _announcement_repository: Arc<dyn AnnouncementRepositoryInterface + Send + Sync + 'static>,
+    _announcement_queue: Arc<dyn AnnouncementQueueInterface + Send + Sync + 'static>,
     _request_service: Arc<dyn RequestServiceInterface + Send + Sync + 'static>,
     _cloud_storage: cloud_storage::Client,
 }
@@ -73,11 +77,13 @@ pub struct AnnouncementService {
 impl AnnouncementService {
     pub fn new(
         _announcement_repository: Arc<dyn AnnouncementRepositoryInterface + Send + Sync + 'static>,
+        _announcement_queue: Arc<dyn AnnouncementQueueInterface + Send + Sync + 'static>,
         _request_service: Arc<dyn RequestServiceInterface + Send + Sync + 'static>,
         _cloud_storage: cloud_storage::Client,
     ) -> Self {
         AnnouncementService {
             _announcement_repository,
+            _announcement_queue,
             _request_service,
             _cloud_storage,
         }
@@ -238,7 +244,6 @@ impl AnnouncementServiceInterface for AnnouncementService {
         &self,
         now: chrono::DateTime<chrono::Utc>,
     ) -> Result<(), HandleScheduledAnnouncementsError> {
-        println!("bp 1");
         let announcement_ids = match self
             ._announcement_repository
             .find_expired_waiting_for_approval_announcement_ids(now)
@@ -250,13 +255,9 @@ impl AnnouncementServiceInterface for AnnouncementService {
             }
         };
 
-        println!("bp 2");
-       if announcement_ids.len() == 0 {
+        if announcement_ids.len() == 0 {
             return Ok(());
         }
-
-        println!("bp 3");
-
 
         if let Err(_) = self
             ._announcement_repository
@@ -266,9 +267,6 @@ impl AnnouncementServiceInterface for AnnouncementService {
             return Err(HandleScheduledAnnouncementsError::InternalServerError);
         }
 
-        println!("bp 4");
-
-
         if let Err(_) = self
             ._request_service
             .batch_reject_requests_from_announcement_ids(announcement_ids.clone())
@@ -277,17 +275,93 @@ impl AnnouncementServiceInterface for AnnouncementService {
             return Err(HandleScheduledAnnouncementsError::InternalServerError);
         }
 
-        println!("bp 5");
-
-
         Ok(())
     }
 
     async fn handle_waiting_for_sync_announcements(
         &self,
+        now: chrono::DateTime<chrono::Utc>,
     ) -> Result<(), HandleScheduledAnnouncementsError> {
-        // TODO: fetch announcements that have waiting_for_sync status and call
-        // announcement_sync_queue service
+        let count = match self
+            ._announcement_repository
+            .count(CountAnnouncementParams {
+                status: Some(AnnouncementStatus::WaitingForSync),
+                start_date_gte: Some(now),
+
+                query: None,
+                device_id: None,
+                user_id: None,
+                start_date_lt: None,
+                end_date_lte: None,
+            })
+            .await
+        {
+            Ok(count) => count,
+            Err(_) => return Err(HandleScheduledAnnouncementsError::InternalServerError),
+        };
+
+        if count == 0 {
+            return Ok(());
+        }
+
+        let announcements = match self
+            ._announcement_repository
+            .find(FindListAnnouncementParams {
+                page: 1,
+                limit: count,
+
+                status: Some(AnnouncementStatus::WaitingForSync),
+                start_date_gte: Some(now),
+
+                query: None,
+                device_id: None,
+                user_id: None,
+                start_date_lt: None,
+                end_date_lte: None,
+            })
+            .await
+        {
+            Ok(data) => data,
+            Err(_) => return Err(HandleScheduledAnnouncementsError::InternalServerError),
+        };
+
+        let announcement_ids: Vec<i32> = announcements
+            .contents
+            .into_iter()
+            .map(|announcement| announcement.id)
+            .collect();
+
+        let announcement_device_map = match self
+            ._announcement_repository
+            .find_announcement_device_map(announcement_ids.clone())
+            .await
+        {
+            Ok(map) => map,
+            Err(_) => return Err(HandleScheduledAnnouncementsError::InternalServerError),
+        };
+
+        for id in announcement_ids {
+            let device_ids = match announcement_device_map.get(&id) {
+                Some(ids) => ids,
+                None => return Err(HandleScheduledAnnouncementsError::InternalServerError),
+            };
+
+            if let Err(_) = self
+                ._announcement_queue
+                .synchronize_create_announcement_action_to_devices(*device_ids, id)
+            {
+                return Err(HandleScheduledAnnouncementsError::InternalServerError);
+            }
+        }
+
+        if let Err(_) = self
+            ._announcement_repository
+            .batch_update_status(announcement_ids.clone(), AnnouncementStatus::Active)
+            .await
+        {
+            return Err(HandleScheduledAnnouncementsError::InternalServerError);
+        }
+
         Ok(())
     }
 
