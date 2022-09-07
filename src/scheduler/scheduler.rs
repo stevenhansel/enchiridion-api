@@ -29,7 +29,7 @@ pub async fn execute_announcement_scheduler(
 
     let waiting_for_sync_handler = tokio::spawn(async move {
         announcement_service_2
-            .handle_waiting_for_sync_announcements()
+            .handle_waiting_for_sync_announcements(now)
             .await
     });
     let active_handler =

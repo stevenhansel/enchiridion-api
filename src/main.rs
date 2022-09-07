@@ -107,6 +107,7 @@ async fn main() -> std::io::Result<()> {
     ));
     let announcement_service = Arc::new(AnnouncementService::new(
         announcement_repository.clone(),
+        announcement_queue.clone(),
         request_service.clone(),
         cloud_storage,
     ));

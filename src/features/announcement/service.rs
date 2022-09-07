@@ -340,15 +340,15 @@ impl AnnouncementServiceInterface for AnnouncementService {
             Err(_) => return Err(HandleScheduledAnnouncementsError::InternalServerError),
         };
 
-        for id in announcement_ids {
-            let device_ids = match announcement_device_map.get(&id) {
+        for id in &announcement_ids {
+            let device_ids = match announcement_device_map.get(id) {
                 Some(ids) => ids,
                 None => return Err(HandleScheduledAnnouncementsError::InternalServerError),
             };
 
             if let Err(_) = self
                 ._announcement_queue
-                .synchronize_create_announcement_action_to_devices(*device_ids, id)
+                .synchronize_create_announcement_action_to_devices(device_ids.clone(), *id)
             {
                 return Err(HandleScheduledAnnouncementsError::InternalServerError);
             }

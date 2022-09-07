@@ -461,7 +461,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 map.insert(res.announcement_id, Vec::new());
             }
 
-            let mut val = map.get_mut(&res.announcement_id).unwrap();
+            let val = map.get_mut(&res.announcement_id).unwrap();
             val.push(res.device_id.into());
         }
 
