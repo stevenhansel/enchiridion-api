@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use chrono_tz::Asia::Jakarta;
 use std::sync::Arc;
 
 use crate::{
@@ -155,19 +154,15 @@ impl AnnouncementServiceInterface for AnnouncementService {
         // TODO: use db transaction if fail
         let media = params.media.key();
 
-        // utc -> gmt+7 (jakarta time)
-        let start_date = params.start_date + chrono::Duration::hours(7);
-        let end_date = params.end_date + chrono::Duration::hours(7);
-
         let announcement_id = match self
             ._announcement_repository
             .insert(InsertAnnouncementParams {
                 title: params.title.clone(),
                 notes: params.notes.clone(),
+                start_date: params.start_date,
+                end_date: params.end_date,
                 device_ids: params.device_ids,
                 user_id: params.user_id,
-                start_date,
-                end_date,
                 media,
             })
             .await
@@ -302,7 +297,9 @@ impl AnnouncementServiceInterface for AnnouncementService {
             .await
         {
             Ok(count) => count,
-            Err(_) => return Err(HandleScheduledAnnouncementsError::InternalServerError),
+            Err(e) => {
+                return Err(HandleScheduledAnnouncementsError::InternalServerError);
+            }
         };
 
         if count == 0 {

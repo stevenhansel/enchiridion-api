@@ -15,8 +15,10 @@ use crate::{
 
 pub async fn execute_announcement_scheduler(
     announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
-    now: chrono::DateTime<Utc>,
 ) -> Result<(), HandleScheduledAnnouncementsError> {
+    let now =
+        chrono::DateTime::from_utc(chrono::Utc::today().naive_utc().and_hms(0, 0, 0), chrono::Utc);
+
     let announcement_service_1 = announcement_service.clone();
     let announcement_service_2 = announcement_service.clone();
     let announcement_service_3 = announcement_service.clone();
@@ -51,14 +53,14 @@ pub async fn run(
     announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
 ) {
     // TODO: refactor scheduler in the future so can have more than one cron
-    
+
     let (tx, mut rx) = mpsc::channel::<oneshot::Sender<bool>>(32);
     let tx_2 = tx.clone();
 
     let cron = tokio::spawn(async move {
         println!("[info] Announcement Scheduler is starting");
 
-        let schedule = Schedule::from_str("0 0 */12 * * *").unwrap();
+        let schedule = Schedule::from_str("*/30 * * * * *").unwrap();
 
         let mut last_tick: Option<chrono::DateTime<Tz>> = None;
         loop {
@@ -92,12 +94,7 @@ pub async fn run(
                     now
                 );
 
-                if let Err(e) = execute_announcement_scheduler(
-                    announcement_service.clone(),
-                    now.with_timezone(&chrono::Utc),
-                )
-                .await
-                {
+                if let Err(e) = execute_announcement_scheduler(announcement_service.clone()).await {
                     eprintln!("[error] Something went wrong when executing the announcement scheduler: {}", e);
                 }
 

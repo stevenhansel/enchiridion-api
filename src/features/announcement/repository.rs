@@ -119,24 +119,24 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         let result: i32 = sqlx::query(
             r#"
             select
-                cast("result"."count" as integer) as "count",
+                cast(count("announcement".*) as integer) as "count"
             from "announcement"
             join "user" on "user"."id" = "announcement"."user_id"
             join "device_announcement" on "device_announcement"."announcement_id" = "announcement"."id"
             where
                 (
-                    $3::text is null or 
+                    $1::text is null or 
                     "announcement"."id" = cast(
-                        (coalesce(nullif(regexp_replace($3, '[^0-9]+', '', 'g'), ''), '0')) as integer    
+                        (coalesce(nullif(regexp_replace($1, '[^0-9]+', '', 'g'), ''), '0')) as integer    
                     ) or
-                    "announcement"."title" ilike concat('%', $3, '%')
+                    "announcement"."title" ilike concat('%', $1, '%')
                 ) and
-                ($4::text is null or "announcement"."status" = $4) and
-                ($5::integer is null or "announcement"."user_id" = $5) and 
-                ($6::integer is null or "device_announcement"."device_id" = $6)
-                ($7::timestamp is null or "announcement"."start_date" >= $7) and
-                ($8::timestamp is null or "announcement"."start_date" < $8) and
-                ($9::timestamp is null or "announcement"."end_date" <= $9)
+                ($2::text is null or "announcement"."status" = $2) and
+                ($3::integer is null or "announcement"."user_id" = $3) and 
+                ($4::integer is null or "device_announcement"."device_id" = $4) and
+                ($5::timestamp is null or "announcement"."start_date" >= $5) and
+                ($6::timestamp is null or "announcement"."start_date" < $6) and
+                ($7::timestamp is null or "announcement"."end_date" <= $7)
             "#,
         )
         .bind(params.query.clone())
@@ -430,7 +430,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             from "announcement"
             where
                 "status" = 'waiting_for_approval' and
-                "start_date" < $1
+                "start_date" + '1 day' <= $1
             "#,
             now,
         )
