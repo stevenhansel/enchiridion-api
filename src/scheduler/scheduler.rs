@@ -52,6 +52,8 @@ pub async fn run(
     announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
 ) {
     // TODO: refactor scheduler in the future so can have more than one cron
+    
+    println!("bp 1");
     let (tx, mut rx) = mpsc::channel::<oneshot::Sender<bool>>(32);
     let tx_2 = tx.clone();
 
