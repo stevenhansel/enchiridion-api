@@ -35,7 +35,6 @@ pub async fn execute_announcement_scheduler(
     let active_handler =
         tokio::spawn(async move { announcement_service_3.handle_active_announcements().await });
 
-    println!("upper bp 1");
     match tokio::try_join!(
         waiting_for_approval_handler,
         waiting_for_sync_handler,
@@ -53,14 +52,13 @@ pub async fn run(
 ) {
     // TODO: refactor scheduler in the future so can have more than one cron
     
-    println!("bp 1");
     let (tx, mut rx) = mpsc::channel::<oneshot::Sender<bool>>(32);
     let tx_2 = tx.clone();
 
     let cron = tokio::spawn(async move {
         println!("[info] Announcement Scheduler is starting");
 
-        let schedule = Schedule::from_str("*/30 * * * * *").unwrap();
+        let schedule = Schedule::from_str("0 0 */12 * * *").unwrap();
 
         let mut last_tick: Option<chrono::DateTime<Tz>> = None;
         loop {
