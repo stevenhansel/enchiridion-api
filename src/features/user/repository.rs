@@ -176,6 +176,7 @@ impl UserRepositoryInterface for UserRepository {
                 ) and
                 ($4::user_status is null or "user"."status" = $4) and
                 ($5::text is null or "user"."role" = $5)
+            group by "user"."id", "result"."count"
             order by "user"."id" desc
             offset $1 limit $2
             "#,

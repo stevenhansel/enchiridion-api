@@ -207,6 +207,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 ($7::timestamp is null or "announcement"."start_date" >= $7) and
                 ($8::timestamp is null or "announcement"."start_date" < $8) and
                 ($9::timestamp is null or "announcement"."end_date" <= $9)
+            group by "announcement"."id", "user"."id", "result"."count"
             order by "announcement"."id" desc
             offset $1 limit $2
             "#,
@@ -259,6 +260,8 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 updated_at: row.announcement_updated_at,
             })
             .collect();
+
+        println!("contents: {}", contents.len());
 
         Ok(PaginationResult {
             count,

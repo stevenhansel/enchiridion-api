@@ -116,6 +116,7 @@ impl RequestRepositoryInterface for RequestRepository {
                 ($6::text is null or "request"."action" = $6) and 
                 ($7::bool is null or "request"."approved_by_lsc" = $7) and 
                 ($8::bool is null or "request"."approved_by_bm" = $8)
+            group by "request"."id", "announcement"."id", "user"."id", "result"."count"
             order by "request"."id" desc
             offset $1 limit $2
             "#,
