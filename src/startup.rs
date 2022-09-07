@@ -17,7 +17,7 @@ use crate::features::{
     user::UserServiceInterface,
 };
 
-pub async fn run(
+pub async fn web(
     listener: TcpListener,
     role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
     building_service: Arc<dyn BuildingServiceInterface + Send + Sync + 'static>,
@@ -30,14 +30,11 @@ pub async fn run(
 ) -> Result<(), std::io::Error> {
     let (notify_shutdown, _) = broadcast::channel::<()>(1);
 
-    let shutdown_1 = Shutdown::new(notify_shutdown.subscribe());
-    let shutdown_2 = Shutdown::new(notify_shutdown.subscribe());
+    let shutdown = Shutdown::new(notify_shutdown.subscribe());
 
     let (shutdown_complete_tx, mut shutdown_complete_rx) = mpsc::channel::<()>(1);
     let shutdown_complete_tx_1 = shutdown_complete_tx.clone();
-    let shutdown_complete_tx_2 = shutdown_complete_tx.clone();
 
-    let announcement_service_1 = announcement_service.clone();
     tokio::spawn(async move {
         let server = match WebServer::build(
             listener,
@@ -48,7 +45,7 @@ pub async fn run(
             floor_service,
             device_service,
             request_service,
-            announcement_service_1,
+            announcement_service,
         ) {
             Ok(server) => server,
             Err(e) => {
@@ -60,7 +57,7 @@ pub async fn run(
             }
         };
 
-        if let Err(e) = server.run(shutdown_1, shutdown_complete_tx_1).await {
+        if let Err(e) = server.run(shutdown, shutdown_complete_tx_1).await {
             eprintln!(
                 "[error] Something went wrong when running the server: {:?}",
                 e
@@ -69,14 +66,36 @@ pub async fn run(
         }
     });
 
-    let announcement_service_2 = announcement_service.clone();
+    let mut signals = Signals::new(&[SIGTERM, SIGINT])?;
+    let signal_listener = tokio::spawn(async move {
+        for _ in signals.forever() {
+            println!("[info] Commencing application shutdown");
+            break;
+        }
+    });
+
+    signal_listener.await.unwrap();
+
+    drop(notify_shutdown);
+    drop(shutdown_complete_tx);
+
+    let _ = shutdown_complete_rx.recv().await;
+
+    Ok(())
+}
+
+pub async fn announcement_scheduler(
+    announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
+) -> Result<(), std::io::Error> {
+    let (notify_shutdown, _) = broadcast::channel::<()>(1);
+
+    let shutdown = Shutdown::new(notify_shutdown.subscribe());
+
+    let (shutdown_complete_tx, mut shutdown_complete_rx) = mpsc::channel::<()>(1);
+    let shutdown_complete_tx_1 = shutdown_complete_tx.clone();
+
     tokio::spawn(async move {
-        scheduler::run(
-            shutdown_2,
-            shutdown_complete_tx_2,
-            announcement_service_2,
-        )
-        .await;
+        scheduler::run(shutdown, shutdown_complete_tx_1, announcement_service).await;
     });
 
     let mut signals = Signals::new(&[SIGTERM, SIGINT])?;

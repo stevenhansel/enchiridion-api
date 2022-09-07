@@ -61,6 +61,7 @@ impl WebServer {
         })
         .listen(listener)?
         .disable_signals()
+        // .worker_max_blocking_threads(0)
         .run();
 
         Ok(WebServer { server })
