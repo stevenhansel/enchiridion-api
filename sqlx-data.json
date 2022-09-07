@@ -348,25 +348,31 @@
     },
     "query": "\n            insert into \"user\" (\n                name,\n                email,\n                password,\n                registration_reason,\n                role,\n                is_email_confirmed,\n                status\n            )\n            values($1, $2, $3, $4, $5, $6, $7)\n            returning id\n            "
   },
-  "ab1bc773e0ed791355335d8fdb87a3259a4ce358bd30e84e32d914122244c372": {
+  "ab2fe152d4e5c293612ffa47ad9c422b129fd048a72318185fa2d77aa7391d91": {
     "describe": {
       "columns": [
         {
-          "name": "id",
+          "name": "announcement_id",
           "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "device_id",
+          "ordinal": 1,
           "type_info": "Int4"
         }
       ],
       "nullable": [
+        false,
         false
       ],
       "parameters": {
         "Left": [
-          "Timestamptz"
+          "Int4Array"
         ]
       }
     },
-    "query": "\n            select \"id\"\n            from \"announcement\"\n            where\n                \"status\" = 'waiting_for_approval' and\n                \"start_date\" < $1\n            "
+    "query": "\n            select \"announcement_id\", \"device_id\" \n            from \"device_announcement\"\n            where \"announcement_id\" = any($1)\n            "
   },
   "ada2105cbd1c945d13fc9882e9d5f5cca4af322df22c2ba5f0f54e9fa5c0732f": {
     "describe": {
@@ -455,6 +461,26 @@
       }
     },
     "query": "\n                insert into \"floor\" (\"name\", \"building_id\")\n                values ($1, $2)\n                returning \"id\"\n            "
+  },
+  "ca25ff65cdfd1bcb1de73ed3c93f3b1233bf68ff8fd82d41ccaff05006c6ed59": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n            select \"id\"\n            from \"announcement\"\n            where\n                \"status\" = 'waiting_for_approval' and\n                \"start_date\" + '1 day' <= $1\n            "
   },
   "cdec90e6669804a0787f119b8112d877fb82c1b1cdd61d9a4b53f50f99be19b3": {
     "describe": {
