@@ -3,7 +3,7 @@ use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
 use crate::database::PaginationResult;
 
-use super::{Request, RequestActionType};
+use super::{Request, RequestActionType, RequestMetadata};
 
 pub struct FindRequestParams {
     pub page: i32,
@@ -21,6 +21,31 @@ pub struct InsertRequestParams {
     pub description: String,
     pub announcement_id: i32,
     pub user_id: i32,
+
+    pub extended_end_date: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl InsertRequestParams {
+    pub fn new(
+        action: RequestActionType,
+        description: String,
+        announcement_id: i32,
+        user_id: i32,
+    ) -> Self {
+        InsertRequestParams {
+            action,
+            description,
+            announcement_id,
+            user_id,
+
+            extended_end_date: None,
+        }
+    }
+
+    pub fn extended_end_date(mut self, extended_end_date: chrono::DateTime<chrono::Utc>) -> Self {
+        self.extended_end_date = Some(extended_end_date);
+        self
+    }
 }
 
 pub struct UpdateApprovalParams {
@@ -237,6 +262,25 @@ impl RequestRepositoryInterface for RequestRepository {
         .fetch_one(&self._db)
         .await?;
 
+        if let Some(extended_end_date) = params.extended_end_date {
+            let rows_affected = sqlx::query(
+                r#"
+                update "request"
+                set "metadata" = jsonb_insert(metadata, '{extended_end_date}'::text[], to_jsonb($2))
+                where "id" = $1
+                "#
+            )
+                .bind(result.id)
+                .bind(extended_end_date.to_rfc3339())
+                .execute(&self._db)
+                .await?
+                .rows_affected();
+
+            if rows_affected == 0 {
+                return Err(sqlx::Error::RowNotFound);
+            }
+        }
+
         return Ok(result.id);
     }
 
@@ -279,7 +323,7 @@ impl RequestRepositoryInterface for RequestRepository {
                 "approved_by_lsc" = false,
                 "approved_by_bm" = false
             where "announcement_id" = any($1)
-            "#
+            "#,
         )
         .bind(&announcement_ids)
         .execute(&self._db)

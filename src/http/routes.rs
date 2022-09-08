@@ -294,6 +294,17 @@ pub fn dashboard_routes(
                 )
                 .service(
                     web::resource("")
+                        .guard(guard::Post())
+                        .wrap(
+                            AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                .with_permission(ApplicationPermission::CreateRequest)
+                                .with_status(UserStatus::Approved)
+                                .with_require_email_confirmed(true),
+                        )
+                        .to(request_http::create_request),
+                )
+                .service(
+                    web::resource("")
                         .guard(guard::Get())
                         .wrap(
                             AuthenticationMiddlewareFactory::new(auth_service.clone())

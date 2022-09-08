@@ -41,6 +41,7 @@ pub struct AnnouncementMediaObject {
 }
 
 #[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "announcement_status", rename_all = "snake_case")]
 pub enum AnnouncementStatus {
     WaitingForApproval,

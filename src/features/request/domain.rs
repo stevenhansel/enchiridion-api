@@ -1,3 +1,4 @@
+use chrono::serde::ts_seconds_option;
 use serde::{Deserialize, Serialize};
 
 pub struct Request {
@@ -15,6 +16,12 @@ pub struct Request {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[derive(Deserialize)]
+pub struct RequestMetadata {
+    #[serde(with = "ts_seconds_option")]
+    pub extended_end_date: Option<chrono::DateTime<chrono::Utc>>,
+}
+
 pub struct RequestApproval {
     pub approved_by_lsc: Option<bool>,
     pub approved_by_bm: Option<bool>,
@@ -23,6 +30,7 @@ pub struct RequestApproval {
 }
 
 #[derive(Debug, sqlx::Type, PartialEq, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "request_action_type", rename_all = "snake_case")]
 pub enum RequestActionType {
     Create,
@@ -59,6 +67,7 @@ pub enum RequestErrorCode {
     AnnouncementNotFound,
     RequestAlreadyApproved,
     InvalidAnnouncementStatus,
+    InvalidExtendedEndDate,
     InternalServerError,
 }
 
@@ -72,6 +81,7 @@ impl std::fmt::Display for RequestErrorCode {
             RequestErrorCode::AnnouncementNotFound => write!(f, "ANNOUNCEMENT_NOT_FOUND"),
             RequestErrorCode::RequestAlreadyApproved => write!(f, "REQUEST_ALREADY_APPROVED"),
             RequestErrorCode::InvalidAnnouncementStatus => write!(f, "INVALID_ANNOUNCEMENT_STATUS"),
+            RequestErrorCode::InvalidExtendedEndDate => write!(f, "INVALID_EXTENDED_END_DATE"),
             RequestErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
     }
@@ -80,6 +90,9 @@ impl std::fmt::Display for RequestErrorCode {
 #[derive(Debug)]
 pub enum CreateRequestError {
     EntityNotFound(String),
+    AnnouncementNotFound(&'static str),
+    InvalidExtendedEndDate(&'static str),
+    InvalidAnnouncementStatus(&'static str),
     InternalServerError,
 }
 
@@ -87,6 +100,9 @@ impl std::fmt::Display for CreateRequestError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CreateRequestError::EntityNotFound(message) => write!(f, "{}", message),
+            CreateRequestError::AnnouncementNotFound(message) => write!(f, "{}", message),
+            CreateRequestError::InvalidExtendedEndDate(message) => write!(f, "{}", message),
+            CreateRequestError::InvalidAnnouncementStatus(message) => write!(f, "{}", message),
             CreateRequestError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }

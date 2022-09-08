@@ -14,7 +14,7 @@ use crate::{
     features::announcement::CreateAnnouncementError,
     http::{
         derive_authentication_middleware_error, derive_user_id, AuthenticationContext,
-        HttpErrorResponse, API_VALIDATION_ERROR_CODE,
+        HttpErrorResponse, API_VALIDATION_ERROR_CODE, validate_date_format,
     },
 };
 
@@ -23,20 +23,6 @@ use super::{
     AnnouncementStatusObject, CreateAnnouncementParams, GetAnnouncementDetailError,
     GetAnnouncementMediaPresignedURLError, ListAnnouncementError, ListAnnouncementParams,
 };
-
-pub fn validate_date_format(
-    date_string: &str,
-    format: &'static str,
-) -> Result<chrono::DateTime<chrono::Utc>, &'static str> {
-    let naive_date = match NaiveDate::parse_from_str(date_string, format) {
-        Ok(date) => date,
-        Err(_) => return Err("Invalid date format"),
-    };
-    let naive_time = NaiveTime::from_hms(0, 0, 0);
-    let naive_date_time = NaiveDateTime::new(naive_date, naive_time);
-
-    Ok(chrono::Utc.from_utc_datetime(&naive_date_time))
-}
 
 #[derive(Debug)]
 pub struct CreateAnnouncementFormData {

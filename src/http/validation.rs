@@ -1,4 +1,5 @@
 use validator::ValidationErrors;
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 
 pub struct ApiValidationError(ValidationErrors);
 
@@ -29,3 +30,18 @@ impl ApiValidationError {
         messages
     }
 }
+
+pub fn validate_date_format(
+    date_string: &str,
+    format: &'static str,
+) -> Result<chrono::DateTime<chrono::Utc>, &'static str> {
+    let naive_date = match NaiveDate::parse_from_str(date_string, format) {
+        Ok(date) => date,
+        Err(_) => return Err("Invalid date format"),
+    };
+    let naive_time = NaiveTime::from_hms(0, 0, 0);
+    let naive_date_time = NaiveDateTime::new(naive_date, naive_time);
+
+    Ok(chrono::Utc.from_utc_datetime(&naive_date_time))
+}
+

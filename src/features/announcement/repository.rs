@@ -22,7 +22,6 @@ pub struct CountAnnouncementParams {
     pub end_date_gte: Option<chrono::DateTime<chrono::Utc>>,
     pub end_date_lt: Option<chrono::DateTime<chrono::Utc>>,
     pub end_date_lte: Option<chrono::DateTime<chrono::Utc>>,
-
 }
 
 impl CountAnnouncementParams {
@@ -104,7 +103,6 @@ impl CountAnnouncementParams {
         self.end_date_lte = Some(end_date_lte);
         self
     }
-
 }
 
 pub struct FindListAnnouncementParams {
@@ -289,6 +287,11 @@ pub trait AnnouncementRepositoryInterface {
         &self,
         announcement_ids: Vec<i32>,
     ) -> Result<BTreeMap<i32, Vec<i32>>, sqlx::Error>;
+    async fn extend_end_date(
+        &self,
+        announcement_id: i32,
+        end_date: chrono::DateTime<chrono::Utc>,
+    ) -> Result<(), sqlx::Error>;
 }
 pub struct AnnouncementRepository {
     _db: Pool<Postgres>,
@@ -680,5 +683,30 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         }
 
         Ok(map)
+    }
+
+    async fn extend_end_date(
+        &self,
+        announcement_id: i32,
+        end_date: chrono::DateTime<chrono::Utc>,
+    ) -> Result<(), sqlx::Error> {
+        let rows_affected = sqlx::query!(
+            r#"
+            update "announcement"
+            set "end_date" = $2
+            where "id" = $1
+            "#,
+            announcement_id,
+            end_date
+        )
+        .execute(&self._db)
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
     }
 }

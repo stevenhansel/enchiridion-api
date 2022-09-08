@@ -36,6 +36,7 @@ pub static DEFAULT_ROLES: &'static [ApplicationRole] = &[
             ApplicationPermission::CreateAnnouncement,
             // Request
             ApplicationPermission::ViewListRequest,
+            ApplicationPermission::CreateRequest,
             ApplicationPermission::UpdateRequestApproval,
             // User
             ApplicationPermission::ViewListUser,
@@ -61,6 +62,7 @@ pub static DEFAULT_ROLES: &'static [ApplicationRole] = &[
             ApplicationPermission::CreateAnnouncement,
             // Request
             ApplicationPermission::ViewListRequest,
+            ApplicationPermission::CreateRequest,
             ApplicationPermission::UpdateRequestApproval,
         ],
     },
@@ -83,6 +85,7 @@ pub static DEFAULT_ROLES: &'static [ApplicationRole] = &[
             ApplicationPermission::CreateAnnouncement,
             // Request
             ApplicationPermission::ViewListRequest,
+            ApplicationPermission::CreateRequest,
             ApplicationPermission::UpdateRequestApproval,
         ],
     },
@@ -105,6 +108,7 @@ pub static DEFAULT_ROLES: &'static [ApplicationRole] = &[
             ApplicationPermission::CreateAnnouncement,
             // Request
             ApplicationPermission::ViewListRequest,
+            ApplicationPermission::CreateRequest,
         ],
     },
 ];
@@ -134,6 +138,7 @@ pub enum ApplicationPermission {
     CreateAnnouncement,
     // Request
     ViewListRequest,
+    CreateRequest,
     UpdateRequestApproval,
     // User
     ViewListUser,
@@ -161,6 +166,7 @@ impl ApplicationPermission {
             ApplicationPermission::ViewAnnouncementMedia => "View Announcement Media",
             ApplicationPermission::CreateAnnouncement => "Create Announcement",
             ApplicationPermission::ViewListRequest => "View List Request",
+            ApplicationPermission::CreateRequest => "Create Request",
             ApplicationPermission::UpdateRequestApproval => "Update Request Approval",
             ApplicationPermission::ViewListUser => "View List User",
             ApplicationPermission::UpdateUserApproval => "Update User Approval",
@@ -187,6 +193,7 @@ impl ApplicationPermission {
             ApplicationPermission::ViewAnnouncementMedia => "view_announcement_media",
             ApplicationPermission::CreateAnnouncement => "create_announcement",
             ApplicationPermission::ViewListRequest => "view_list_request",
+            ApplicationPermission::CreateRequest => "create_request",
             ApplicationPermission::UpdateRequestApproval => "update_request_approval",
             ApplicationPermission::ViewListUser => "view_list_user",
             ApplicationPermission::UpdateUserApproval => "update_user_approval",

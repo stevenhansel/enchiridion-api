@@ -197,12 +197,12 @@ impl AnnouncementServiceInterface for AnnouncementService {
 
         if let Err(_) = self
             ._request_service
-            .create_request(CreateRequestParams {
-                action: RequestActionType::Create,
-                description: params.notes.clone(),
-                user_id: params.user_id,
+            .create_request(CreateRequestParams::new(
+                RequestActionType::Create,
+                params.notes.clone(),
                 announcement_id,
-            })
+                params.user_id,
+            ))
             .await
         {
             return Err(CreateAnnouncementError::InternalServerError);

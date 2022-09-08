@@ -299,6 +299,19 @@
     },
     "query": "\n                delete from \"device\"\n                where \"id\" = $1\n            "
   },
+  "9c77cb924b4a756efc8ca633e6d912d815cc9eb9a465e9c972fba179633c4fa7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n            update \"announcement\"\n            set \"end_date\" = $2\n            where \"id\" = $1\n            "
+  },
   "9ee4bd8ab3cd652765a83bc850be6d3f53e67d59f040adfdff052826ee19af26": {
     "describe": {
       "columns": [],
@@ -620,9 +633,8 @@
               "kind": {
                 "Enum": [
                   "create",
-                  "change_date",
+                  "extend_date",
                   "delete",
-                  "change_content",
                   "change_devices"
                 ]
               },

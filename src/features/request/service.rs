@@ -35,6 +35,31 @@ pub struct CreateRequestParams {
     pub description: String,
     pub announcement_id: i32,
     pub user_id: i32,
+
+    pub extended_end_date: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl CreateRequestParams {
+    pub fn new(
+        action: RequestActionType,
+        description: String,
+        announcement_id: i32,
+        user_id: i32,
+    ) -> Self {
+        CreateRequestParams {
+            action,
+            description,
+            announcement_id,
+            user_id,
+
+            extended_end_date: None,
+        }
+    }
+
+    pub fn extended_end_date(mut self, extended_end_date: chrono::DateTime<chrono::Utc>) -> Self {
+        self.extended_end_date = Some(extended_end_date);
+        self
+    }
 }
 
 pub struct UpdateRequestApprovalParams {
@@ -132,16 +157,50 @@ impl RequestServiceInterface for RequestService {
     }
 
     async fn create_request(&self, params: CreateRequestParams) -> Result<(), CreateRequestError> {
-        if let Err(e) = self
-            ._request_repository
-            .insert(InsertRequestParams {
-                action: params.action,
-                description: params.description,
-                announcement_id: params.announcement_id,
-                user_id: params.user_id,
-            })
+        let announcement = match self
+            ._announcement_repository
+            .find_one(params.announcement_id)
             .await
         {
+            Ok(announcement) => announcement,
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(CreateRequestError::AnnouncementNotFound(
+                        "Unable to find the corresponding announcement",
+                    ));
+                }
+                _ => return Err(CreateRequestError::InternalServerError),
+            },
+        };
+
+        if (params.action == RequestActionType::ExtendDate
+            || params.action == RequestActionType::Delete
+            || params.action == RequestActionType::ChangeDevices)
+            && announcement.status != AnnouncementStatus::Active
+        {
+            return Err(CreateRequestError::InvalidAnnouncementStatus(
+                "Unable to create request, announcement status must be active",
+            ));
+        }
+
+        let mut insert_params = InsertRequestParams::new(
+            params.action,
+            params.description,
+            params.announcement_id,
+            params.user_id,
+        );
+        if let Some(extended_end_date) = params.extended_end_date {
+            if extended_end_date <= announcement.end_date {
+                return Err(CreateRequestError::InvalidExtendedEndDate(
+                    "Extended end date must be after the current announcement end date",
+                ));
+            }
+
+            insert_params = insert_params.extended_end_date(extended_end_date);
+        }
+
+        if let Err(e) = self._request_repository.insert(insert_params).await {
+            println!("e: {}", e);
             match e {
                 sqlx::Error::Database(db_error) => {
                     if let Some(code) = db_error.code() {
@@ -152,7 +211,6 @@ impl RequestServiceInterface for RequestService {
                             ));
                         }
                     }
-
                     return Err(CreateRequestError::InternalServerError);
                 }
                 _ => return Err(CreateRequestError::InternalServerError),
@@ -390,6 +448,30 @@ impl RequestServiceInterface for RequestService {
         request: Request,
         approval: RequestApproval,
     ) -> Result<(), UpdateRequestApprovalError> {
+        if announcement.status != AnnouncementStatus::Active {
+            return Err(UpdateRequestApprovalError::InvalidAnnouncementStatus(
+                "Announcement status should be Active".into(),
+            ));
+        }
+
+        if approval.approved_by_bm == Some(true) && approval.approved_by_lsc == Some(true) {
+            // if let Err(_) = self._announcement_repository.extend_end_date().await {}
+        }
+
+        if let Err(_) = self
+            ._request_repository
+            .update_approval(UpdateApprovalParams {
+                request_id: request.id,
+                approved_by_lsc: approval.approved_by_lsc,
+                approved_by_bm: approval.approved_by_bm,
+                lsc_approver: approval.lsc_approver,
+                bm_approver: approval.bm_approver,
+            })
+            .await
+        {
+            return Err(UpdateRequestApprovalError::InternalServerError);
+        }
+
         Ok(())
     }
 

@@ -4,13 +4,14 @@ use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 
 use crate::http::{
-    derive_authentication_middleware_error, derive_user_id, AuthenticationContext,
-    HttpErrorResponse,
+    derive_authentication_middleware_error, derive_user_id, validate_date_format,
+    AuthenticationContext, HttpErrorResponse, API_VALIDATION_ERROR_CODE,
 };
 
 use super::{
-    ListRequestError, ListRequestParams, RequestActionType, RequestErrorCode,
-    RequestServiceInterface, UpdateRequestApprovalError, UpdateRequestApprovalParams,
+    CreateRequestError, CreateRequestParams, ListRequestError, ListRequestParams,
+    RequestActionType, RequestErrorCode, RequestServiceInterface, UpdateRequestApprovalError,
+    UpdateRequestApprovalParams,
 };
 
 #[derive(Debug, Deserialize)]
@@ -227,6 +228,100 @@ pub async fn update_request_approval(
                 return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
                     RequestErrorCode::InternalServerError.to_string(),
                     vec![UpdateRequestApprovalError::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
+    HttpResponse::NoContent().finish()
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateRequestBody {
+    action: RequestActionType,
+    description: String,
+    announcement_id: i32,
+    extended_end_date: Option<String>,
+}
+
+pub async fn create_request(
+    request_service: web::Data<Arc<dyn RequestServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext,
+    body: web::Json<CreateRequestBody>,
+) -> HttpResponse {
+    let user_id = match derive_user_id(auth) {
+        Ok(id) => id,
+        Err(e) => return derive_authentication_middleware_error(e),
+    };
+
+    let mut params = CreateRequestParams::new(
+        body.action.clone(),
+        body.description.clone(),
+        body.announcement_id,
+        user_id,
+    );
+
+    if body.action == RequestActionType::ExtendDate {
+        let date = match &body.extended_end_date {
+            Some(date) => date,
+            None => {
+                return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+                    API_VALIDATION_ERROR_CODE.to_string(),
+                    vec!["Extended end date is required when request action type is for extending the date".into()],
+                ))
+            }
+        };
+
+        let date = match validate_date_format(date.as_str(), "%Y-%m-%d") {
+            Ok(date) => date,
+            Err(_) => {
+                return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+                    API_VALIDATION_ERROR_CODE.to_string(),
+                    vec!["Date format must be yyyy-mm-dd".into()],
+                ))
+            }
+        };
+
+        params = params.extended_end_date(date);
+    } else if body.action == RequestActionType::ChangeDevices {
+    } else if body.action == RequestActionType::Create {
+        return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+            API_VALIDATION_ERROR_CODE.to_string(),
+            vec!["Unable to create new request with action \"create\"".into()],
+        ));
+    }
+
+    if let Err(e) = request_service.create_request(params).await {
+        match e {
+            CreateRequestError::InvalidExtendedEndDate(message) => {
+                return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+                    RequestErrorCode::InvalidExtendedEndDate.to_string(),
+                    vec![message.to_string()],
+                ))
+            }
+            CreateRequestError::EntityNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    RequestErrorCode::EntityNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            CreateRequestError::AnnouncementNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    RequestErrorCode::AnnouncementNotFound.to_string(),
+                    vec![message.to_string()],
+                ))
+            }
+            CreateRequestError::InvalidAnnouncementStatus(message) => {
+                return HttpResponse::Conflict().json(HttpErrorResponse::new(
+                    RequestErrorCode::InvalidAnnouncementStatus.to_string(),
+                    vec![message.to_string()],
+                ))
+            }
+            CreateRequestError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    RequestErrorCode::InternalServerError.to_string(),
+                    vec![CreateRequestError::InternalServerError.to_string()],
                 ))
             }
         }
