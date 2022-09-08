@@ -13,10 +13,16 @@ pub struct CountAnnouncementParams {
     pub user_id: Option<i32>,
     pub device_id: Option<i32>,
 
+    pub start_date_gt: Option<chrono::DateTime<chrono::Utc>>,
     pub start_date_gte: Option<chrono::DateTime<chrono::Utc>>,
     pub start_date_lt: Option<chrono::DateTime<chrono::Utc>>,
+    pub start_date_lte: Option<chrono::DateTime<chrono::Utc>>,
 
+    pub end_date_gt: Option<chrono::DateTime<chrono::Utc>>,
+    pub end_date_gte: Option<chrono::DateTime<chrono::Utc>>,
+    pub end_date_lt: Option<chrono::DateTime<chrono::Utc>>,
     pub end_date_lte: Option<chrono::DateTime<chrono::Utc>>,
+
 }
 
 impl CountAnnouncementParams {
@@ -27,8 +33,14 @@ impl CountAnnouncementParams {
             user_id: None,
             device_id: None,
 
+            start_date_gt: None,
             start_date_gte: None,
             start_date_lt: None,
+            start_date_lte: None,
+
+            end_date_gt: None,
+            end_date_gte: None,
+            end_date_lt: None,
             end_date_lte: None,
         }
     }
@@ -53,20 +65,46 @@ impl CountAnnouncementParams {
         self
     }
 
+    pub fn start_date_gt(mut self, start_date_gt: chrono::DateTime<chrono::Utc>) -> Self {
+        self.start_date_gt = Some(start_date_gt);
+        self
+    }
+
     pub fn start_date_gte(mut self, start_date_gte: chrono::DateTime<chrono::Utc>) -> Self {
         self.start_date_gte = Some(start_date_gte);
         self
     }
 
-    pub fn start_date_gt(mut self, start_date_gt: chrono::DateTime<chrono::Utc>) -> Self {
-        self.start_date_lt = Some(start_date_gt);
+    pub fn start_date_lt(mut self, start_date_lt: chrono::DateTime<chrono::Utc>) -> Self {
+        self.start_date_lt = Some(start_date_lt);
         self
     }
 
-    pub fn end_date_lte(mut self, start_date_gte: chrono::DateTime<chrono::Utc>) -> Self {
-        self.end_date_lte = Some(start_date_gte);
+    pub fn start_date_lte(mut self, start_date_lte: chrono::DateTime<chrono::Utc>) -> Self {
+        self.start_date_lte = Some(start_date_lte);
         self
     }
+
+    pub fn end_date_gt(mut self, end_date_gt: chrono::DateTime<chrono::Utc>) -> Self {
+        self.end_date_gt = Some(end_date_gt);
+        self
+    }
+
+    pub fn end_date_gte(mut self, end_date_gte: chrono::DateTime<chrono::Utc>) -> Self {
+        self.end_date_gte = Some(end_date_gte);
+        self
+    }
+
+    pub fn end_date_lt(mut self, end_date_lt: chrono::DateTime<chrono::Utc>) -> Self {
+        self.end_date_lt = Some(end_date_lt);
+        self
+    }
+
+    pub fn end_date_lte(mut self, end_date_lte: chrono::DateTime<chrono::Utc>) -> Self {
+        self.end_date_lte = Some(end_date_lte);
+        self
+    }
+
 }
 
 pub struct FindListAnnouncementParams {
@@ -77,9 +115,14 @@ pub struct FindListAnnouncementParams {
     pub user_id: Option<i32>,
     pub device_id: Option<i32>,
 
+    pub start_date_gt: Option<chrono::DateTime<chrono::Utc>>,
     pub start_date_gte: Option<chrono::DateTime<chrono::Utc>>,
     pub start_date_lt: Option<chrono::DateTime<chrono::Utc>>,
+    pub start_date_lte: Option<chrono::DateTime<chrono::Utc>>,
 
+    pub end_date_gt: Option<chrono::DateTime<chrono::Utc>>,
+    pub end_date_gte: Option<chrono::DateTime<chrono::Utc>>,
+    pub end_date_lt: Option<chrono::DateTime<chrono::Utc>>,
     pub end_date_lte: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -94,8 +137,14 @@ impl FindListAnnouncementParams {
             user_id: None,
             device_id: None,
 
+            start_date_gt: None,
             start_date_gte: None,
             start_date_lt: None,
+            start_date_lte: None,
+
+            end_date_gt: None,
+            end_date_gte: None,
+            end_date_lt: None,
             end_date_lte: None,
         }
     }
@@ -130,18 +179,43 @@ impl FindListAnnouncementParams {
         self
     }
 
+    pub fn start_date_gt(mut self, start_date_gt: chrono::DateTime<chrono::Utc>) -> Self {
+        self.start_date_gt = Some(start_date_gt);
+        self
+    }
+
     pub fn start_date_gte(mut self, start_date_gte: chrono::DateTime<chrono::Utc>) -> Self {
         self.start_date_gte = Some(start_date_gte);
         self
     }
 
-    pub fn start_date_gt(mut self, start_date_gt: chrono::DateTime<chrono::Utc>) -> Self {
-        self.start_date_lt = Some(start_date_gt);
+    pub fn start_date_lt(mut self, start_date_lt: chrono::DateTime<chrono::Utc>) -> Self {
+        self.start_date_lt = Some(start_date_lt);
         self
     }
 
-    pub fn end_date_lte(mut self, start_date_gte: chrono::DateTime<chrono::Utc>) -> Self {
-        self.end_date_lte = Some(start_date_gte);
+    pub fn start_date_lte(mut self, start_date_lte: chrono::DateTime<chrono::Utc>) -> Self {
+        self.start_date_lte = Some(start_date_lte);
+        self
+    }
+
+    pub fn end_date_gt(mut self, end_date_gt: chrono::DateTime<chrono::Utc>) -> Self {
+        self.end_date_gt = Some(end_date_gt);
+        self
+    }
+
+    pub fn end_date_gte(mut self, end_date_gte: chrono::DateTime<chrono::Utc>) -> Self {
+        self.end_date_gte = Some(end_date_gte);
+        self
+    }
+
+    pub fn end_date_lt(mut self, end_date_lt: chrono::DateTime<chrono::Utc>) -> Self {
+        self.end_date_lt = Some(end_date_lt);
+        self
+    }
+
+    pub fn end_date_lte(mut self, end_date_lte: chrono::DateTime<chrono::Utc>) -> Self {
+        self.end_date_lte = Some(end_date_lte);
         self
     }
 }
@@ -247,17 +321,28 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 ($2::text is null or "announcement"."status" = $2) and
                 ($3::integer is null or "announcement"."user_id" = $3) and 
                 ($4::integer is null or "device_announcement"."device_id" = $4) and
-                ($5::timestamp is null or "announcement"."start_date" >= $5) and
-                ($6::timestamp is null or "announcement"."start_date" < $6) and
-                ($7::timestamp is null or "announcement"."end_date" <= $7)
+                ($5::timestamp is null or "announcement"."start_date" > $5) and
+                ($6::timestamp is null or "announcement"."start_date" >= $6) and
+                ($7::timestamp is null or "announcement"."start_date" < $7) and
+                ($8::timestamp is null or "announcement"."start_date" <= $8) and
+                ($9::timestamp is null or "announcement"."end_date" > $9) and
+                ($10::timestamp is null or "announcement"."end_date" >= $10) and
+                ($11::timestamp is null or "announcement"."end_date" < $11) and
+                ($12::timestamp is null or "announcement"."end_date" <= $12)
+
             "#,
         )
         .bind(params.query.clone())
         .bind(params.status.clone())
         .bind(params.user_id.clone())
         .bind(params.device_id.clone())
+        .bind(params.start_date_gt.clone())
         .bind(params.start_date_gte.clone())
         .bind(params.start_date_lt.clone())
+        .bind(params.start_date_lte.clone())
+        .bind(params.end_date_gt.clone())
+        .bind(params.end_date_gte.clone())
+        .bind(params.end_date_lt.clone())
         .bind(params.end_date_lte.clone())
         .map(|row: PgRow| row.get("count"))
         .fetch_one(&self._db)
@@ -302,9 +387,14 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                     ($4::text is null or "announcement"."status" = $4) and
                     ($5::integer is null or "announcement"."user_id" = $5) and 
                     ($6::integer is null or "device_announcement"."device_id" = $6) and
-                    ($7::timestamp is null or "announcement"."start_date" >= $7) and
-                    ($8::timestamp is null or "announcement"."start_date" < $8) and
-                    ($9::timestamp is null or "announcement"."end_date" <= $9)
+                    ($7::timestamp is null or "announcement"."start_date" > $7) and
+                    ($8::timestamp is null or "announcement"."start_date" >= $8) and
+                    ($9::timestamp is null or "announcement"."start_date" < $9) and
+                    ($10::timestamp is null or "announcement"."start_date" <= $10) and
+                    ($11::timestamp is null or "announcement"."end_date" > $11) and
+                    ($12::timestamp is null or "announcement"."end_date" >= $12) and
+                    ($13::timestamp is null or "announcement"."end_date" < $13) and
+                    ($14::timestamp is null or "announcement"."end_date" <= $14)
             ) "result" on true
             where
                 (
@@ -317,9 +407,14 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 ($4::text is null or "announcement"."status" = $4) and
                 ($5::integer is null or "announcement"."user_id" = $5) and 
                 ($6::integer is null or "device_announcement"."device_id" = $6) and
-                ($7::timestamp is null or "announcement"."start_date" >= $7) and
-                ($8::timestamp is null or "announcement"."start_date" < $8) and
-                ($9::timestamp is null or "announcement"."end_date" <= $9)
+                ($7::timestamp is null or "announcement"."start_date" > $7) and
+                ($8::timestamp is null or "announcement"."start_date" >= $8) and
+                ($9::timestamp is null or "announcement"."start_date" < $9) and
+                ($10::timestamp is null or "announcement"."start_date" <= $10) and
+                ($11::timestamp is null or "announcement"."end_date" > $11) and
+                ($12::timestamp is null or "announcement"."end_date" >= $12) and
+                ($13::timestamp is null or "announcement"."end_date" < $13) and
+                ($14::timestamp is null or "announcement"."end_date" <= $14)
             group by "announcement"."id", "user"."id", "result"."count"
             order by "announcement"."id" desc
             offset $1 limit $2
@@ -331,8 +426,13 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         .bind(params.status.clone())
         .bind(params.user_id.clone())
         .bind(params.device_id.clone())
+        .bind(params.start_date_gt.clone())
         .bind(params.start_date_gte.clone())
         .bind(params.start_date_lt.clone())
+        .bind(params.start_date_lte.clone())
+        .bind(params.end_date_gt.clone())
+        .bind(params.end_date_gte.clone())
+        .bind(params.end_date_lt.clone())
         .bind(params.end_date_lte.clone())
         .map(|row: PgRow| ListAnnouncementRow {
             count: row.get("count"),

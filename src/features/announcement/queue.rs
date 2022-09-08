@@ -43,6 +43,11 @@ pub trait AnnouncementQueueInterface {
         device_ids: Vec<i32>,
         announcement_id: i32,
     ) -> Result<(), AnnouncementQueueError>;
+    fn synchronize_delete_announcement_action_to_devices(
+        &self,
+        device_ids: Vec<i32>,
+        announcement_id: i32,
+    ) -> Result<(), AnnouncementQueueError>;
 }
 
 pub struct AnnouncementQueue {
@@ -68,6 +73,36 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
     ) -> Result<(), AnnouncementQueueError> {
         let payload = match serde_json::to_string(&SyncCreateAnnouncementActionParams {
             action: AnnouncementSyncAction::Create,
+            announcement_id,
+        }) {
+            Ok(payload) => payload,
+            Err(e) => {
+                return Err(AnnouncementQueueError::PayloadSerializationError(
+                    e.to_string(),
+                ))
+            }
+        };
+
+        for id in device_ids {
+            let mut map: BTreeMap<String, String> = BTreeMap::new();
+            map.insert(String::from("data"), payload.clone());
+
+            let producer = Producer::new(self._redis.clone(), self.queue_name_builder(id));
+            if let Err(_) = producer.push(map) {
+                return Err(AnnouncementQueueError::InternalServerError);
+            };
+        }
+
+        Ok(())
+    }
+
+    fn synchronize_delete_announcement_action_to_devices(
+        &self,
+        device_ids: Vec<i32>,
+        announcement_id: i32,
+    ) -> Result<(), AnnouncementQueueError> {
+        let payload = match serde_json::to_string(&SyncCreateAnnouncementActionParams {
+            action: AnnouncementSyncAction::Delete,
             announcement_id,
         }) {
             Ok(payload) => payload,

@@ -64,7 +64,10 @@ pub trait AnnouncementServiceInterface {
         &self,
         now: chrono::DateTime<chrono::Utc>,
     ) -> Result<(), HandleScheduledAnnouncementsError>;
-    async fn handle_active_announcements(&self) -> Result<(), HandleScheduledAnnouncementsError>;
+    async fn handle_active_announcements(
+        &self,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Result<(), HandleScheduledAnnouncementsError>;
 }
 
 pub struct AnnouncementService {
@@ -363,7 +366,80 @@ impl AnnouncementServiceInterface for AnnouncementService {
         Ok(())
     }
 
-    async fn handle_active_announcements(&self) -> Result<(), HandleScheduledAnnouncementsError> {
+    async fn handle_active_announcements(
+        &self,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Result<(), HandleScheduledAnnouncementsError> {
+        let count = match self
+            ._announcement_repository
+            .count(
+                CountAnnouncementParams::default()
+                    .status(AnnouncementStatus::Active)
+                    .end_date_lt(now),
+            )
+            .await
+        {
+            Ok(count) => count,
+            Err(_) => {
+                return Err(HandleScheduledAnnouncementsError::InternalServerError);
+            }
+        };
+
+        if count == 0 {
+            return Ok(());
+        }
+
+        let announcements = match self
+            ._announcement_repository
+            .find(
+                FindListAnnouncementParams::default()
+                    .limit(count)
+                    .status(AnnouncementStatus::Active)
+                    .end_date_lt(now),
+            )
+            .await
+        {
+            Ok(data) => data,
+            Err(_) => return Err(HandleScheduledAnnouncementsError::InternalServerError),
+        };
+
+        let announcement_ids: Vec<i32> = announcements
+            .contents
+            .into_iter()
+            .map(|announcement| announcement.id)
+            .collect();
+
+        let announcement_device_map = match self
+            ._announcement_repository
+            .find_announcement_device_map(announcement_ids.clone())
+            .await
+        {
+            Ok(map) => map,
+            Err(_) => return Err(HandleScheduledAnnouncementsError::InternalServerError),
+        };
+
+        for id in &announcement_ids {
+            let device_ids = match announcement_device_map.get(id) {
+                Some(ids) => ids,
+                None => return Err(HandleScheduledAnnouncementsError::InternalServerError),
+            };
+
+            if let Err(_) = self
+                ._announcement_queue
+                .synchronize_delete_announcement_action_to_devices(device_ids.clone(), *id)
+            {
+                return Err(HandleScheduledAnnouncementsError::InternalServerError);
+            }
+        }
+
+        if let Err(_) = self
+            ._announcement_repository
+            .batch_update_status(announcement_ids.clone(), AnnouncementStatus::Done)
+            .await
+        {
+            return Err(HandleScheduledAnnouncementsError::InternalServerError);
+        }
+
         Ok(())
     }
 }
