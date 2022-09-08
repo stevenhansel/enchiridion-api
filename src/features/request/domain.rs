@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct Request {
     pub id: i32,
     pub action: RequestActionType,
+    pub metadata: RequestMetadata,
     pub announcement_id: i32,
     pub announcement_title: String,
     pub user_id: i32,
@@ -16,10 +17,31 @@ pub struct Request {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Deserialize)]
+
+#[derive(Debug,Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct RequestMetadata {
     #[serde(with = "ts_seconds_option")]
     pub extended_end_date: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl RequestMetadata {
+    pub fn default() -> Self {
+        RequestMetadata {
+            extended_end_date: None,
+        }
+    }
+
+    pub fn extended_end_date(mut self, extended_end_date: chrono::DateTime<chrono::Utc>) -> Self {
+        self.extended_end_date = Some(extended_end_date);
+        self
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct RawRequestMetadata {
+    pub extended_end_date: Option<String>,
 }
 
 pub struct RequestApproval {

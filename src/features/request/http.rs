@@ -11,7 +11,7 @@ use crate::http::{
 use super::{
     CreateRequestError, CreateRequestParams, ListRequestError, ListRequestParams,
     RequestActionType, RequestErrorCode, RequestServiceInterface, UpdateRequestApprovalError,
-    UpdateRequestApprovalParams,
+    UpdateRequestApprovalParams, RequestMetadata,
 };
 
 #[derive(Debug, Deserialize)]
@@ -44,6 +44,7 @@ pub struct ListRequestContent {
     author: ListRequestContentAuthor,
     approval_status: ListRequestContentApprovalStatus,
     action: ListRequestContentAction,
+    metadata: RequestMetadata,
     description: String,
     created_at: String,
 }
@@ -144,6 +145,7 @@ pub async fn list_request(
                     label: row.action.clone().label().to_string(),
                     value: row.action.clone().value().to_string(),
                 },
+                metadata: row.metadata,
                 description: row.description,
                 created_at: row.created_at.to_rfc3339(),
             })

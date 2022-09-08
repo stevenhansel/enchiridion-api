@@ -3,7 +3,7 @@ use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
 use crate::database::PaginationResult;
 
-use super::{Request, RequestActionType, RequestMetadata};
+use super::{RawRequestMetadata, Request, RequestActionType, RequestMetadata};
 
 pub struct FindRequestParams {
     pub page: i32,
@@ -60,6 +60,7 @@ pub struct ListRequestRow {
     count: i32,
     request_id: i32,
     request_action: RequestActionType,
+    request_metadata: sqlx::types::Json<RawRequestMetadata>,
     request_description: String,
     request_approved_by_lsc: Option<bool>,
     request_lsc_approver: Option<i32>,
@@ -70,6 +71,22 @@ pub struct ListRequestRow {
     announcement_title: String,
     user_id: i32,
     user_name: String,
+}
+
+pub struct RawRequestDetail {
+    pub id: i32,
+    pub action: RequestActionType,
+    pub announcement_id: i32,
+    pub announcement_title: String,
+    pub user_id: i32,
+    pub user_name: String,
+    pub description: String,
+    pub approved_by_lsc: Option<bool>,
+    pub lsc_approver: Option<i32>,
+    pub approved_by_bm: Option<bool>,
+    pub bm_approver: Option<i32>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub metadata: sqlx::types::Json<RawRequestMetadata>,
 }
 
 #[async_trait]
@@ -111,6 +128,7 @@ impl RequestRepositoryInterface for RequestRepository {
                 cast("result"."count" as integer) as "count",
                 "request"."id" as "request_id",
                 "request"."action" as "request_action",
+                "request"."metadata" as "request_metadata",
                 "request"."description" as "request_description",
                 "request"."approved_by_lsc" as "request_approved_by_lsc",
                 "request"."lsc_approver" as "request_lsc_approver",
@@ -158,6 +176,7 @@ impl RequestRepositoryInterface for RequestRepository {
             count: row.get("count"),
             request_id: row.get("request_id"),
             request_action: row.get("request_action"),
+            request_metadata: row.get("request_metadata"),
             request_description: row.get("request_description"),
             request_approved_by_lsc: row.get("request_approved_by_lsc"),
             request_lsc_approver: row.get("request_lsc_approver"),
@@ -180,27 +199,39 @@ impl RequestRepositoryInterface for RequestRepository {
         let total_pages = (count as f64 / params.limit as f64).ceil() as i32;
         let has_next = ((params.page as f64 * params.limit as f64) / count as f64) < 1.0;
 
+        let mut contents: Vec<Request> = vec![];
+        for row in result {
+            let mut metadata = RequestMetadata::default();
+            if let Some(extended_end_date) = &row.request_metadata.extended_end_date {
+                let date = chrono::DateTime::parse_from_rfc3339(extended_end_date.as_str())
+                    .unwrap()
+                    .with_timezone(&chrono::Utc);
+
+                metadata = metadata.extended_end_date(date);
+            }
+
+            contents.push(Request {
+                metadata,
+                id: row.request_id,
+                action: row.request_action,
+                announcement_id: row.announcement_id,
+                announcement_title: row.announcement_title,
+                user_id: row.user_id,
+                user_name: row.user_name,
+                description: row.request_description,
+                approved_by_lsc: row.request_approved_by_lsc,
+                lsc_approver: row.request_lsc_approver,
+                approved_by_bm: row.request_approved_by_bm,
+                bm_approver: row.request_bm_approver,
+                created_at: row.request_created_at,
+            })
+        }
+
         Ok(PaginationResult {
             count,
             total_pages,
             has_next,
-            contents: result
-                .into_iter()
-                .map(|row| Request {
-                    id: row.request_id,
-                    action: row.request_action,
-                    announcement_id: row.announcement_id,
-                    announcement_title: row.announcement_title,
-                    user_id: row.user_id,
-                    user_name: row.user_name,
-                    description: row.request_description,
-                    approved_by_lsc: row.request_approved_by_lsc,
-                    lsc_approver: row.request_lsc_approver,
-                    approved_by_bm: row.request_approved_by_bm,
-                    bm_approver: row.request_bm_approver,
-                    created_at: row.request_created_at,
-                })
-                .collect(),
+            contents,
         })
     }
 
@@ -210,6 +241,7 @@ impl RequestRepositoryInterface for RequestRepository {
             select
                 "request"."id" as "request_id",
                 "request"."action" as "request_action",
+                "request"."metadata" as "request_metadata",
                 "request"."description" as "request_description",
                 "request"."approved_by_lsc" as "request_approved_by_lsc",
                 "request"."lsc_approver" as "request_lsc_approver",
@@ -227,7 +259,7 @@ impl RequestRepositoryInterface for RequestRepository {
             "#,
         )
         .bind(request_id)
-        .map(|row: PgRow| Request {
+        .map(|row: PgRow| RawRequestDetail {
             id: row.get("request_id"),
             action: row.get("request_action"),
             description: row.get("request_description"),
@@ -240,11 +272,34 @@ impl RequestRepositoryInterface for RequestRepository {
             announcement_title: row.get("announcement_title"),
             user_id: row.get("user_id"),
             user_name: row.get("user_name"),
+            metadata: row.get("request_metadata"),
         })
         .fetch_one(&self._db)
         .await?;
+        let mut metadata = RequestMetadata::default();
+        if let Some(extended_end_date) = &result.metadata.extended_end_date {
+            let date = chrono::DateTime::parse_from_rfc3339(extended_end_date.as_str())
+                .unwrap()
+                .with_timezone(&chrono::Utc);
 
-        Ok(result)
+            metadata = metadata.extended_end_date(date);
+        }
+
+        Ok(Request {
+            metadata,
+            id: result.id,
+            action: result.action,
+            announcement_id: result.announcement_id,
+            announcement_title: result.announcement_title,
+            user_id: result.user_id,
+            user_name: result.user_name,
+            description: result.description,
+            approved_by_lsc: result.approved_by_lsc,
+            lsc_approver: result.lsc_approver,
+            approved_by_bm: result.approved_by_bm,
+            bm_approver: result.bm_approver,
+            created_at: result.created_at,
+        })
     }
 
     async fn insert(&self, params: InsertRequestParams) -> Result<i32, sqlx::Error> {
@@ -268,13 +323,13 @@ impl RequestRepositoryInterface for RequestRepository {
                 update "request"
                 set "metadata" = jsonb_insert(metadata, '{extended_end_date}'::text[], to_jsonb($2))
                 where "id" = $1
-                "#
+                "#,
             )
-                .bind(result.id)
-                .bind(extended_end_date.to_rfc3339())
-                .execute(&self._db)
-                .await?
-                .rows_affected();
+            .bind(result.id)
+            .bind(extended_end_date.to_rfc3339())
+            .execute(&self._db)
+            .await?
+            .rows_affected();
 
             if rows_affected == 0 {
                 return Err(sqlx::Error::RowNotFound);
