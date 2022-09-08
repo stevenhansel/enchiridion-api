@@ -60,6 +60,24 @@ pub trait RequestServiceInterface {
         request: Request,
         approval: RequestApproval,
     ) -> Result<(), UpdateRequestApprovalError>;
+    async fn handle_update_request_approval_extend_date(
+        &self,
+        announcement: AnnouncementDetail,
+        request: Request,
+        approval: RequestApproval,
+    ) -> Result<(), UpdateRequestApprovalError>;
+    async fn handle_update_request_approval_delete(
+        &self,
+        announcement: AnnouncementDetail,
+        request: Request,
+        approval: RequestApproval,
+    ) -> Result<(), UpdateRequestApprovalError>;
+    async fn handle_update_request_approval_change_devices(
+        &self,
+        announcement: AnnouncementDetail,
+        request: Request,
+        approval: RequestApproval,
+    ) -> Result<(), UpdateRequestApprovalError>;
     async fn batch_reject_requests_from_announcement_ids(
         &self,
         announcement_ids: Vec<i32>,
@@ -197,7 +215,7 @@ impl RequestServiceInterface for RequestService {
 
             approved_by_lsc = Some(params.approval);
             lsc_approver = Some(approver.id);
-        } else if approver.role.name == "bm" {
+        } else if approver.role.value == "bm" {
             if request.approved_by_bm.is_some() {
                 return Err(UpdateRequestApprovalError::RequestAlreadyApproved(
                     "Request already approved".into(),
@@ -248,9 +266,21 @@ impl RequestServiceInterface for RequestService {
 
         match request.action {
             RequestActionType::Create => {
-                self.handle_update_request_approval_create(announcement, request, approval).await
+                self.handle_update_request_approval_create(announcement, request, approval)
+                    .await
             }
-            _ => return Ok(()),
+            RequestActionType::Delete => {
+                self.handle_update_request_approval_delete(announcement, request, approval)
+                    .await
+            }
+            RequestActionType::ExtendDate => {
+                self.handle_update_request_approval_extend_date(announcement, request, approval)
+                    .await
+            }
+            RequestActionType::ChangeDevices => {
+                self.handle_update_request_approval_change_devices(announcement, request, approval)
+                    .await
+            }
         }
     }
 
@@ -299,6 +329,39 @@ impl RequestServiceInterface for RequestService {
             }
         }
 
+        Ok(())
+    }
+
+    async fn handle_update_request_approval_delete(
+        &self,
+        announcement: AnnouncementDetail,
+        request: Request,
+        approval: RequestApproval,
+    ) -> Result<(), UpdateRequestApprovalError> {
+        if announcement.status != AnnouncementStatus::Active {
+            return Err(UpdateRequestApprovalError::InvalidAnnouncementStatus(
+                "Announcement status should be Active".into(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    async fn handle_update_request_approval_extend_date(
+        &self,
+        announcement: AnnouncementDetail,
+        request: Request,
+        approval: RequestApproval,
+    ) -> Result<(), UpdateRequestApprovalError> {
+        Ok(())
+    }
+
+    async fn handle_update_request_approval_change_devices(
+        &self,
+        announcement: AnnouncementDetail,
+        request: Request,
+        approval: RequestApproval,
+    ) -> Result<(), UpdateRequestApprovalError> {
         Ok(())
     }
 
