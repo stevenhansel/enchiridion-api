@@ -455,7 +455,13 @@ impl RequestServiceInterface for RequestService {
         }
 
         if approval.approved_by_bm == Some(true) && approval.approved_by_lsc == Some(true) {
-            // if let Err(_) = self._announcement_repository.extend_end_date().await {}
+            if let Err(_) = self
+                ._announcement_repository
+                .extend_end_date(announcement.id, request.metadata.extended_end_date.unwrap())
+                .await
+                {
+                    return Err(UpdateRequestApprovalError::InternalServerError);
+                }
         }
 
         if let Err(_) = self
