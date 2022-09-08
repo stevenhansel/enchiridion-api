@@ -96,22 +96,30 @@ impl AnnouncementServiceInterface for AnnouncementService {
         &self,
         params: ListAnnouncementParams,
     ) -> Result<PaginationResult<Announcement>, ListAnnouncementError> {
-        match self
-            ._announcement_repository
-            .find(FindListAnnouncementParams {
-                page: params.page,
-                limit: params.limit,
-                query: params.query.clone(),
-                status: params.status.clone(),
-                user_id: params.user_id.clone(),
-                device_id: params.device_id.clone(),
-                start_date_gte: params.start_date.clone(),
-                end_date_lte: params.end_date.clone(),
+        let mut repo_params = FindListAnnouncementParams::default()
+            .page(params.page)
+            .limit(params.limit);
 
-                start_date_lt: None,
-            })
-            .await
-        {
+        if let Some(query) = params.query {
+            repo_params = repo_params.query(query);
+        }
+        if let Some(status) = params.status {
+            repo_params = repo_params.status(status);
+        }
+        if let Some(user_id) = params.user_id {
+            repo_params = repo_params.user_id(user_id);
+        }
+        if let Some(device_id) = params.device_id {
+            repo_params = repo_params.device_id(device_id);
+        }
+        if let Some(start_date) = params.start_date {
+            repo_params = repo_params.start_date_gte(start_date);
+        }
+        if let Some(end_date) = params.end_date {
+            repo_params = repo_params.end_date_lte(end_date);
+        }
+
+        match self._announcement_repository.find(repo_params).await {
             Ok(result) => Ok(result),
             Err(_) => {
                 return Err(ListAnnouncementError::InternalServerError);
@@ -284,20 +292,15 @@ impl AnnouncementServiceInterface for AnnouncementService {
     ) -> Result<(), HandleScheduledAnnouncementsError> {
         let count = match self
             ._announcement_repository
-            .count(CountAnnouncementParams {
-                status: Some(AnnouncementStatus::WaitingForSync),
-                start_date_gte: Some(now),
-
-                query: None,
-                device_id: None,
-                user_id: None,
-                start_date_lt: None,
-                end_date_lte: None,
-            })
+            .count(
+                CountAnnouncementParams::default()
+                    .status(AnnouncementStatus::WaitingForSync)
+                    .start_date_gte(now),
+            )
             .await
         {
             Ok(count) => count,
-            Err(e) => {
+            Err(_) => {
                 return Err(HandleScheduledAnnouncementsError::InternalServerError);
             }
         };
@@ -308,19 +311,12 @@ impl AnnouncementServiceInterface for AnnouncementService {
 
         let announcements = match self
             ._announcement_repository
-            .find(FindListAnnouncementParams {
-                page: 1,
-                limit: count,
-
-                status: Some(AnnouncementStatus::WaitingForSync),
-                start_date_gte: Some(now),
-
-                query: None,
-                device_id: None,
-                user_id: None,
-                start_date_lt: None,
-                end_date_lte: None,
-            })
+            .find(
+                FindListAnnouncementParams::default()
+                    .limit(count)
+                    .status(AnnouncementStatus::WaitingForSync)
+                    .start_date_gte(now),
+            )
             .await
         {
             Ok(data) => data,

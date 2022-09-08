@@ -19,6 +19,56 @@ pub struct CountAnnouncementParams {
     pub end_date_lte: Option<chrono::DateTime<chrono::Utc>>,
 }
 
+impl CountAnnouncementParams {
+    pub fn default() -> Self {
+        CountAnnouncementParams {
+            query: None,
+            status: None,
+            user_id: None,
+            device_id: None,
+
+            start_date_gte: None,
+            start_date_lt: None,
+            end_date_lte: None,
+        }
+    }
+
+    pub fn query(mut self, query: String) -> Self {
+        self.query = Some(query);
+        self
+    }
+
+    pub fn status(mut self, status: AnnouncementStatus) -> Self {
+        self.status = Some(status);
+        self
+    }
+
+    pub fn user_id(mut self, user_id: i32) -> Self {
+        self.user_id = Some(user_id);
+        self
+    }
+
+    pub fn device_id(mut self, device_id: i32) -> Self {
+        self.device_id = Some(device_id);
+        self
+    }
+
+    pub fn start_date_gte(mut self, start_date_gte: chrono::DateTime<chrono::Utc>) -> Self {
+        self.start_date_gte = Some(start_date_gte);
+        self
+    }
+
+    pub fn start_date_gt(mut self, start_date_gt: chrono::DateTime<chrono::Utc>) -> Self {
+        self.start_date_lt = Some(start_date_gt);
+        self
+    }
+
+    pub fn end_date_lte(mut self, start_date_gte: chrono::DateTime<chrono::Utc>) -> Self {
+        self.end_date_lte = Some(start_date_gte);
+        self
+    }
+}
+
 pub struct FindListAnnouncementParams {
     pub page: i32,
     pub limit: i32,
@@ -31,6 +81,69 @@ pub struct FindListAnnouncementParams {
     pub start_date_lt: Option<chrono::DateTime<chrono::Utc>>,
 
     pub end_date_lte: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl FindListAnnouncementParams {
+    pub fn default() -> Self {
+        FindListAnnouncementParams {
+            page: 1,
+            limit: 25,
+
+            query: None,
+            status: None,
+            user_id: None,
+            device_id: None,
+
+            start_date_gte: None,
+            start_date_lt: None,
+            end_date_lte: None,
+        }
+    }
+
+    pub fn page(mut self, page: i32) -> Self {
+        self.page = page;
+        self
+    }
+
+    pub fn limit(mut self, limit: i32) -> Self {
+        self.limit = limit;
+        self
+    }
+
+    pub fn query(mut self, query: String) -> Self {
+        self.query = Some(query);
+        self
+    }
+
+    pub fn status(mut self, status: AnnouncementStatus) -> Self {
+        self.status = Some(status);
+        self
+    }
+
+    pub fn user_id(mut self, user_id: i32) -> Self {
+        self.user_id = Some(user_id);
+        self
+    }
+
+    pub fn device_id(mut self, device_id: i32) -> Self {
+        self.device_id = Some(device_id);
+        self
+    }
+
+    pub fn start_date_gte(mut self, start_date_gte: chrono::DateTime<chrono::Utc>) -> Self {
+        self.start_date_gte = Some(start_date_gte);
+        self
+    }
+
+    pub fn start_date_gt(mut self, start_date_gt: chrono::DateTime<chrono::Utc>) -> Self {
+        self.start_date_lt = Some(start_date_gt);
+        self
+    }
+
+    pub fn end_date_lte(mut self, start_date_gte: chrono::DateTime<chrono::Utc>) -> Self {
+        self.end_date_lte = Some(start_date_gte);
+        self
+    }
 }
 
 pub struct InsertAnnouncementParams {
@@ -260,8 +373,6 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 updated_at: row.announcement_updated_at,
             })
             .collect();
-
-        println!("contents: {}", contents.len());
 
         Ok(PaginationResult {
             count,
