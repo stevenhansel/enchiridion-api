@@ -296,20 +296,6 @@ impl RequestServiceInterface for RequestService {
             ));
         }
 
-        if let Err(_) = self
-            ._request_repository
-            .update_approval(UpdateApprovalParams {
-                request_id: request.id,
-                approved_by_lsc: approval.approved_by_lsc,
-                approved_by_bm: approval.approved_by_bm,
-                lsc_approver: approval.lsc_approver,
-                bm_approver: approval.bm_approver,
-            })
-            .await
-        {
-            return Err(UpdateRequestApprovalError::InternalServerError);
-        }
-
         if approval.approved_by_bm == Some(true) && approval.approved_by_lsc == Some(true) {
             if let Err(_) = self
                 ._announcement_repository
@@ -329,6 +315,20 @@ impl RequestServiceInterface for RequestService {
             }
         }
 
+        if let Err(_) = self
+            ._request_repository
+            .update_approval(UpdateApprovalParams {
+                request_id: request.id,
+                approved_by_lsc: approval.approved_by_lsc,
+                approved_by_bm: approval.approved_by_bm,
+                lsc_approver: approval.lsc_approver,
+                bm_approver: approval.bm_approver,
+            })
+            .await
+        {
+            return Err(UpdateRequestApprovalError::InternalServerError);
+        }
+
         Ok(())
     }
 
@@ -342,6 +342,43 @@ impl RequestServiceInterface for RequestService {
             return Err(UpdateRequestApprovalError::InvalidAnnouncementStatus(
                 "Announcement status should be Active".into(),
             ));
+        }
+
+        if approval.approved_by_bm == Some(true) && approval.approved_by_lsc == Some(true) {
+            let device_ids: Vec<i32> = announcement
+                .devices
+                .into_iter()
+                .map(|device| device.id)
+                .collect();
+
+            if let Err(_) = self
+                ._announcement_queue
+                .synchronize_delete_announcement_action_to_devices(device_ids, announcement.id)
+            {
+                return Err(UpdateRequestApprovalError::InternalServerError);
+            }
+
+            if let Err(_) = self
+                ._announcement_repository
+                .update_status(announcement.id, AnnouncementStatus::Canceled)
+                .await
+            {
+                return Err(UpdateRequestApprovalError::InternalServerError);
+            }
+        }
+
+        if let Err(_) = self
+            ._request_repository
+            .update_approval(UpdateApprovalParams {
+                request_id: request.id,
+                approved_by_lsc: approval.approved_by_lsc,
+                approved_by_bm: approval.approved_by_bm,
+                lsc_approver: approval.lsc_approver,
+                bm_approver: approval.bm_approver,
+            })
+            .await
+        {
+            return Err(UpdateRequestApprovalError::InternalServerError);
         }
 
         Ok(())
