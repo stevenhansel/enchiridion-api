@@ -647,7 +647,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             from "announcement"
             where
                 "status" = 'waiting_for_approval' and
-                "start_date" + '1 day' <= $1
+                "start_date" + '1 day' < $1
             "#,
             now,
         )

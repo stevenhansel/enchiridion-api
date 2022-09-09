@@ -211,6 +211,26 @@
     },
     "query": "\n                update \"user\"\n                set \"password\" = $2\n                where \"id\" = $1\n                "
   },
+  "64a6eeadbff118e4c1414e29a7b3a447da105707febc620e91a06bcdd755eb74": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n            select \"id\"\n            from \"announcement\"\n            where\n                \"status\" = 'waiting_for_approval' and\n                \"start_date\" + '1 day' < $1\n            "
+  },
   "6a2123012a4cef962441b6d47e9c0002a2d701f01ca6e423c146a2f7ccc886e5": {
     "describe": {
       "columns": [],
@@ -492,26 +512,6 @@
       }
     },
     "query": "\n                insert into \"floor\" (\"name\", \"building_id\")\n                values ($1, $2)\n                returning \"id\"\n            "
-  },
-  "ca25ff65cdfd1bcb1de73ed3c93f3b1233bf68ff8fd82d41ccaff05006c6ed59": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n            select \"id\"\n            from \"announcement\"\n            where\n                \"status\" = 'waiting_for_approval' and\n                \"start_date\" + '1 day' <= $1\n            "
   },
   "cdec90e6669804a0787f119b8112d877fb82c1b1cdd61d9a4b53f50f99be19b3": {
     "describe": {
