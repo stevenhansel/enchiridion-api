@@ -513,17 +513,19 @@ impl AuthServiceInterface for AuthService {
             ));
         }
 
-        let parsed_hash = match Argon2::default()
+        let input_password_hash = match Argon2::default()
             .hash_password(params.password.as_bytes(), &user.password_salt)
         {
             Ok(p) => p,
             Err(_) => return Err(AuthError::InternalServerError),
         };
 
-        let is_password_match = Argon2::default()
-            .verify_password(params.password.as_bytes(), &parsed_hash)
-            .is_ok();
-        if is_password_match == false {
+        let original_password_hash = match str::from_utf8(&user.password) {
+            Ok(v) => v,
+            Err(_) => return Err(AuthError::InternalServerError),
+        };
+
+        if input_password_hash.to_string() != original_password_hash {
             return Err(AuthError::AuthenticationFailed(
                 "Authentication failed, Invalid email or password".into(),
             ));
@@ -653,34 +655,32 @@ impl AuthServiceInterface for AuthService {
             },
         };
 
-        let password_str = match str::from_utf8(&user.password) {
+        let input_old_password_hash =
+            match Argon2::default().hash_password(old_password.as_bytes(), &user.password_salt) {
+                Ok(p) => p,
+                Err(_) => return Err(ChangePasswordError::InternalServerError),
+            };
+
+        let original_old_password_hash = match str::from_utf8(&user.password) {
             Ok(v) => v,
-            _ => return Err(ChangePasswordError::InternalServerError),
+            Err(_) => return Err(ChangePasswordError::InternalServerError),
         };
-        let parsed_hash = match PasswordHash::new(password_str) {
-            Ok(hash) => hash,
-            _ => return Err(ChangePasswordError::InternalServerError),
-        };
-        let is_password_match = Argon2::default()
-            .verify_password(old_password.as_bytes(), &parsed_hash)
-            .is_ok();
-        if is_password_match == false {
+
+        if input_old_password_hash.to_string() != original_old_password_hash {
             return Err(ChangePasswordError::UserInvalidOldPassword(
                 "Unable to change password due to invalid old password",
             ));
         }
 
-        let hash = match Argon2::default().hash_password(
-            new_password.as_bytes(),
-            self._configuration.password_secret.expose_secret(),
-        ) {
+        let salt = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
+        let hash = match Argon2::default().hash_password(new_password.as_bytes(), &salt) {
             Ok(p) => p.serialize(),
             Err(_) => return Err(ChangePasswordError::InternalServerError),
         };
 
         if let Err(_) = self
             ._user_repository
-            .update_password(user_id, hash.to_string())
+            .update_password(user_id, hash.to_string(), salt)
             .await
         {
             return Err(ChangePasswordError::InternalServerError);
@@ -737,7 +737,7 @@ impl AuthServiceInterface for AuthService {
                     .expose_secret()
                     .clone(),
                 password: hash.to_string(),
-                password_salt: salt.clone(),
+                password_salt: salt,
                 role: self._configuration.default_user_role.clone(),
                 is_email_confirmed: true,
                 status: UserStatus::Approved,

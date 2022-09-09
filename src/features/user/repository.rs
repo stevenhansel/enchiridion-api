@@ -56,7 +56,12 @@ pub trait UserRepositoryInterface {
     async fn find_one_by_email(&self, email: String) -> Result<UserDetail, sqlx::Error>;
     async fn confirm_email(&self, id: i32) -> Result<(), sqlx::Error>;
     async fn update_user_approval(&self, user_id: i32, approve: bool) -> Result<(), sqlx::Error>;
-    async fn update_password(&self, user_id: i32, password: String) -> Result<(), sqlx::Error>;
+    async fn update_password(
+        &self,
+        user_id: i32,
+        password: String,
+        password_salt: String,
+    ) -> Result<(), sqlx::Error>;
 }
 
 pub struct UserRepository {
@@ -320,15 +325,23 @@ impl UserRepositoryInterface for UserRepository {
         Ok(())
     }
 
-    async fn update_password(&self, user_id: i32, password: String) -> Result<(), sqlx::Error> {
+    async fn update_password(
+        &self,
+        user_id: i32,
+        password: String,
+        password_salt: String,
+    ) -> Result<(), sqlx::Error> {
         let rows_affected = sqlx::query!(
             r#"
                 update "user"
-                set "password" = $2
+                set 
+                    "password" = $2,
+                    "password_salt" = $3
                 where "id" = $1
                 "#,
             user_id,
             password.as_bytes(),
+            password_salt,
         )
         .execute(&self._db)
         .await?
