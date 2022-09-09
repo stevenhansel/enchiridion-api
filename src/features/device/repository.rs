@@ -80,7 +80,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
                         ) and
                         ($4::integer is null or "building"."id" = $4) and
                         ($5::integer is null or "floor"."id" = $5) and
-                        "deleted_at" is null
+                        "device"."deleted_at" is null
                 ) "device_result" on true
                 left join lateral (
                     select count(*) as "count" from "device_announcement"
@@ -99,7 +99,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
                     ) and
                     ($4::integer is null or "building"."id" = $4) and
                     ($5::integer is null or "floor"."id" = $5) and
-                    "deleted_at" is null
+                    "device"."deleted_at" is null
                 group by "device"."id", "building"."id", "floor"."id", "device_result"."count", "device_announcement_result"."count"
                 order by "device"."id" desc
                 offset $1 limit $2
@@ -168,7 +168,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
                     "device_id" = "device"."id" and
                     "announcement"."status" = 'active'
             ) "device_announcement_result" on true
-            where "device"."id" = $1 and "deleted_at" is null
+            where "device"."id" = $1 and "device"."deleted_at" is null
             "#,
         )
         .bind(device_id)

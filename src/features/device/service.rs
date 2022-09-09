@@ -62,7 +62,10 @@ impl DeviceServiceInterface for DeviceService {
     ) -> Result<PaginationResult<Device>, ListDeviceError> {
         match self._device_repository.find(params).await {
             Ok(result) => Ok(result),
-            Err(_) => Err(ListDeviceError::InternalServerError),
+            Err(e) => {
+                println!("e: {}", e);
+                Err(ListDeviceError::InternalServerError)
+            }
         }
     }
 

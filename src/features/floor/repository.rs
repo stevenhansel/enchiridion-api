@@ -85,7 +85,7 @@ impl FloorRepositoryInterface for FloorRepository {
                         "floor"."name" ilike concat('%', $3, '%')
                     ) and
                     ($4::integer is null or "building"."id" = $4) and
-                    "deleted_at" is null
+                    "floor"."deleted_at" is null
             ) "result" on true
             where 
                 (
@@ -96,7 +96,7 @@ impl FloorRepositoryInterface for FloorRepository {
                     "floor"."name" ilike concat('%', $3, '%')
                 ) and
                 ($4::integer is null or "building"."id" = $4) and
-                "deleted_at" is null
+                "floor"."deleted_at" is null
             group by "floor"."id", "building"."id", "device"."id", "result"."count"
             order by "floor"."id" desc
             offset $1 limit $2
