@@ -17,7 +17,6 @@ pub struct RawFloorRow {
     device_id: Option<i32>,
     device_name: Option<String>,
     device_description: Option<String>,
-    // device_total_announcements: i32,
 }
 
 pub struct FindFloorParams {
@@ -85,7 +84,8 @@ impl FloorRepositoryInterface for FloorRepository {
                         ) or
                         "floor"."name" ilike concat('%', $3, '%')
                     ) and
-                    ($4::integer is null or "building"."id" = $4)
+                    ($4::integer is null or "building"."id" = $4) and
+                    "deleted_at" is null
             ) "result" on true
             where 
                 (
@@ -95,7 +95,8 @@ impl FloorRepositoryInterface for FloorRepository {
                     ) or
                     "floor"."name" ilike concat('%', $3, '%')
                 ) and
-                ($4::integer is null or "building"."id" = $4)
+                ($4::integer is null or "building"."id" = $4) and
+                "deleted_at" is null
             group by "floor"."id", "building"."id", "device"."id", "result"."count"
             order by "floor"."id" desc
             offset $1 limit $2
@@ -209,7 +210,7 @@ impl FloorRepositoryInterface for FloorRepository {
                 set
                     "name" = $2,
                     "building_id" = $3
-                where "id" = $1
+                where "id" = $1 and "deleted_at" is null
             "#,
             floor_id,
             params.name,
@@ -229,7 +230,8 @@ impl FloorRepositoryInterface for FloorRepository {
     async fn delete(&self, floor_id: i32) -> Result<(), sqlx::Error> {
         let rows_affected = sqlx::query!(
             r#"
-                delete from "floor"
+                update "floor"
+                set "deleted_at" = now()
                 where "id" = $1
             "#,
             floor_id,

@@ -38,9 +38,10 @@ impl BuildingRepositoryInterface for BuildingRepository {
         let result = sqlx::query_as!(
             Building,
             r#"
-            select id, name, color
+            select "id", "name", "color"
             from "building"
-            order by id desc
+            where "deleted_at" is null
+            order by "id" desc
             "#,
         )
         .fetch_all(&self._db)
@@ -69,8 +70,8 @@ impl BuildingRepositoryInterface for BuildingRepository {
         let result = sqlx::query!(
             r#"
             update "building"
-            set name=$2, color=$3
-            where id=$1
+            set name = $2, color = $3
+            where id = $1 and "deleted_at" is null
             returning id
             "#,
             params.id,
@@ -86,9 +87,10 @@ impl BuildingRepositoryInterface for BuildingRepository {
     async fn delete_by_id(&self, id: i32) -> Result<i32, sqlx::Error> {
         let result = sqlx::query!(
             r#"
-            delete from "building"
-            where id = $1
-            returning id
+            update "building"
+            set "deleted_at" = now()
+            where "id" = $1
+            returning "id"
             "#,
             id
         )

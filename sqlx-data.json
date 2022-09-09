@@ -114,6 +114,24 @@
     },
     "query": "\n            select \n                id,\n                name,\n                email,\n                password,\n                registration_reason,\n                is_email_confirmed,\n                status as \"status: UserStatus\"\n            from \"user\"\n            where email = $1\n            "
   },
+  "1606ea9de8e7301d0b46d03b4a40c58a9282cee94eebb2c069230d55c5deebd5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "count",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            select cast(count(*) as integer) as \"count\"\n            from \"device\"\n            where \"deleted_at\" is null\n            "
+  },
   "1e46a315037e9f3b964c68d540398bd62fad8e4bb482d9394d654a6dc9bd2661": {
     "describe": {
       "columns": [
@@ -134,26 +152,6 @@
       }
     },
     "query": "\n            insert into \"building\" (name, color)\n            values($1, $2)\n            returning id\n            "
-  },
-  "321a391f4a5ae6fb5ccacd66aba1e6554948fc47657fcedec34768c1208dc3c6": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n            delete from \"building\"\n            where id = $1\n            returning id\n            "
   },
   "32908a9811543007feb819937717369f4f76ca0a890c88824d88c1f1b65e186b": {
     "describe": {
@@ -181,6 +179,40 @@
       }
     },
     "query": "\n            update \"announcement\"\n            set \"status\" = $2\n            where \"id\" = $1\n            "
+  },
+  "38086911577821720f2f8cd28c1f0d7779be2b496e06c2157d24cbd092f4e800": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                update \"device\"\n                set \"deleted_at\" = now()\n                where \"id\" = $1\n            "
+  },
+  "428d91e03508acceb78394a978c54ab9898904116659a73fd0d09c74c24d2456": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n            update \"building\"\n            set name = $2, color = $3\n            where id = $1 and \"deleted_at\" is null\n            returning id\n            "
   },
   "4ebd75f8f60cd9c98a01a4477f3631f0d10a95b227415edb89df000c292cc18d": {
     "describe": {
@@ -231,7 +263,34 @@
     },
     "query": "\n            select \"id\"\n            from \"announcement\"\n            where\n                \"status\" = 'waiting_for_approval' and\n                \"start_date\" + '1 day' < $1\n            "
   },
-  "6a2123012a4cef962441b6d47e9c0002a2d701f01ca6e423c146a2f7ccc886e5": {
+  "82190648c2f40f2b6db0d416fc40f551db0da277c4fc837780d974effd5b3fb7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                update \"floor\"\n                set \"deleted_at\" = now()\n                where \"id\" = $1\n            "
+  },
+  "82c222e78645c4072be01756de98d8cafb4e428495d56b65d18a6f43b41f3f64": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Text",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            update \"device\"\n            set \n                \"name\" = $2,\n                \"description\" = $3,\n                \"floor_id\" = $4\n            where \"id\" = $1 and \"deleted_at\" is null\n            "
+  },
+  "832584ff76e5c9a108c5a68e60e29c67609e089196ad2744c0d95d0cc9caaec8": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -243,7 +302,7 @@
         ]
       }
     },
-    "query": "\n                update \"floor\"\n                set\n                    \"name\" = $2,\n                    \"building_id\" = $3\n                where \"id\" = $1\n            "
+    "query": "\n                update \"floor\"\n                set\n                    \"name\" = $2,\n                    \"building_id\" = $3\n                where \"id\" = $1 and \"deleted_at\" is null\n            "
   },
   "89dcd51fe4342182cc301c4a7449a44bf8cabff610e2f1dc76276b89cebf60a1": {
     "describe": {
@@ -307,36 +366,6 @@
     },
     "query": "\n            insert into \"user\" (name, email, password, registration_reason, role)\n            values($1, $2, $3, $4, $5)\n            returning id\n            "
   },
-  "91965e0e4dc9531189e958a1f55c1937c19a5c756ae4d3a4305a983c906a4886": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n                delete from \"device\"\n                where \"id\" = $1\n            "
-  },
-  "9b74a970d7fe8ab8c31f7cb8142804509ff34e730c57d366e3e3aa15ebb4b467": {
-    "describe": {
-      "columns": [
-        {
-          "name": "count",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n            select cast(count(*) as integer) as \"count\"\n            from \"device\"\n            "
-  },
   "9c77cb924b4a756efc8ca633e6d912d815cc9eb9a465e9c972fba179633c4fa7": {
     "describe": {
       "columns": [],
@@ -349,18 +378,6 @@
       }
     },
     "query": "\n            update \"announcement\"\n            set \"end_date\" = $2\n            where \"id\" = $1\n            "
-  },
-  "9ee4bd8ab3cd652765a83bc850be6d3f53e67d59f040adfdff052826ee19af26": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n                delete from \"floor\"\n                where \"id\" = $1\n            "
   },
   "a5fd3f7346571195fb836e6489745426838f49eb672c166fcb7c640b00846b34": {
     "describe": {
@@ -513,28 +530,6 @@
     },
     "query": "\n                insert into \"floor\" (\"name\", \"building_id\")\n                values ($1, $2)\n                returning \"id\"\n            "
   },
-  "cdec90e6669804a0787f119b8112d877fb82c1b1cdd61d9a4b53f50f99be19b3": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Varchar",
-          "Varchar"
-        ]
-      }
-    },
-    "query": "\n            update \"building\"\n            set name=$2, color=$3\n            where id=$1\n            returning id\n            "
-  },
   "ce456b7a3f158f77131690bca37e3ee61d556179ec86755e8b4d25e0e6bdbd3b": {
     "describe": {
       "columns": [
@@ -601,36 +596,6 @@
       }
     },
     "query": "\n            select \n                id,\n                name,\n                email,\n                password,\n                registration_reason,\n                is_email_confirmed,\n                status as \"status: UserStatus\" \n            from \"user\"\n            where id = $1\n            "
-  },
-  "d84996587e4993b9283db69890d64871bcaae5aa7ea13c0d93db53f66b126832": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "color",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n            select id, name, color\n            from \"building\"\n            order by id desc\n            "
   },
   "db901f040e6c7fd575c8d9a0418bed74fb59684a52ba394fb9b91d4e243acaf2": {
     "describe": {
@@ -734,19 +699,54 @@
     },
     "query": "\n            select \n                \"user\".\"id\" as \"user_id\",\n                \"user\".\"name\" as \"user_name\",\n                \"user\".\"email\" as \"user_email\",\n                \"user\".\"profile_picture\" as \"user_profile_picture\",\n                \"user\".\"is_email_confirmed\" as \"user_is_email_confirmed\",\n                \"user\".\"status\" as \"user_status: UserStatus\",\n                \"user\".\"role\" as \"user_role\"\n            from \"user\"\n            where \"user\".\"id\" = $1\n            "
   },
-  "f51f3506de47b9539777dd3b559926a94d76c44f8aa942338bb20fd0bfc682b2": {
+  "ecae8b8a5b352f2be9d98644f168e16fe0f013632040785382d108e96b5a96d1": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "color",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            select \"id\", \"name\", \"color\"\n            from \"building\"\n            where \"deleted_at\" is null\n            order by \"id\" desc\n            "
+  },
+  "f9629db5d47e77b11324f13abc77ac76ea104209146d351c7fa5a662d229164a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
       "parameters": {
         "Left": [
-          "Int4",
-          "Varchar",
-          "Text",
           "Int4"
         ]
       }
     },
-    "query": "\n            update \"device\"\n            set \n                \"name\" = $2,\n                \"description\" = $3,\n                \"floor_id\" = $4\n            where \"id\" = $1\n            "
+    "query": "\n            update \"building\"\n            set \"deleted_at\" = now()\n            where \"id\" = $1\n            returning \"id\"\n            "
   }
 }

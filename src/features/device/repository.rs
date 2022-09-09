@@ -79,7 +79,8 @@ impl DeviceRepositoryInterface for DeviceRepository {
                             "device"."name" ilike concat('%', $3, '%')
                         ) and
                         ($4::integer is null or "building"."id" = $4) and
-                        ($5::integer is null or "floor"."id" = $5)
+                        ($5::integer is null or "floor"."id" = $5) and
+                        "deleted_at" is null
                 ) "device_result" on true
                 left join lateral (
                     select count(*) as "count" from "device_announcement"
@@ -97,7 +98,8 @@ impl DeviceRepositoryInterface for DeviceRepository {
                         "device"."name" ilike concat('%', $3, '%')
                     ) and
                     ($4::integer is null or "building"."id" = $4) and
-                    ($5::integer is null or "floor"."id" = $5)
+                    ($5::integer is null or "floor"."id" = $5) and
+                    "deleted_at" is null
                 group by "device"."id", "building"."id", "floor"."id", "device_result"."count", "device_announcement_result"."count"
                 order by "device"."id" desc
                 offset $1 limit $2
@@ -166,7 +168,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
                     "device_id" = "device"."id" and
                     "announcement"."status" = 'active'
             ) "device_announcement_result" on true
-            where "device"."id" = $1
+            where "device"."id" = $1 and "deleted_at" is null
             "#,
         )
         .bind(device_id)
@@ -211,7 +213,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 "name" = $2,
                 "description" = $3,
                 "floor_id" = $4
-            where "id" = $1
+            where "id" = $1 and "deleted_at" is null
             "#,
             device_id,
             params.name,
@@ -232,7 +234,8 @@ impl DeviceRepositoryInterface for DeviceRepository {
     async fn delete(&self, device_id: i32) -> Result<(), sqlx::Error> {
         let rows_affected = sqlx::query!(
             r#"
-                delete from "device"
+                update "device"
+                set "deleted_at" = now()
                 where "id" = $1
             "#,
             device_id,
@@ -253,6 +256,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
             r#"
             select cast(count(*) as integer) as "count"
             from "device"
+            where "deleted_at" is null
             "#
         )
         .fetch_one(&self._db)
