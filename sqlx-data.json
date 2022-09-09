@@ -296,6 +296,20 @@
     },
     "query": "\n                update \"device\"\n                set \"deleted_at\" = now()\n                where \"id\" = $1\n            "
   },
+  "3a5fcf0e30d2ee8058e21f6f903e61e2780ecc0ff1974ab58928d84122cd9e5f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Bytea",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                update \"user\"\n                set \n                    \"password\" = $2,\n                    \"password_salt\" = $3\n                where \"id\" = $1\n                "
+  },
   "428d91e03508acceb78394a978c54ab9898904116659a73fd0d09c74c24d2456": {
     "describe": {
       "columns": [
@@ -333,19 +347,6 @@
       }
     },
     "query": "\n            update \"request\"\n            set\n                \"approved_by_lsc\" = $2,\n                \"approved_by_bm\" = $3,\n                \"lsc_approver\" = $4,\n                \"bm_approver\" = $5\n            where \"id\" = $1\n            "
-  },
-  "61e16ac1b9a9323be5d27b89dfb5c84e2d13f4b50736f7d5c48723c4f99b5d9b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Bytea"
-        ]
-      }
-    },
-    "query": "\n                update \"user\"\n                set \"password\" = $2\n                where \"id\" = $1\n                "
   },
   "64a6eeadbff118e4c1414e29a7b3a447da105707febc620e91a06bcdd755eb74": {
     "describe": {
