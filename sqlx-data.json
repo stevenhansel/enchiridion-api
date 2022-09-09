@@ -1,5 +1,78 @@
 {
   "db": "PostgreSQL",
+  "0262b7a13f61769cdd7b0fdd527bbf33a1a6a86554114dcc9249d057696a59aa": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "email",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 3,
+          "type_info": "Bytea"
+        },
+        {
+          "name": "password_salt",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "registration_reason",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "is_email_confirmed",
+          "ordinal": 6,
+          "type_info": "Bool"
+        },
+        {
+          "name": "status: UserStatus",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_for_approval",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "name": "user_status"
+            }
+          }
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            select \n                id,\n                name,\n                email,\n                password,\n                password_salt,\n                registration_reason,\n                is_email_confirmed,\n                status as \"status: UserStatus\"\n            from \"user\"\n            where email = $1\n            "
+  },
   "030b6baecd10e195d13a9028c53a8c14e72502146cf7d386ee4e8c03753d3995": {
     "describe": {
       "columns": [
@@ -47,7 +120,25 @@
     },
     "query": "\n                update \"user\"\n                set \"status\" = $2\n                where \"id\" = $1\n            "
   },
-  "0bbdee3a9cb8a79078b61d1bb80886885a4e38f7d61c9371bf27e8a6f1858775": {
+  "1606ea9de8e7301d0b46d03b4a40c58a9282cee94eebb2c069230d55c5deebd5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "count",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            select cast(count(*) as integer) as \"count\"\n            from \"device\"\n            where \"deleted_at\" is null\n            "
+  },
+  "1d6219042ec9b79afaeb223b8894093f312745a0013feb3a7273d4da799c16a1": {
     "describe": {
       "columns": [
         {
@@ -71,18 +162,23 @@
           "type_info": "Bytea"
         },
         {
-          "name": "registration_reason",
+          "name": "password_salt",
           "ordinal": 4,
           "type_info": "Text"
         },
         {
-          "name": "is_email_confirmed",
+          "name": "registration_reason",
           "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "is_email_confirmed",
+          "ordinal": 6,
           "type_info": "Bool"
         },
         {
           "name": "status: UserStatus",
-          "ordinal": 6,
+          "ordinal": 7,
           "type_info": {
             "Custom": {
               "kind": {
@@ -102,35 +198,18 @@
         false,
         false,
         false,
+        false,
         true,
         false,
         false
       ],
       "parameters": {
         "Left": [
-          "Text"
+          "Int4"
         ]
       }
     },
-    "query": "\n            select \n                id,\n                name,\n                email,\n                password,\n                registration_reason,\n                is_email_confirmed,\n                status as \"status: UserStatus\"\n            from \"user\"\n            where email = $1\n            "
-  },
-  "1606ea9de8e7301d0b46d03b4a40c58a9282cee94eebb2c069230d55c5deebd5": {
-    "describe": {
-      "columns": [
-        {
-          "name": "count",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n            select cast(count(*) as integer) as \"count\"\n            from \"device\"\n            where \"deleted_at\" is null\n            "
+    "query": "\n            select \n                id,\n                name,\n                email,\n                password,\n                password_salt,\n                registration_reason,\n                is_email_confirmed,\n                status as \"status: UserStatus\" \n            from \"user\"\n            where id = $1\n            "
   },
   "1e46a315037e9f3b964c68d540398bd62fad8e4bb482d9394d654a6dc9bd2661": {
     "describe": {
@@ -152,6 +231,31 @@
       }
     },
     "query": "\n            insert into \"building\" (name, color)\n            values($1, $2)\n            returning id\n            "
+  },
+  "29b9f1c957e44d9121d0dd89ae0bfaa93d97f51edf029024bb4faf76e4cca92f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Bytea",
+          "Text",
+          "Text",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n            insert into \"user\" (name, email, password, password_salt, registration_reason, role)\n            values($1, $2, $3, $4, $5, $6)\n            returning id\n            "
   },
   "32908a9811543007feb819937717369f4f76ca0a890c88824d88c1f1b65e186b": {
     "describe": {
@@ -263,6 +367,44 @@
     },
     "query": "\n            select \"id\"\n            from \"announcement\"\n            where\n                \"status\" = 'waiting_for_approval' and\n                \"start_date\" + '1 day' < $1\n            "
   },
+  "72dce6209554b6ec61e8e1ff3fb363aa695f0d306027b7b9b98d222729552753": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Bytea",
+          "Text",
+          "Text",
+          "Varchar",
+          "Bool",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_for_approval",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "name": "user_status"
+            }
+          }
+        ]
+      }
+    },
+    "query": "\n            insert into \"user\" (\n                name,\n                email,\n                password,\n                password_salt,\n                registration_reason,\n                role,\n                is_email_confirmed,\n                status\n            )\n            values($1, $2, $3, $4, $5, $6, $7, $8)\n            returning id\n            "
+  },
   "82190648c2f40f2b6db0d416fc40f551db0da277c4fc837780d974effd5b3fb7": {
     "describe": {
       "columns": [],
@@ -342,30 +484,6 @@
     },
     "query": "\n            update \"user\"\n            set is_email_confirmed = true\n            where id = $1\n            "
   },
-  "905c5e7f2a7355dfddb746f9b4765af66801881d2fce620b700e33589e163780": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Bytea",
-          "Text",
-          "Varchar"
-        ]
-      }
-    },
-    "query": "\n            insert into \"user\" (name, email, password, registration_reason, role)\n            values($1, $2, $3, $4, $5)\n            returning id\n            "
-  },
   "9c77cb924b4a756efc8ca633e6d912d815cc9eb9a465e9c972fba179633c4fa7": {
     "describe": {
       "columns": [],
@@ -378,43 +496,6 @@
       }
     },
     "query": "\n            update \"announcement\"\n            set \"end_date\" = $2\n            where \"id\" = $1\n            "
-  },
-  "a5fd3f7346571195fb836e6489745426838f49eb672c166fcb7c640b00846b34": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Bytea",
-          "Text",
-          "Varchar",
-          "Bool",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "waiting_for_approval",
-                  "approved",
-                  "rejected"
-                ]
-              },
-              "name": "user_status"
-            }
-          }
-        ]
-      }
-    },
-    "query": "\n            insert into \"user\" (\n                name,\n                email,\n                password,\n                registration_reason,\n                role,\n                is_email_confirmed,\n                status\n            )\n            values($1, $2, $3, $4, $5, $6, $7)\n            returning id\n            "
   },
   "ab2fe152d4e5c293612ffa47ad9c422b129fd048a72318185fa2d77aa7391d91": {
     "describe": {
@@ -529,73 +610,6 @@
       }
     },
     "query": "\n                insert into \"floor\" (\"name\", \"building_id\")\n                values ($1, $2)\n                returning \"id\"\n            "
-  },
-  "ce456b7a3f158f77131690bca37e3ee61d556179ec86755e8b4d25e0e6bdbd3b": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "email",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 3,
-          "type_info": "Bytea"
-        },
-        {
-          "name": "registration_reason",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "is_email_confirmed",
-          "ordinal": 5,
-          "type_info": "Bool"
-        },
-        {
-          "name": "status: UserStatus",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "waiting_for_approval",
-                  "approved",
-                  "rejected"
-                ]
-              },
-              "name": "user_status"
-            }
-          }
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n            select \n                id,\n                name,\n                email,\n                password,\n                registration_reason,\n                is_email_confirmed,\n                status as \"status: UserStatus\" \n            from \"user\"\n            where id = $1\n            "
   },
   "db901f040e6c7fd575c8d9a0418bed74fb59684a52ba394fb9b91d4e243acaf2": {
     "describe": {

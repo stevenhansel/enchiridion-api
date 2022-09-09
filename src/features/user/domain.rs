@@ -45,6 +45,7 @@ pub struct UserDetail {
     pub name: String,
     pub email: String,
     pub password: Vec<u8>,
+    pub password_salt: String,
     pub registration_reason: Option<String>,
 
     pub is_email_confirmed: bool,

@@ -20,6 +20,7 @@ pub struct InsertUserParams {
     pub name: String,
     pub email: String,
     pub password: String,
+    pub password_salt: String,
     pub registration_reason: Option<String>,
     pub role: String,
 }
@@ -28,6 +29,7 @@ pub struct InsertRawUserParams {
     pub name: String,
     pub email: String,
     pub password: String,
+    pub password_salt: String,
     pub registration_reason: Option<String>,
     pub role: String,
     pub is_email_confirmed: bool,
@@ -93,13 +95,14 @@ impl UserRepositoryInterface for UserRepository {
     async fn create(&self, params: InsertUserParams) -> Result<i32, sqlx::Error> {
         let result = sqlx::query!(
             r#"
-            insert into "user" (name, email, password, registration_reason, role)
-            values($1, $2, $3, $4, $5)
+            insert into "user" (name, email, password, password_salt, registration_reason, role)
+            values($1, $2, $3, $4, $5, $6)
             returning id
             "#,
             params.name,
             params.email,
             params.password.as_bytes(),
+            params.password_salt,
             params.registration_reason,
             params.role,
         )
@@ -116,17 +119,19 @@ impl UserRepositoryInterface for UserRepository {
                 name,
                 email,
                 password,
+                password_salt,
                 registration_reason,
                 role,
                 is_email_confirmed,
                 status
             )
-            values($1, $2, $3, $4, $5, $6, $7)
+            values($1, $2, $3, $4, $5, $6, $7, $8)
             returning id
             "#,
             params.name,
             params.email,
             params.password.as_bytes(),
+            params.password_salt,
             params.registration_reason,
             params.role,
             params.is_email_confirmed,
@@ -237,6 +242,7 @@ impl UserRepositoryInterface for UserRepository {
                 name,
                 email,
                 password,
+                password_salt,
                 registration_reason,
                 is_email_confirmed,
                 status as "status: UserStatus" 
@@ -260,6 +266,7 @@ impl UserRepositoryInterface for UserRepository {
                 name,
                 email,
                 password,
+                password_salt,
                 registration_reason,
                 is_email_confirmed,
                 status as "status: UserStatus"

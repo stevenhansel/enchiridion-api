@@ -10,6 +10,7 @@ use argon2::{
 use async_trait::async_trait;
 use hmac::{Hmac, Mac};
 use jwt::{SignWithKey, VerifyWithKey};
+use rand::distributions::{Alphanumeric, DistString};
 use secrecy::ExposeSecret;
 use sha2::Sha256;
 
@@ -275,10 +276,8 @@ impl AuthServiceInterface for AuthService {
     }
 
     async fn register(&self, params: RegisterParams) -> Result<(), AuthError> {
-        let hash = match Argon2::default().hash_password(
-            params.password.as_bytes(),
-            self._configuration.password_secret.expose_secret(),
-        ) {
+        let salt = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
+        let hash = match Argon2::default().hash_password(params.password.as_bytes(), &salt) {
             Ok(p) => p.serialize(),
             Err(_) => return Err(AuthError::InternalServerError),
         };
@@ -290,6 +289,7 @@ impl AuthServiceInterface for AuthService {
                 email: params.email.to_string(),
                 registration_reason: params.reason,
                 password: hash.to_string(),
+                password_salt: salt,
                 role: params.role,
             })
             .await
@@ -513,14 +513,13 @@ impl AuthServiceInterface for AuthService {
             ));
         }
 
-        let password_str = match str::from_utf8(&user.password) {
-            Ok(v) => v,
-            _ => return Err(AuthError::InternalServerError),
+        let parsed_hash = match Argon2::default()
+            .hash_password(params.password.as_bytes(), &user.password_salt)
+        {
+            Ok(p) => p,
+            Err(_) => return Err(AuthError::InternalServerError),
         };
-        let parsed_hash = match PasswordHash::new(password_str) {
-            Ok(hash) => hash,
-            _ => return Err(AuthError::InternalServerError),
-        };
+
         let is_password_match = Argon2::default()
             .verify_password(params.password.as_bytes(), &parsed_hash)
             .is_ok();
@@ -712,22 +711,21 @@ impl AuthServiceInterface for AuthService {
             },
         };
 
+        let salt = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
         let hash = match Argon2::default().hash_password(
             self._configuration
                 .default_user_password
                 .expose_secret()
                 .as_bytes(),
-            self._configuration.password_secret.expose_secret(),
+            &salt,
         ) {
             Ok(p) => p.serialize(),
             Err(_) => return Err(SeedDefaultUserError::InternalServerError),
         };
-        let password = hash.to_string();
 
         if let Err(_) = self
             ._user_repository
             .raw_create(InsertRawUserParams {
-                password,
                 name: self
                     ._configuration
                     .default_user_name
@@ -738,6 +736,8 @@ impl AuthServiceInterface for AuthService {
                     .default_user_email
                     .expose_secret()
                     .clone(),
+                password: hash.to_string(),
+                password_salt: salt.clone(),
                 role: self._configuration.default_user_role.clone(),
                 is_email_confirmed: true,
                 status: UserStatus::Approved,

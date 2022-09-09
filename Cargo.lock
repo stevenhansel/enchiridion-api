@@ -989,6 +989,7 @@ dependencies = [
  "hmac",
  "jwt",
  "password-hash",
+ "rand",
  "rand_core",
  "redis",
  "reqwest",
