@@ -100,10 +100,11 @@ async fn main() -> std::io::Result<()> {
     let floor_service = Arc::new(FloorService::new(floor_repository.clone()));
     let device_service = Arc::new(DeviceService::new(device_repository.clone()));
     let request_service = Arc::new(RequestService::new(
+        announcement_queue.clone(),
         request_repository.clone(),
         announcement_repository.clone(),
-        announcement_queue.clone(),
         auth_repository.clone(),
+        device_repository.clone(),
     ));
     let announcement_service = Arc::new(AnnouncementService::new(
         announcement_repository.clone(),

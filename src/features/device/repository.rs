@@ -35,6 +35,7 @@ pub trait DeviceRepositoryInterface {
     async fn insert(&self, params: InsertDeviceParams) -> Result<i32, sqlx::Error>;
     async fn update(&self, device_id: i32, params: UpdateDeviceParams) -> Result<(), sqlx::Error>;
     async fn delete(&self, device_id: i32) -> Result<(), sqlx::Error>;
+    async fn exists(&self, device_ids: Vec<i32>) -> Result<bool, sqlx::Error>;
 }
 
 pub struct DeviceRepository {
@@ -245,5 +246,18 @@ impl DeviceRepositoryInterface for DeviceRepository {
         }
 
         Ok(())
+    }
+
+    async fn exists(&self, device_ids: Vec<i32>) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query!(
+            r#"
+            select cast(count(*) as integer) as "count"
+            from "device"
+            "#
+        )
+        .fetch_one(&self._db)
+        .await?;
+
+        Ok(result.count.unwrap() == device_ids.len() as i32)
     }
 }

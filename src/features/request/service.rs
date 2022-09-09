@@ -9,7 +9,7 @@ use crate::{
             AnnouncementQueueInterface, AnnouncementRepositoryInterface, AnnouncementStatus,
         },
         auth::AuthRepositoryInterface,
-        AnnouncementDetail,
+        AnnouncementDetail, DeviceRepositoryInterface,
     },
 };
 
@@ -37,6 +37,7 @@ pub struct CreateRequestParams {
     pub user_id: i32,
 
     pub extended_end_date: Option<chrono::DateTime<chrono::Utc>>,
+    pub new_device_ids: Option<Vec<i32>>,
 }
 
 impl CreateRequestParams {
@@ -53,11 +54,17 @@ impl CreateRequestParams {
             user_id,
 
             extended_end_date: None,
+            new_device_ids: None,
         }
     }
 
     pub fn extended_end_date(mut self, extended_end_date: chrono::DateTime<chrono::Utc>) -> Self {
         self.extended_end_date = Some(extended_end_date);
+        self
+    }
+
+    pub fn new_device_ids(mut self, new_device_ids: Vec<i32>) -> Self {
+        self.new_device_ids = Some(new_device_ids);
         self
     }
 }
@@ -110,24 +117,27 @@ pub trait RequestServiceInterface {
 }
 
 pub struct RequestService {
+    _announcement_queue: Arc<dyn AnnouncementQueueInterface + Send + Sync + 'static>,
     _request_repository: Arc<dyn RequestRepositoryInterface + Send + Sync + 'static>,
     _announcement_repository: Arc<dyn AnnouncementRepositoryInterface + Send + Sync + 'static>,
-    _announcement_queue: Arc<dyn AnnouncementQueueInterface + Send + Sync + 'static>,
     _auth_repository: Arc<dyn AuthRepositoryInterface + Send + Sync + 'static>,
+    _device_repository: Arc<dyn DeviceRepositoryInterface + Send + Sync + 'static>,
 }
 
 impl RequestService {
     pub fn new(
+        _announcement_queue: Arc<dyn AnnouncementQueueInterface + Send + Sync + 'static>,
         _request_repository: Arc<dyn RequestRepositoryInterface + Send + Sync + 'static>,
         _announcement_repository: Arc<dyn AnnouncementRepositoryInterface + Send + Sync + 'static>,
-        _announcement_queue: Arc<dyn AnnouncementQueueInterface + Send + Sync + 'static>,
         _auth_repository: Arc<dyn AuthRepositoryInterface + Send + Sync + 'static>,
+        _device_repository: Arc<dyn DeviceRepositoryInterface + Send + Sync + 'static>,
     ) -> Self {
         RequestService {
+            _announcement_queue,
             _request_repository,
             _announcement_repository,
-            _announcement_queue,
             _auth_repository,
+            _device_repository,
         }
     }
 }
@@ -459,9 +469,9 @@ impl RequestServiceInterface for RequestService {
                 ._announcement_repository
                 .extend_end_date(announcement.id, request.metadata.extended_end_date.unwrap())
                 .await
-                {
-                    return Err(UpdateRequestApprovalError::InternalServerError);
-                }
+            {
+                return Err(UpdateRequestApprovalError::InternalServerError);
+            }
         }
 
         if let Err(_) = self
@@ -487,6 +497,78 @@ impl RequestServiceInterface for RequestService {
         request: Request,
         approval: RequestApproval,
     ) -> Result<(), UpdateRequestApprovalError> {
+        if announcement.status != AnnouncementStatus::Active {
+            return Err(UpdateRequestApprovalError::InvalidAnnouncementStatus(
+                "Announcement status should be Active".into(),
+            ));
+        }
+
+        if approval.approved_by_bm == Some(true) && approval.approved_by_lsc == Some(true) {
+            let old_device_ids: Vec<i32> = announcement
+                .devices
+                .into_iter()
+                .map(|device| device.id)
+                .collect();
+
+            let new_device_ids = request.metadata.new_device_ids.unwrap();
+
+            let mut need_to_unsync_ids: Vec<i32> = Vec::new();
+            for id in &old_device_ids {
+                if !new_device_ids.contains(id) {
+                    need_to_unsync_ids.push(*id);
+                }
+            }
+
+            let mut need_to_sync_ids: Vec<i32> = Vec::new();
+            for id in &new_device_ids {
+                if !old_device_ids.contains(id) {
+                    need_to_sync_ids.push(*id);
+                }
+            }
+
+            let exists = match self._device_repository.exists(new_device_ids).await {
+                Ok(exists) => exists,
+                Err(_) => return Err(UpdateRequestApprovalError::InternalServerError),
+            };
+            if !exists {
+                return Err(UpdateRequestApprovalError::InternalServerError);
+            }
+
+            if let Err(_) = self
+                ._announcement_queue
+                .synchronize_delete_announcement_action_to_devices(
+                    need_to_unsync_ids,
+                    announcement.id,
+                )
+            {
+                return Err(UpdateRequestApprovalError::InternalServerError);
+            }
+
+            if let Err(_) = self
+                ._announcement_queue
+                .synchronize_create_announcement_action_to_devices(
+                    need_to_sync_ids,
+                    announcement.id,
+                )
+            {
+                return Err(UpdateRequestApprovalError::InternalServerError);
+            }
+        }
+
+        if let Err(_) = self
+            ._request_repository
+            .update_approval(UpdateApprovalParams {
+                request_id: request.id,
+                approved_by_lsc: approval.approved_by_lsc,
+                approved_by_bm: approval.approved_by_bm,
+                lsc_approver: approval.lsc_approver,
+                bm_approver: approval.bm_approver,
+            })
+            .await
+        {
+            return Err(UpdateRequestApprovalError::InternalServerError);
+        }
+
         Ok(())
     }
 

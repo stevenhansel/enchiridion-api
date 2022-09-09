@@ -299,6 +299,24 @@
     },
     "query": "\n                delete from \"device\"\n                where \"id\" = $1\n            "
   },
+  "9b74a970d7fe8ab8c31f7cb8142804509ff34e730c57d366e3e3aa15ebb4b467": {
+    "describe": {
+      "columns": [
+        {
+          "name": "count",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            select cast(count(*) as integer) as \"count\"\n            from \"device\"\n            "
+  },
   "9c77cb924b4a756efc8ca633e6d912d815cc9eb9a465e9c972fba179633c4fa7": {
     "describe": {
       "columns": [],

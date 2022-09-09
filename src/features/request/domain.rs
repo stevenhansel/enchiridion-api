@@ -23,17 +23,24 @@ pub struct Request {
 pub struct RequestMetadata {
     #[serde(with = "ts_seconds_option")]
     pub extended_end_date: Option<chrono::DateTime<chrono::Utc>>,
+    pub new_device_ids: Option<Vec<i32>>,
 }
 
 impl RequestMetadata {
     pub fn default() -> Self {
         RequestMetadata {
             extended_end_date: None,
+            new_device_ids: None,
         }
     }
 
     pub fn extended_end_date(mut self, extended_end_date: chrono::DateTime<chrono::Utc>) -> Self {
         self.extended_end_date = Some(extended_end_date);
+        self
+    }
+
+    pub fn new_device_ids(mut self, new_device_ids: Vec<i32>) -> Self {
+        self.new_device_ids = Some(new_device_ids);
         self
     }
 }
@@ -42,6 +49,7 @@ impl RequestMetadata {
 #[serde(rename_all = "snake_case")]
 pub struct RawRequestMetadata {
     pub extended_end_date: Option<String>,
+    pub new_device_ids: Option<Vec<i32>>,
 }
 
 pub struct RequestApproval {
