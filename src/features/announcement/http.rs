@@ -13,8 +13,8 @@ use crate::{
     cloud_storage::TmpFile,
     features::announcement::CreateAnnouncementError,
     http::{
-        derive_authentication_middleware_error, derive_user_id, AuthenticationContext,
-        HttpErrorResponse, API_VALIDATION_ERROR_CODE, validate_date_format,
+        derive_authentication_middleware_error, derive_user_id, validate_date_format,
+        AuthenticationContext, HttpErrorResponse, API_VALIDATION_ERROR_CODE,
     },
 };
 
@@ -235,6 +235,21 @@ pub async fn create_announcement(
             ))
         }
     };
+
+    let today = chrono::Utc::today().and_hms(0, 0, 0);
+    if form.start_date < today {
+        return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+            "API_VALIDATION_ERROR".into(),
+            vec!["Start date of the announcement must be greater than or equal to today".to_string()],
+        ));
+    }
+
+    if form.start_date >= form.end_date {
+        return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+            "API_VALIDATION_ERROR".into(),
+            vec!["End date of the announcement must be greater than the start date of the announcement".to_string()],
+        ));
+    }
 
     if let Err(e) = announcement_service
         .create_announcement(CreateAnnouncementParams {
