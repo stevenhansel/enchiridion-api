@@ -3,10 +3,7 @@ use std::str;
 use std::sync::Arc;
 
 use actix_web::cookie::Cookie;
-use argon2::{
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier},
-    Argon2,
-};
+use argon2::{password_hash::PasswordHasher, Argon2};
 use async_trait::async_trait;
 use hmac::{Hmac, Mac};
 use jwt::{SignWithKey, VerifyWithKey};

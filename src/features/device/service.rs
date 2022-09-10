@@ -14,7 +14,6 @@ pub struct CreateDeviceParams {
     pub name: String,
     pub description: String,
     pub floor_id: i32,
-    pub is_linked: bool,
 }
 
 pub struct UpdateDeviceInfoParams {
@@ -91,7 +90,6 @@ impl DeviceServiceInterface for DeviceService {
                 name: params.name.clone(),
                 description: params.description.clone(),
                 floor_id: params.floor_id,
-                is_linked: params.is_linked,
             })
             .await
         {

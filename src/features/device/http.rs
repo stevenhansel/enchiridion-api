@@ -163,7 +163,6 @@ pub struct CreateDeviceBody {
     description: String,
     #[validate(range(min = 1, message = "floorId: id must be greater than 1"))]
     floor_id: i32,
-    is_linked: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -192,7 +191,6 @@ pub async fn create_device(
             name: body.name.clone(),
             description: body.description.clone(),
             floor_id: body.floor_id,
-            is_linked: body.is_linked,
         })
         .await
     {
