@@ -12,7 +12,7 @@ use crate::http::{
 use super::{
     CreateDeviceError, CreateDeviceParams, DeleteDeviceError, DeviceErrorCode,
     DeviceServiceInterface, GetDeviceDetailByIdError, ListDeviceError, ListDeviceParams,
-    UpdateDeviceError, UpdateDeviceInfoParams,
+    UpdateDeviceError, UpdateDeviceInfoParams, ResyncDeviceError,
 };
 
 #[derive(Debug, Deserialize)]
@@ -323,4 +323,36 @@ pub async fn delete_device(
     }
 
     HttpResponse::NoContent().finish()
+}
+
+pub async fn resync_device(
+    device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
+    auth: AuthenticationContext,
+    path: web::Path<i32>,
+) -> HttpResponse {
+    if let Err(e) = derive_user_id(auth) {
+        return derive_authentication_middleware_error(e);
+    }
+
+    let device_id = path.into_inner();
+
+    if let Err(e) = device_service.resync(device_id).await {
+        match e {
+            ResyncDeviceError::DeviceNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    DeviceErrorCode::DeviceNotFound.to_string(),
+                    vec![message.into()],
+                ))
+            }
+            ResyncDeviceError::InternalServerError => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    DeviceErrorCode::InternalServerError.to_string(),
+                    vec![DeviceErrorCode::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
+    HttpResponse::NoContent().finish()
+
 }

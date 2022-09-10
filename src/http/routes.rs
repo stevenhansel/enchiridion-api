@@ -177,6 +177,17 @@ pub fn dashboard_routes(
         .service(
             web::scope("/v1/devices")
                 .service(
+                    web::resource("/{device_id}/resync")
+                        .guard(guard::Put())
+                        .wrap(
+                            AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                .with_permission(ApplicationPermission::ResyncDevice)
+                                .with_status(UserStatus::Approved)
+                                .with_require_email_confirmed(true),
+                        )
+                        .to(device_http::resync_device),
+                )
+                .service(
                     web::resource("/{device_id}")
                         .guard(guard::Get())
                         .wrap(

@@ -349,7 +349,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
 
             if let Err(_) = self
                 ._announcement_queue
-                .synchronize_create_announcement_action_to_devices(device_ids.clone(), *id)
+                .create(device_ids.clone(), *id)
             {
                 return Err(HandleScheduledAnnouncementsError::InternalServerError);
             }
@@ -426,7 +426,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
 
             if let Err(_) = self
                 ._announcement_queue
-                .synchronize_delete_announcement_action_to_devices(device_ids.clone(), *id)
+                .delete(device_ids.clone(), *id)
             {
                 return Err(HandleScheduledAnnouncementsError::InternalServerError);
             }

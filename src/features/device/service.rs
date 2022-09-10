@@ -4,12 +4,15 @@ use argon2::{password_hash::PasswordHasher, Argon2};
 use async_trait::async_trait;
 use rand::distributions::{Alphanumeric, DistString};
 
-use crate::database::{DatabaseError, PaginationResult};
+use crate::{
+    database::{DatabaseError, PaginationResult},
+    features::AnnouncementQueueInterface,
+};
 
 use super::{
     CreateDeviceError, DeleteDeviceError, Device, DeviceDetail, DeviceRepositoryInterface,
     GetDeviceDetailByIdError, InsertDeviceParams, ListDeviceError, ListDeviceParams,
-    UpdateDeviceError, UpdateDeviceParams,
+    ResyncDeviceError, UpdateDeviceError, UpdateDeviceParams,
 };
 
 pub struct CreateDeviceParams {
@@ -40,24 +43,33 @@ pub trait DeviceServiceInterface {
         &self,
         device_id: i32,
     ) -> Result<DeviceDetail, GetDeviceDetailByIdError>;
-    async fn create_device(&self, params: CreateDeviceParams) -> Result<CreateDeviceResult, CreateDeviceError>;
+    async fn create_device(
+        &self,
+        params: CreateDeviceParams,
+    ) -> Result<CreateDeviceResult, CreateDeviceError>;
     async fn update_device_info(
         &self,
         device_id: i32,
         params: UpdateDeviceInfoParams,
     ) -> Result<(), UpdateDeviceError>;
     async fn delete_device(&self, device_id: i32) -> Result<(), DeleteDeviceError>;
+    async fn resync(&self, device_id: i32) -> Result<(), ResyncDeviceError>;
 }
 
 pub struct DeviceService {
     _device_repository: Arc<dyn DeviceRepositoryInterface + Send + Sync + 'static>,
+    _announcement_queue: Arc<dyn AnnouncementQueueInterface + Send + Sync + 'static>,
 }
 
 impl DeviceService {
     pub fn new(
         _device_repository: Arc<dyn DeviceRepositoryInterface + Send + Sync + 'static>,
+        _announcement_queue: Arc<dyn AnnouncementQueueInterface + Send + Sync + 'static>,
     ) -> Self {
-        DeviceService { _device_repository }
+        DeviceService {
+            _device_repository,
+            _announcement_queue,
+        }
     }
 }
 
@@ -91,7 +103,10 @@ impl DeviceServiceInterface for DeviceService {
         }
     }
 
-    async fn create_device(&self, params: CreateDeviceParams) -> Result<CreateDeviceResult, CreateDeviceError> {
+    async fn create_device(
+        &self,
+        params: CreateDeviceParams,
+    ) -> Result<CreateDeviceResult, CreateDeviceError> {
         let access_key_id = Alphanumeric.sample_string(&mut rand::thread_rng(), 48);
 
         let secret_access_key = Alphanumeric.sample_string(&mut rand::thread_rng(), 48);
@@ -112,7 +127,7 @@ impl DeviceServiceInterface for DeviceService {
                 floor_id: params.floor_id,
                 access_key_id: access_key_id.clone(),
                 secret_access_key: secret_access_key_hash.to_string(),
-                secret_access_key_salt: secret_access_key_salt.clone()
+                secret_access_key_salt: secret_access_key_salt.clone(),
             })
             .await
         {
@@ -139,7 +154,11 @@ impl DeviceServiceInterface for DeviceService {
             },
         };
 
-        Ok(CreateDeviceResult { id, access_key_id, secret_access_key })
+        Ok(CreateDeviceResult {
+            id,
+            access_key_id,
+            secret_access_key,
+        })
     }
 
     async fn update_device_info(
@@ -207,6 +226,34 @@ impl DeviceServiceInterface for DeviceService {
                 }
                 _ => return Err(DeleteDeviceError::InternalServerError),
             }
+        }
+
+        Ok(())
+    }
+
+    async fn resync(&self, device_id: i32) -> Result<(), ResyncDeviceError> {
+        if let Err(e) = self._device_repository.find_one(device_id).await {
+            match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(ResyncDeviceError::DeviceNotFound(
+                        "Unable to find the device in the system",
+                    ))
+                }
+                _ => return Err(ResyncDeviceError::InternalServerError),
+            }
+        }
+
+        let announcement_ids = match self
+            ._device_repository
+            .find_announcement_ids_in_device(device_id)
+            .await
+        {
+            Ok(ids) => ids,
+            Err(_) => return Err(ResyncDeviceError::InternalServerError),
+        };
+
+        if let Err(_) = self._announcement_queue.resync(device_id, announcement_ids) {
+            return Err(ResyncDeviceError::InternalServerError);
         }
 
         Ok(())

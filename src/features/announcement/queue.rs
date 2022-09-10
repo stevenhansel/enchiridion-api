@@ -13,6 +13,7 @@ use crate::queue::Producer;
 pub enum AnnouncementSyncAction {
     Create,
     Delete,
+    Resync,
 }
 
 pub enum AnnouncementQueueError {
@@ -30,23 +31,28 @@ impl std::fmt::Display for AnnouncementQueueError {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SyncCreateAnnouncementActionParams {
+#[serde(rename_all = "snake_case")]
+pub struct DeviceSynchronizationParams<T> {
     action: AnnouncementSyncAction,
-    announcement_id: i32,
+    data: T,
 }
 
 #[async_trait]
 pub trait AnnouncementQueueInterface {
-    fn synchronize_create_announcement_action_to_devices(
+    fn create(
         &self,
         device_ids: Vec<i32>,
         announcement_id: i32,
     ) -> Result<(), AnnouncementQueueError>;
-    fn synchronize_delete_announcement_action_to_devices(
+    fn delete(
         &self,
         device_ids: Vec<i32>,
         announcement_id: i32,
+    ) -> Result<(), AnnouncementQueueError>;
+    fn resync(
+        &self,
+        device_id: i32,
+        announcement_ids: Vec<i32>,
     ) -> Result<(), AnnouncementQueueError>;
 }
 
@@ -59,22 +65,30 @@ impl AnnouncementQueue {
         AnnouncementQueue { _redis }
     }
 
-    pub fn queue_name_builder(&self, device_id: i32) -> String {
-        format!("device-queue-{}", device_id)
+    pub fn create_producer(&self, device_id: i32) -> Producer {
+        Producer::new(self._redis.clone(), format!("device-queue-{}", device_id))
+    }
+
+    pub fn create_payload_map(&self, data: &String) -> BTreeMap<String, String> {
+        let mut map: BTreeMap<String, String> = BTreeMap::new();
+        map.insert("data".into(), data.clone());
+
+        map
     }
 }
 
 #[async_trait]
 impl AnnouncementQueueInterface for AnnouncementQueue {
-    fn synchronize_create_announcement_action_to_devices(
+    fn create(
         &self,
         device_ids: Vec<i32>,
         announcement_id: i32,
     ) -> Result<(), AnnouncementQueueError> {
-        let payload = match serde_json::to_string(&SyncCreateAnnouncementActionParams {
+        let params: DeviceSynchronizationParams<i32> = DeviceSynchronizationParams {
             action: AnnouncementSyncAction::Create,
-            announcement_id,
-        }) {
+            data: announcement_id,
+        };
+        let payload = match serde_json::to_string(&params) {
             Ok(payload) => payload,
             Err(e) => {
                 return Err(AnnouncementQueueError::PayloadSerializationError(
@@ -83,12 +97,9 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
             }
         };
 
-        for id in device_ids {
-            let mut map: BTreeMap<String, String> = BTreeMap::new();
-            map.insert(String::from("data"), payload.clone());
-
-            let producer = Producer::new(self._redis.clone(), self.queue_name_builder(id));
-            if let Err(_) = producer.push(map) {
+        for device_id in device_ids {
+            let producer = self.create_producer(device_id);
+            if let Err(_) = producer.push(self.create_payload_map(&payload)) {
                 return Err(AnnouncementQueueError::InternalServerError);
             };
         }
@@ -96,15 +107,16 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
         Ok(())
     }
 
-    fn synchronize_delete_announcement_action_to_devices(
+    fn delete(
         &self,
         device_ids: Vec<i32>,
         announcement_id: i32,
     ) -> Result<(), AnnouncementQueueError> {
-        let payload = match serde_json::to_string(&SyncCreateAnnouncementActionParams {
+        let params: DeviceSynchronizationParams<i32> = DeviceSynchronizationParams {
             action: AnnouncementSyncAction::Delete,
-            announcement_id,
-        }) {
+            data: announcement_id,
+        };
+        let payload = match serde_json::to_string(&params) {
             Ok(payload) => payload,
             Err(e) => {
                 return Err(AnnouncementQueueError::PayloadSerializationError(
@@ -113,15 +125,38 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
             }
         };
 
-        for id in device_ids {
-            let mut map: BTreeMap<String, String> = BTreeMap::new();
-            map.insert(String::from("data"), payload.clone());
-
-            let producer = Producer::new(self._redis.clone(), self.queue_name_builder(id));
-            if let Err(_) = producer.push(map) {
+        for device_id in device_ids {
+            let producer = self.create_producer(device_id);
+            if let Err(_) = producer.push(self.create_payload_map(&payload)) {
                 return Err(AnnouncementQueueError::InternalServerError);
             };
         }
+
+        Ok(())
+    }
+
+    fn resync(
+        &self,
+        device_id: i32,
+        announcement_ids: Vec<i32>,
+    ) -> Result<(), AnnouncementQueueError> {
+        let params: DeviceSynchronizationParams<Vec<i32>> = DeviceSynchronizationParams {
+            action: AnnouncementSyncAction::Resync,
+            data: announcement_ids,
+        };
+        let payload = match serde_json::to_string(&params) {
+            Ok(payload) => payload,
+            Err(e) => {
+                return Err(AnnouncementQueueError::PayloadSerializationError(
+                    e.to_string(),
+                ))
+            }
+        };
+
+        let producer = self.create_producer(device_id);
+        if let Err(_) = producer.push(self.create_payload_map(&payload)) {
+            return Err(AnnouncementQueueError::InternalServerError);
+        };
 
         Ok(())
     }

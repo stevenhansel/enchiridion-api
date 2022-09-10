@@ -123,3 +123,18 @@ impl std::fmt::Display for DeleteDeviceError {
         }
     }
 }
+
+pub enum ResyncDeviceError {
+    DeviceNotFound(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for ResyncDeviceError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ResyncDeviceError::DeviceNotFound(message) => write!(f, "{}", message),
+            ResyncDeviceError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}
+

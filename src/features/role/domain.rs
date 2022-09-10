@@ -29,6 +29,7 @@ pub static DEFAULT_ROLES: &'static [ApplicationRole] = &[
             ApplicationPermission::CreateDevice,
             ApplicationPermission::UpdateDevice,
             ApplicationPermission::DeleteDevice,
+            ApplicationPermission::ResyncDevice,
             // Announcement
             ApplicationPermission::ViewListAnnouncement,
             ApplicationPermission::ViewAnnouncementDetail,
@@ -131,6 +132,7 @@ pub enum ApplicationPermission {
     CreateDevice,
     UpdateDevice,
     DeleteDevice,
+    ResyncDevice,
     // Announcement
     ViewListAnnouncement,
     ViewAnnouncementDetail,
@@ -161,6 +163,7 @@ impl ApplicationPermission {
             ApplicationPermission::CreateDevice => "Create Device Detail",
             ApplicationPermission::UpdateDevice => "Update Device",
             ApplicationPermission::DeleteDevice => "Delete Device",
+            ApplicationPermission::ResyncDevice => "Resync Device",
             ApplicationPermission::ViewListAnnouncement => "View List Announcement",
             ApplicationPermission::ViewAnnouncementDetail => "View Announcement Detail",
             ApplicationPermission::ViewAnnouncementMedia => "View Announcement Media",
@@ -188,6 +191,7 @@ impl ApplicationPermission {
             ApplicationPermission::CreateDevice => "create_device",
             ApplicationPermission::UpdateDevice => "update_device",
             ApplicationPermission::DeleteDevice => "delete_device",
+            ApplicationPermission::ResyncDevice => "resync_device",
             ApplicationPermission::ViewListAnnouncement => "view_list_announcement",
             ApplicationPermission::ViewAnnouncementDetail => "view_announcement_detail",
             ApplicationPermission::ViewAnnouncementMedia => "view_announcement_media",

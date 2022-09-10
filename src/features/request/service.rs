@@ -395,7 +395,7 @@ impl RequestServiceInterface for RequestService {
 
                 if let Err(_) = self
                     ._announcement_queue
-                    .synchronize_create_announcement_action_to_devices(device_ids, announcement.id)
+                    .create(device_ids, announcement.id)
                 {
                     return Err(UpdateRequestApprovalError::InternalServerError);
                 }
@@ -457,7 +457,7 @@ impl RequestServiceInterface for RequestService {
 
             if let Err(_) = self
                 ._announcement_queue
-                .synchronize_delete_announcement_action_to_devices(device_ids, announcement.id)
+                .delete(device_ids, announcement.id)
             {
                 return Err(UpdateRequestApprovalError::InternalServerError);
             }
@@ -576,7 +576,7 @@ impl RequestServiceInterface for RequestService {
 
             if let Err(_) = self
                 ._announcement_queue
-                .synchronize_delete_announcement_action_to_devices(
+                .delete(
                     need_to_unsync_ids.clone(),
                     announcement.id,
                 )
@@ -586,7 +586,7 @@ impl RequestServiceInterface for RequestService {
 
             if let Err(_) = self
                 ._announcement_queue
-                .synchronize_create_announcement_action_to_devices(
+                .create(
                     need_to_sync_ids.clone(),
                     announcement.id,
                 )
