@@ -38,7 +38,10 @@ pub trait DeviceRepositoryInterface {
     async fn update(&self, device_id: i32, params: UpdateDeviceParams) -> Result<(), sqlx::Error>;
     async fn delete(&self, device_id: i32) -> Result<(), sqlx::Error>;
     async fn exists(&self, device_ids: &Vec<i32>) -> Result<bool, sqlx::Error>;
-    async fn find_announcement_ids_in_device(&self, device_id: i32) -> Result<Vec<i32>, sqlx::Error>;
+    async fn find_announcement_ids_in_device(
+        &self,
+        device_id: i32,
+    ) -> Result<Vec<i32>, sqlx::Error>;
 }
 
 pub struct DeviceRepository {
@@ -157,6 +160,8 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 "device"."id" as "id",
                 "device"."name" as "name",
                 concat("building"."name", ', ', "floor"."name") as "location",
+                "floor"."id" as "floor_id",
+                "building"."id" as "building_id",
                 "device"."description" as "description",
                 cast("device_announcement_result"."count" as integer) as "active_announcements",
                 "device"."created_at" as "created_at",
@@ -179,6 +184,8 @@ impl DeviceRepositoryInterface for DeviceRepository {
             id: row.get("id"),
             name: row.get("name"),
             location: row.get("location"),
+            floor_id: row.get("floor_id"),
+            building_id: row.get("building_id"),
             description: row.get("description"),
             active_announcements: row.get("active_announcements"),
             created_at: row.get("created_at"),
@@ -271,7 +278,10 @@ impl DeviceRepositoryInterface for DeviceRepository {
         Ok(result.count.unwrap() == device_ids.len() as i32)
     }
 
-    async fn find_announcement_ids_in_device(&self, device_id: i32) -> Result<Vec<i32>, sqlx::Error> {
+    async fn find_announcement_ids_in_device(
+        &self,
+        device_id: i32,
+    ) -> Result<Vec<i32>, sqlx::Error> {
         let result = sqlx::query!(
             r#"
             select "announcement_id" from "device_announcement"
@@ -282,5 +292,6 @@ impl DeviceRepositoryInterface for DeviceRepository {
         .fetch_all(&self._db)
         .await?;
 
-        Ok(result.into_iter().map(|row| row.announcement_id).collect()) }
+        Ok(result.into_iter().map(|row| row.announcement_id).collect())
+    }
 }

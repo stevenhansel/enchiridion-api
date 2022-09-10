@@ -302,6 +302,31 @@
     },
     "query": "\n                update \"user\"\n                set \n                    \"password\" = $2,\n                    \"password_salt\" = $3\n                where \"id\" = $1\n                "
   },
+  "3d43249892275b597557ebda5454fd1eeb76fac1c1084aa2becf5f241edaf02f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Text",
+          "Int4",
+          "Text",
+          "Bytea",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            insert into \"device\" (\"name\", \"description\", \"floor_id\", \"access_key_id\", \"secret_access_key\", \"secret_access_key_salt\")\n            values ($1, $2, $3, $4, $5, $6)\n            returning \"id\"\n            "
+  },
   "428d91e03508acceb78394a978c54ab9898904116659a73fd0d09c74c24d2456": {
     "describe": {
       "columns": [
@@ -397,6 +422,26 @@
       }
     },
     "query": "\n            insert into \"user\" (\n                name,\n                email,\n                password,\n                password_salt,\n                registration_reason,\n                role,\n                is_email_confirmed,\n                status\n            )\n            values($1, $2, $3, $4, $5, $6, $7, $8)\n            returning id\n            "
+  },
+  "7aeb7251fce536b5b6619866698f2b0bcba244ffa4a33507f1e0c5c3560b548d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "announcement_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            select \"announcement_id\" from \"device_announcement\"\n            where \"device_id\" = $1\n            "
   },
   "82190648c2f40f2b6db0d416fc40f551db0da277c4fc837780d974effd5b3fb7": {
     "describe": {
@@ -735,28 +780,6 @@
       }
     },
     "query": "\n            select \"id\", \"name\", \"color\"\n            from \"building\"\n            where \"deleted_at\" is null\n            order by \"id\" desc\n            "
-  },
-  "efe3f97096cdd77c324209594e87b3437a42b0f8b4daec6d1d35aa7d2863f888": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Text",
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n            insert into \"device\" (\"name\", \"description\", \"floor_id\")\n            values ($1, $2, $3)\n            returning \"id\"\n            "
   },
   "f52ba825d0f400fb0105ba44ac9e805ec957edc7539c42d0c5333fc5c20cbcfe": {
     "describe": {
