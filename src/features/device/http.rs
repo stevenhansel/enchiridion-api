@@ -188,7 +188,7 @@ pub async fn create_device(
         return HttpResponse::BadRequest().json(HttpErrorResponse::new(e.code(), e.messages()));
     }
 
-    let id = match device_service
+    let result = match device_service
         .create_device(CreateDeviceParams {
             name: body.name.clone(),
             description: body.description.clone(),
@@ -196,7 +196,7 @@ pub async fn create_device(
         })
         .await
     {
-        Ok(id) => id,
+        Ok(result) => result,
         Err(e) => match e {
             CreateDeviceError::DeviceAlreadyExists(message) => {
                 return HttpResponse::Conflict().json(HttpErrorResponse::new(
@@ -219,7 +219,11 @@ pub async fn create_device(
         },
     };
 
-    HttpResponse::Ok().json(CreateDeviceResponse{ id })
+    HttpResponse::Ok().json(CreateDeviceResponse {
+        id: result.id,
+        access_key_id: result.access_key_id,
+        secret_access_key: result.secret_access_key,
+    })
 }
 
 #[derive(Debug, Validate, Deserialize)]

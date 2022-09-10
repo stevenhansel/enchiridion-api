@@ -24,6 +24,12 @@ pub struct UpdateDeviceInfoParams {
     pub floor_id: i32,
 }
 
+pub struct CreateDeviceResult {
+    pub id: i32,
+    pub access_key_id: String,
+    pub secret_access_key: String,
+}
+
 #[async_trait]
 pub trait DeviceServiceInterface {
     async fn list_device(
@@ -34,7 +40,7 @@ pub trait DeviceServiceInterface {
         &self,
         device_id: i32,
     ) -> Result<DeviceDetail, GetDeviceDetailByIdError>;
-    async fn create_device(&self, params: CreateDeviceParams) -> Result<i32, CreateDeviceError>;
+    async fn create_device(&self, params: CreateDeviceParams) -> Result<CreateDeviceResult, CreateDeviceError>;
     async fn update_device_info(
         &self,
         device_id: i32,
@@ -85,10 +91,10 @@ impl DeviceServiceInterface for DeviceService {
         }
     }
 
-    async fn create_device(&self, params: CreateDeviceParams) -> Result<i32, CreateDeviceError> {
-        let pub_key = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
+    async fn create_device(&self, params: CreateDeviceParams) -> Result<CreateDeviceResult, CreateDeviceError> {
+        let access_key_id = Alphanumeric.sample_string(&mut rand::thread_rng(), 48);
 
-        let secret_access_key = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
+        let secret_access_key = Alphanumeric.sample_string(&mut rand::thread_rng(), 48);
         let secret_access_key_salt = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
 
         let secret_access_key_hash = match Argon2::default()
@@ -98,19 +104,19 @@ impl DeviceServiceInterface for DeviceService {
             Err(_) => return Err(CreateDeviceError::InternalServerError),
         };
 
-        match self
+        let id = match self
             ._device_repository
             .insert(InsertDeviceParams {
                 name: params.name.clone(),
                 description: params.description.clone(),
                 floor_id: params.floor_id,
-                pub_key,
-                secret_access_key,
-                secret_access_key_salt
+                access_key_id: access_key_id.clone(),
+                secret_access_key: secret_access_key_hash.to_string(),
+                secret_access_key_salt: secret_access_key_salt.clone()
             })
             .await
         {
-            Ok(id) => Ok(id),
+            Ok(id) => id,
             Err(e) => match e {
                 sqlx::Error::Database(db_error) => {
                     if let Some(code) = db_error.code() {
@@ -131,7 +137,9 @@ impl DeviceServiceInterface for DeviceService {
                 }
                 _ => return Err(CreateDeviceError::InternalServerError),
             },
-        }
+        };
+
+        Ok(CreateDeviceResult { id, access_key_id, secret_access_key })
     }
 
     async fn update_device_info(

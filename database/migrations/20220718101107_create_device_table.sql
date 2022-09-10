@@ -5,7 +5,7 @@ create table "device" (
   name varchar(255) unique not null,
   description text not null,
 
-  pub_key text not null,
+  access_key_id text not null,
   secret_access_key bytea not null,
   secret_access_key_salt text not null,
 
