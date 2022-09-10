@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
+use argon2::{password_hash::PasswordHasher, Argon2};
 use async_trait::async_trait;
+use rand::distributions::{Alphanumeric, DistString};
 
 use crate::database::{DatabaseError, PaginationResult};
 
@@ -84,12 +86,27 @@ impl DeviceServiceInterface for DeviceService {
     }
 
     async fn create_device(&self, params: CreateDeviceParams) -> Result<i32, CreateDeviceError> {
+        let pub_key = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
+
+        let secret_access_key = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
+        let secret_access_key_salt = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
+
+        let secret_access_key_hash = match Argon2::default()
+            .hash_password(secret_access_key.as_bytes(), &secret_access_key_salt)
+        {
+            Ok(p) => p.serialize(),
+            Err(_) => return Err(CreateDeviceError::InternalServerError),
+        };
+
         match self
             ._device_repository
             .insert(InsertDeviceParams {
                 name: params.name.clone(),
                 description: params.description.clone(),
                 floor_id: params.floor_id,
+                pub_key,
+                secret_access_key,
+                secret_access_key_salt
             })
             .await
         {

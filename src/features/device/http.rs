@@ -169,6 +169,8 @@ pub struct CreateDeviceBody {
 #[serde(rename_all = "camelCase")]
 pub struct CreateDeviceResponse {
     id: i32,
+    access_key_id: String,
+    secret_access_key: String,
 }
 
 pub async fn create_device(

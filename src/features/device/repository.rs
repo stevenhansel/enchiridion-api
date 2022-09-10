@@ -9,6 +9,9 @@ pub struct InsertDeviceParams {
     pub name: String,
     pub description: String,
     pub floor_id: i32,
+    pub pub_key: String,
+    pub secret_access_key: String,
+    pub secret_access_key_salt: String,
 }
 
 pub struct UpdateDeviceParams {
@@ -189,13 +192,16 @@ impl DeviceRepositoryInterface for DeviceRepository {
     async fn insert(&self, params: InsertDeviceParams) -> Result<i32, sqlx::Error> {
         let result = sqlx::query!(
             r#"
-            insert into "device" ("name", "description", "floor_id")
+            insert into "device" ("name", "description", "floor_id", "pub_key", "secret_access_key", "secret_access_key_salt")
             values ($1, $2, $3)
             returning "id"
             "#,
             params.name,
             params.description,
             params.floor_id,
+            params.pub_key,
+            params.secret_access_key,
+            params.secret_access_key_salt,
         )
         .fetch_one(&self._db)
         .await?;

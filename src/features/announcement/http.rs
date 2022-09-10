@@ -240,7 +240,9 @@ pub async fn create_announcement(
     if form.start_date < today {
         return HttpResponse::BadRequest().json(HttpErrorResponse::new(
             "API_VALIDATION_ERROR".into(),
-            vec!["Start date of the announcement must be greater than or equal to today".to_string()],
+            vec![
+                "Start date of the announcement must be greater than or equal to today".to_string(),
+            ],
         ));
     }
 

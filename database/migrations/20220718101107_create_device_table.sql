@@ -4,7 +4,10 @@ create table "device" (
 
   name varchar(255) unique not null,
   description text not null,
-  is_linked bool not null default false,
+
+  pub_key text not null,
+  secret_access_key bytea not null,
+  secret_access_key_salt text not null,
 
   floor_id integer not null references floor(id),
 
