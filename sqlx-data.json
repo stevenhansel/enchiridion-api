@@ -73,29 +73,6 @@
     },
     "query": "\n            select \n                id,\n                name,\n                email,\n                password,\n                password_salt,\n                registration_reason,\n                is_email_confirmed,\n                status as \"status: UserStatus\"\n            from \"user\"\n            where email = $1\n            "
   },
-  "030b6baecd10e195d13a9028c53a8c14e72502146cf7d386ee4e8c03753d3995": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Text",
-          "Int4",
-          "Bool"
-        ]
-      }
-    },
-    "query": "\n            insert into \"device\" (\"name\", \"description\", \"floor_id\", \"is_linked\")\n            values ($1, $2, $3, $4)\n            returning \"id\"\n            "
-  },
   "06299be1916dad601218ccb7ea902a285f2c54168978440769049151235d632a": {
     "describe": {
       "columns": [],
@@ -743,6 +720,28 @@
       }
     },
     "query": "\n            select \"id\", \"name\", \"color\"\n            from \"building\"\n            where \"deleted_at\" is null\n            order by \"id\" desc\n            "
+  },
+  "efe3f97096cdd77c324209594e87b3437a42b0f8b4daec6d1d35aa7d2863f888": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Text",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            insert into \"device\" (\"name\", \"description\", \"floor_id\")\n            values ($1, $2, $3)\n            returning \"id\"\n            "
   },
   "f9629db5d47e77b11324f13abc77ac76ea104209146d351c7fa5a662d229164a": {
     "describe": {
