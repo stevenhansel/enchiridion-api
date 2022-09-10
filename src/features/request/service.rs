@@ -365,12 +365,36 @@ impl RequestServiceInterface for RequestService {
         }
 
         if approval.approved_by_bm == Some(true) && approval.approved_by_lsc == Some(true) {
-            if let Err(_) = self
-                ._announcement_repository
-                .update_status(announcement.id, AnnouncementStatus::WaitingForSync)
-                .await
-            {
-                return Err(UpdateRequestApprovalError::InternalServerError);
+            let today = chrono::Utc::today().and_hms(0, 0, 0);
+            if today == announcement.start_date {
+                let device_ids: Vec<i32> = announcement
+                    .devices
+                    .into_iter()
+                    .map(|device| device.id)
+                    .collect();
+
+                if let Err(_) = self
+                    ._announcement_repository
+                    .update_status(announcement.id, AnnouncementStatus::Active)
+                    .await
+                {
+                    return Err(UpdateRequestApprovalError::InternalServerError);
+                }
+
+                if let Err(_) = self
+                    ._announcement_queue
+                    .synchronize_create_announcement_action_to_devices(device_ids, announcement.id)
+                {
+                    return Err(UpdateRequestApprovalError::InternalServerError);
+                }
+            } else {
+                if let Err(_) = self
+                    ._announcement_repository
+                    .update_status(announcement.id, AnnouncementStatus::WaitingForSync)
+                    .await
+                {
+                    return Err(UpdateRequestApprovalError::InternalServerError);
+                }
             }
         } else if approval.approved_by_bm == Some(false) || approval.approved_by_lsc == Some(false)
         {
