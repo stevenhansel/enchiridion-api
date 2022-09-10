@@ -208,9 +208,21 @@ impl RequestServiceInterface for RequestService {
 
             insert_params = insert_params.extended_end_date(extended_end_date);
         }
+        if let Some(new_device_ids) = params.new_device_ids {
+            let exists = match self._device_repository.exists(&new_device_ids).await {
+                Ok(exists) => exists,
+                Err(_) => return Err(CreateRequestError::InternalServerError),
+            };
+            if !exists {
+                return Err(CreateRequestError::InvalidDeviceIds(
+                    "Invalid device ids, some of the ids don't exist in the system",
+                ));
+            }
+
+            insert_params = insert_params.new_device_ids(new_device_ids)
+        }
 
         if let Err(e) = self._request_repository.insert(insert_params).await {
-            println!("e: {}", e);
             match e {
                 sqlx::Error::Database(db_error) => {
                     if let Some(code) = db_error.code() {
@@ -549,19 +561,23 @@ impl RequestServiceInterface for RequestService {
                     need_to_sync_ids.push(*id);
                 }
             }
-
-            let exists = match self._device_repository.exists(new_device_ids).await {
-                Ok(exists) => exists,
-                Err(_) => return Err(UpdateRequestApprovalError::InternalServerError),
-            };
-            if !exists {
+            if let Err(e) = self
+                ._announcement_repository
+                .update_announcement_target_devices(
+                    announcement.id,
+                    need_to_unsync_ids.clone(),
+                    need_to_sync_ids.clone(),
+                )
+                .await
+            {
+                    println!("e: {}", e);
                 return Err(UpdateRequestApprovalError::InternalServerError);
             }
 
             if let Err(_) = self
                 ._announcement_queue
                 .synchronize_delete_announcement_action_to_devices(
-                    need_to_unsync_ids,
+                    need_to_unsync_ids.clone(),
                     announcement.id,
                 )
             {
@@ -571,7 +587,7 @@ impl RequestServiceInterface for RequestService {
             if let Err(_) = self
                 ._announcement_queue
                 .synchronize_create_announcement_action_to_devices(
-                    need_to_sync_ids,
+                    need_to_sync_ids.clone(),
                     announcement.id,
                 )
             {

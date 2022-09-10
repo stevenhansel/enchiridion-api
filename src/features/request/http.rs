@@ -10,8 +10,8 @@ use crate::http::{
 
 use super::{
     CreateRequestError, CreateRequestParams, ListRequestError, ListRequestParams,
-    RequestActionType, RequestErrorCode, RequestServiceInterface, UpdateRequestApprovalError,
-    UpdateRequestApprovalParams, RequestMetadata,
+    RequestActionType, RequestErrorCode, RequestMetadata, RequestServiceInterface,
+    UpdateRequestApprovalError, UpdateRequestApprovalParams,
 };
 
 #[derive(Debug, Deserialize)]
@@ -245,6 +245,7 @@ pub struct CreateRequestBody {
     description: String,
     announcement_id: i32,
     extended_end_date: Option<String>,
+    new_device_ids: Option<Vec<i32>>,
 }
 
 pub async fn create_request(
@@ -287,6 +288,9 @@ pub async fn create_request(
 
         params = params.extended_end_date(date);
     } else if body.action == RequestActionType::ChangeDevices {
+        if let Some(new_device_ids) = &body.new_device_ids {
+            params = params.new_device_ids(new_device_ids.clone());
+        }
     } else if body.action == RequestActionType::Create {
         return HttpResponse::BadRequest().json(HttpErrorResponse::new(
             API_VALIDATION_ERROR_CODE.to_string(),
@@ -311,6 +315,12 @@ pub async fn create_request(
             CreateRequestError::AnnouncementNotFound(message) => {
                 return HttpResponse::NotFound().json(HttpErrorResponse::new(
                     RequestErrorCode::AnnouncementNotFound.to_string(),
+                    vec![message.to_string()],
+                ))
+            }
+            CreateRequestError::InvalidDeviceIds(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    RequestErrorCode::InvalidDeviceIds.to_string(),
                     vec![message.to_string()],
                 ))
             }

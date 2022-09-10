@@ -23,6 +23,7 @@ pub struct InsertRequestParams {
     pub user_id: i32,
 
     pub extended_end_date: Option<chrono::DateTime<chrono::Utc>>,
+    pub new_device_ids: Option<Vec<i32>>,
 }
 
 impl InsertRequestParams {
@@ -39,11 +40,17 @@ impl InsertRequestParams {
             user_id,
 
             extended_end_date: None,
+            new_device_ids: None,
         }
     }
 
     pub fn extended_end_date(mut self, extended_end_date: chrono::DateTime<chrono::Utc>) -> Self {
         self.extended_end_date = Some(extended_end_date);
+        self
+    }
+
+    pub fn new_device_ids(mut self, new_device_ids: Vec<i32>) -> Self {
+        self.new_device_ids = Some(new_device_ids);
         self
     }
 }
@@ -209,6 +216,9 @@ impl RequestRepositoryInterface for RequestRepository {
 
                 metadata = metadata.extended_end_date(date);
             }
+            if let Some(new_device_ids) = &row.request_metadata.new_device_ids {
+                metadata = metadata.new_device_ids(new_device_ids.clone());
+            }
 
             contents.push(Request {
                 metadata,
@@ -284,6 +294,9 @@ impl RequestRepositoryInterface for RequestRepository {
 
             metadata = metadata.extended_end_date(date);
         }
+        if let Some(new_device_ids) = &result.metadata.new_device_ids {
+            metadata = metadata.new_device_ids(new_device_ids.clone());
+        }
 
         Ok(Request {
             metadata,
@@ -327,6 +340,23 @@ impl RequestRepositoryInterface for RequestRepository {
             )
             .bind(result.id)
             .bind(extended_end_date.to_rfc3339())
+            .execute(&self._db)
+            .await?
+            .rows_affected();
+
+            if rows_affected == 0 {
+                return Err(sqlx::Error::RowNotFound);
+            }
+        } else if let Some(new_device_ids) = params.new_device_ids {
+            let rows_affected = sqlx::query(
+                r#"
+                update "request"
+                set "metadata" = jsonb_insert(metadata, '{new_device_ids}'::text[], to_jsonb($2))
+                where "id" = $1
+                "#,
+            )
+            .bind(result.id)
+            .bind(new_device_ids)
             .execute(&self._db)
             .await?
             .rows_affected();

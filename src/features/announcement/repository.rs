@@ -292,6 +292,12 @@ pub trait AnnouncementRepositoryInterface {
         announcement_id: i32,
         end_date: chrono::DateTime<chrono::Utc>,
     ) -> Result<(), sqlx::Error>;
+    async fn update_announcement_target_devices(
+        &self,
+        announcement_id: i32,
+        to_be_removed_device_ids: Vec<i32>,
+        to_be_added_device_ids: Vec<i32>,
+    ) -> Result<(), sqlx::Error>;
 }
 pub struct AnnouncementRepository {
     _db: Pool<Postgres>,
@@ -706,6 +712,37 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         if rows_affected == 0 {
             return Err(sqlx::Error::RowNotFound);
         }
+
+        Ok(())
+    }
+
+    async fn update_announcement_target_devices(
+        &self,
+        announcement_id: i32,
+        to_be_removed_device_ids: Vec<i32>,
+        to_be_added_device_ids: Vec<i32>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"
+            delete from "device_announcement" 
+            where "announcement_id" = $1 and "device_id" = any($2)
+            "#,
+            announcement_id,
+            &to_be_removed_device_ids,
+        )
+        .execute(&self._db)
+        .await?;
+
+        sqlx::query!(
+            r#"
+            insert into "device_announcement" ("announcement_id", "device_id")
+            values ($1, unnest($2::int4[]))
+            "#,
+            announcement_id,
+            &to_be_added_device_ids,
+        )
+        .execute(&self._db)
+        .await?;
 
         Ok(())
     }

@@ -98,6 +98,7 @@ pub enum RequestErrorCode {
     RequestAlreadyApproved,
     InvalidAnnouncementStatus,
     InvalidExtendedEndDate,
+    InvalidDeviceIds,
     InternalServerError,
 }
 
@@ -112,6 +113,7 @@ impl std::fmt::Display for RequestErrorCode {
             RequestErrorCode::RequestAlreadyApproved => write!(f, "REQUEST_ALREADY_APPROVED"),
             RequestErrorCode::InvalidAnnouncementStatus => write!(f, "INVALID_ANNOUNCEMENT_STATUS"),
             RequestErrorCode::InvalidExtendedEndDate => write!(f, "INVALID_EXTENDED_END_DATE"),
+            RequestErrorCode::InvalidDeviceIds => write!(f, "INVALID_DEVICE_IDS"),
             RequestErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
     }
@@ -123,6 +125,7 @@ pub enum CreateRequestError {
     AnnouncementNotFound(&'static str),
     InvalidExtendedEndDate(&'static str),
     InvalidAnnouncementStatus(&'static str),
+    InvalidDeviceIds(&'static str),
     InternalServerError,
 }
 
@@ -133,6 +136,7 @@ impl std::fmt::Display for CreateRequestError {
             CreateRequestError::AnnouncementNotFound(message) => write!(f, "{}", message),
             CreateRequestError::InvalidExtendedEndDate(message) => write!(f, "{}", message),
             CreateRequestError::InvalidAnnouncementStatus(message) => write!(f, "{}", message),
+            CreateRequestError::InvalidDeviceIds(message) => write!(f, "{}", message),
             CreateRequestError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }

@@ -97,24 +97,6 @@
     },
     "query": "\n                update \"user\"\n                set \"status\" = $2\n                where \"id\" = $1\n            "
   },
-  "1606ea9de8e7301d0b46d03b4a40c58a9282cee94eebb2c069230d55c5deebd5": {
-    "describe": {
-      "columns": [
-        {
-          "name": "count",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n            select cast(count(*) as integer) as \"count\"\n            from \"device\"\n            where \"deleted_at\" is null\n            "
-  },
   "1d6219042ec9b79afaeb223b8894093f312745a0013feb3a7273d4da799c16a1": {
     "describe": {
       "columns": [
@@ -209,6 +191,19 @@
     },
     "query": "\n            insert into \"building\" (name, color)\n            values($1, $2)\n            returning id\n            "
   },
+  "26dc2510961d162666e827aa6a658a02ae106f49a09bb4ecc1044e638d451223": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n            delete from \"device_announcement\" \n            where \"announcement_id\" = $1 and \"device_id\" = any($2)\n            "
+  },
   "29b9f1c957e44d9121d0dd89ae0bfaa93d97f51edf029024bb4faf76e4cca92f": {
     "describe": {
       "columns": [
@@ -272,6 +267,26 @@
       }
     },
     "query": "\n                update \"device\"\n                set \"deleted_at\" = now()\n                where \"id\" = $1\n            "
+  },
+  "399cc99232065329812d4aefca2d170ad90117fb38e192ed382c67e8ecda35eb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "count",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n            select cast(count(*) as integer) as \"count\"\n            from \"device\"\n            where \"id\" = any($1) and \"deleted_at\" is null\n            "
   },
   "3a5fcf0e30d2ee8058e21f6f903e61e2780ecc0ff1974ab58928d84122cd9e5f": {
     "describe": {
@@ -742,6 +757,19 @@
       }
     },
     "query": "\n            insert into \"device\" (\"name\", \"description\", \"floor_id\")\n            values ($1, $2, $3)\n            returning \"id\"\n            "
+  },
+  "f52ba825d0f400fb0105ba44ac9e805ec957edc7539c42d0c5333fc5c20cbcfe": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n            insert into \"device_announcement\" (\"announcement_id\", \"device_id\")\n            values ($1, unnest($2::int4[]))\n            "
   },
   "f9629db5d47e77b11324f13abc77ac76ea104209146d351c7fa5a662d229164a": {
     "describe": {
