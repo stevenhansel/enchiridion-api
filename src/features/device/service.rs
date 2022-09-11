@@ -16,8 +16,9 @@ use crate::{
 
 use super::{
     AuthenticateDeviceError, CreateDeviceError, DeleteDeviceError, Device, DeviceAuthCache,
-    DeviceDetail, DeviceRepositoryInterface, GetDeviceDetailByIdError, InsertDeviceParams,
-    ListDeviceError, ListDeviceParams, ResyncDeviceError, UpdateDeviceError, UpdateDeviceParams,
+    DeviceDetail, DeviceRepositoryInterface, GetDeviceDetailByAccessKeyIdError,
+    GetDeviceDetailByIdError, InsertDeviceParams, ListDeviceError, ListDeviceParams,
+    ResyncDeviceError, UpdateDeviceError, UpdateDeviceParams,
 };
 
 pub struct CreateDeviceParams {
@@ -48,6 +49,10 @@ pub trait DeviceServiceInterface {
         &self,
         device_id: i32,
     ) -> Result<DeviceDetail, GetDeviceDetailByIdError>;
+    async fn get_device_detail_by_access_key_id(
+        &self,
+        access_key_id: String,
+    ) -> Result<DeviceDetail, GetDeviceDetailByAccessKeyIdError>;
     async fn create_device(
         &self,
         params: CreateDeviceParams,
@@ -87,9 +92,7 @@ impl DeviceServiceInterface for DeviceService {
     ) -> Result<PaginationResult<Device>, ListDeviceError> {
         match self._device_repository.find(params).await {
             Ok(result) => Ok(result),
-            Err(e) => {
-                Err(ListDeviceError::InternalServerError)
-            }
+            Err(_) => Err(ListDeviceError::InternalServerError),
         }
     }
 
@@ -104,6 +107,29 @@ impl DeviceServiceInterface for DeviceService {
                     "Device not found".into(),
                 )),
                 _ => Err(GetDeviceDetailByIdError::InternalServerError),
+            },
+        }
+    }
+
+    async fn get_device_detail_by_access_key_id(
+        &self,
+        access_key_id: String,
+    ) -> Result<DeviceDetail, GetDeviceDetailByAccessKeyIdError> {
+        match self
+            ._device_repository
+            .find_one_by_access_key_id(access_key_id.clone())
+            .await
+        {
+            Ok(device) => Ok(device),
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => {
+                    return Err(GetDeviceDetailByAccessKeyIdError::DeviceNotFound(
+                        "Unable to find the corresponding device in the system",
+                    ))
+                }
+                _ => {
+                    return Err(GetDeviceDetailByAccessKeyIdError::InternalServerError);
+                }
             },
         }
     }
@@ -327,7 +353,7 @@ impl DeviceServiceInterface for DeviceService {
 
             let secret_access_key = match str::from_utf8(&device.secret_access_key) {
                 Ok(v) => v,
-                Err(e) => {
+                Err(_) => {
                     return Err(AuthenticateDeviceError::InternalServerError);
                 }
             };
@@ -338,7 +364,7 @@ impl DeviceServiceInterface for DeviceService {
                 secret_access_key_salt: device.secret_access_key_salt,
             };
 
-            if let Err(e) = self
+            if let Err(_) = self
                 ._device_repository
                 .set_auth_cache(access_key_id, cache.clone())
                 .await
@@ -354,7 +380,7 @@ impl DeviceServiceInterface for DeviceService {
             &device_auth.secret_access_key_salt,
         ) {
             Ok(p) => p,
-            Err(e) => {
+            Err(_) => {
                 return Err(AuthenticateDeviceError::InternalServerError);
             }
         };

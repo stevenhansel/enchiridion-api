@@ -180,3 +180,19 @@ impl std::fmt::Display for AuthenticateDeviceError {
         }
     }
 }
+
+pub enum GetDeviceDetailByAccessKeyIdError {
+    DeviceNotFound(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for GetDeviceDetailByAccessKeyIdError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GetDeviceDetailByAccessKeyIdError::DeviceNotFound(message) => write!(f, "{}", message),
+            GetDeviceDetailByAccessKeyIdError::InternalServerError => {
+                write!(f, "Internal Server Error")
+            }
+        }
+    }
+}

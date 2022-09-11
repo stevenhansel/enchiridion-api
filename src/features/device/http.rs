@@ -123,9 +123,9 @@ pub async fn get_device_by_id(
         return derive_authentication_middleware_error(e);
     }
 
-    let user_id = path.into_inner();
+    let device_id = path.into_inner();
 
-    let result = match device_service.get_device_detail_by_id(user_id).await {
+    let result = match device_service.get_device_detail_by_id(device_id).await {
         Ok(res) => res,
         Err(e) => match e {
             GetDeviceDetailByIdError::DeviceNotFound(message) => {

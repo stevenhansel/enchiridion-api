@@ -6,7 +6,7 @@ use crate::features::{
     announcement::http as announcement_http,
     auth::{http as auth_http, AuthServiceInterface},
     building::http as building_http,
-    device::http as device_http,
+    device::{http as device_http_dashboard, device_http as device_http_device},
     floor::http as floor_http,
     request::http as request_http,
     role::{http as role_http, ApplicationPermission},
@@ -23,14 +23,23 @@ pub enum RouteType {
 pub fn device_routes(
     device_service: Arc<dyn DeviceServiceInterface + Send + Sync + 'static>,
 ) -> Scope {
-    web::scope("/device").service(
-        web::resource("/v1/announcements/{announcement_id}/media")
-            .guard(guard::Get())
-            .wrap(DeviceAuthenticationMiddlewareFactory::new(
-                device_service.clone(),
-            ))
-            .to(announcement_http::get_announcement_media_presigned_url_device),
-    )
+    web::scope("/device")
+        .service(
+            web::resource("/v1/me")
+                .guard(guard::Get())
+                .wrap(DeviceAuthenticationMiddlewareFactory::new(
+                    device_service.clone(),
+                ))
+                .to(device_http_device::me),
+        )
+        .service(
+            web::resource("/v1/announcements/{announcement_id}/media")
+                .guard(guard::Get())
+                .wrap(DeviceAuthenticationMiddlewareFactory::new(
+                    device_service.clone(),
+                ))
+                .to(announcement_http::get_announcement_media_presigned_url_device),
+        )
 }
 
 pub fn dashboard_routes(
@@ -186,7 +195,7 @@ pub fn dashboard_routes(
                                 .with_status(UserStatus::Approved)
                                 .with_require_email_confirmed(true),
                         )
-                        .to(device_http::resync_device),
+                        .to(device_http_dashboard::resync_device),
                 )
                 .service(
                     web::resource("/{device_id}")
@@ -197,7 +206,7 @@ pub fn dashboard_routes(
                                 .with_status(UserStatus::Approved)
                                 .with_require_email_confirmed(true),
                         )
-                        .to(device_http::get_device_by_id),
+                        .to(device_http_dashboard::get_device_by_id),
                 )
                 .service(
                     web::resource("/{device_id}")
@@ -208,7 +217,7 @@ pub fn dashboard_routes(
                                 .with_status(UserStatus::Approved)
                                 .with_require_email_confirmed(true),
                         )
-                        .to(device_http::update_device),
+                        .to(device_http_dashboard::update_device),
                 )
                 .service(
                     web::resource("/{device_id}")
@@ -219,7 +228,7 @@ pub fn dashboard_routes(
                                 .with_status(UserStatus::Approved)
                                 .with_require_email_confirmed(true),
                         )
-                        .to(device_http::delete_device),
+                        .to(device_http_dashboard::delete_device),
                 )
                 .service(
                     web::resource("")
@@ -230,7 +239,7 @@ pub fn dashboard_routes(
                                 .with_status(UserStatus::Approved)
                                 .with_require_email_confirmed(true),
                         )
-                        .to(device_http::list_device),
+                        .to(device_http_dashboard::list_device),
                 )
                 .service(
                     web::resource("")
@@ -241,7 +250,7 @@ pub fn dashboard_routes(
                                 .with_status(UserStatus::Approved)
                                 .with_require_email_confirmed(true),
                         )
-                        .to(device_http::create_device),
+                        .to(device_http_dashboard::create_device),
                 ),
         )
         .service(
