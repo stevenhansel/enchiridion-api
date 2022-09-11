@@ -1,4 +1,5 @@
 use core::fmt;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct Device {
@@ -23,6 +24,24 @@ pub struct DeviceDetail {
     pub secret_access_key_salt: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceAuthCache {
+    pub device_id: i32,
+    pub secret_access_key: String,
+    pub secret_access_key_salt: String,
+}
+
+impl DeviceAuthCache {
+    pub fn new(device_id: i32, secret_access_key: String, secret_access_key_salt: String) -> Self {
+        DeviceAuthCache {
+            device_id,
+            secret_access_key,
+            secret_access_key_salt,
+        }
+    }
 }
 
 pub struct ListDeviceParams {
@@ -145,18 +164,18 @@ impl std::fmt::Display for ResyncDeviceError {
     }
 }
 
-pub enum LinkDeviceError {
+pub enum AuthenticateDeviceError {
     AuthenticationFailed(&'static str),
     DeviceNotFound(&'static str),
     InternalServerError,
 }
 
-impl std::fmt::Display for LinkDeviceError {
+impl std::fmt::Display for AuthenticateDeviceError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            LinkDeviceError::AuthenticationFailed(message) => write!(f, "{}", message),
-            LinkDeviceError::DeviceNotFound(message) => write!(f, "{}", message),
-            LinkDeviceError::InternalServerError => write!(f, "Internal Server Error"),
+            AuthenticateDeviceError::AuthenticationFailed(message) => write!(f, "{}", message),
+            AuthenticateDeviceError::DeviceNotFound(message) => write!(f, "{}", message),
+            AuthenticateDeviceError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
 }

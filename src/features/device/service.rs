@@ -14,9 +14,9 @@ use crate::{
 };
 
 use super::{
-    CreateDeviceError, DeleteDeviceError, Device, DeviceDetail, DeviceRepositoryInterface,
-    GetDeviceDetailByIdError, InsertDeviceParams, LinkDeviceError, ListDeviceError,
-    ListDeviceParams, ResyncDeviceError, UpdateDeviceError, UpdateDeviceParams,
+    CreateDeviceError, DeleteDeviceError, Device, DeviceAuthCache, DeviceDetail,
+    DeviceRepositoryInterface, GetDeviceDetailByIdError, InsertDeviceParams, AuthenticateDeviceError,
+    ListDeviceError, ListDeviceParams, ResyncDeviceError, UpdateDeviceError, UpdateDeviceParams,
 };
 
 pub struct CreateDeviceParams {
@@ -62,7 +62,7 @@ pub trait DeviceServiceInterface {
         &self,
         access_key_id: String,
         secret_access_key: String,
-    ) -> Result<i32, LinkDeviceError>;
+    ) -> Result<i32, AuthenticateDeviceError>;
 }
 
 pub struct DeviceService {
@@ -288,45 +288,66 @@ impl DeviceServiceInterface for DeviceService {
         &self,
         access_key_id: String,
         secret_access_key: String,
-    ) -> Result<i32, LinkDeviceError> {
-        let device = match self
+    ) -> Result<i32, AuthenticateDeviceError> {
+        let device_auth: DeviceAuthCache = if let Ok(cache) = self
             ._device_repository
-            .find_one_by_access_key_id(access_key_id)
+            .get_auth_cache(access_key_id.clone())
             .await
         {
-            Ok(device) => device,
-            Err(e) => match e {
-                sqlx::Error::RowNotFound => {
-                    return Err(LinkDeviceError::DeviceNotFound(
-                        "Unable to find device in the system",
-                    ))
-                }
-                _ => return Err(LinkDeviceError::InternalServerError),
-            },
+            cache
+        } else {
+            let device = match self
+                ._device_repository
+                .find_one_by_access_key_id(access_key_id.clone())
+                .await
+            {
+                Ok(device) => device,
+                Err(e) => match e {
+                    sqlx::Error::RowNotFound => {
+                        return Err(AuthenticateDeviceError::DeviceNotFound(
+                            "Unable to find device in the system",
+                        ))
+                    }
+                    _ => return Err(AuthenticateDeviceError::InternalServerError),
+                },
+            };
+
+            let secret_access_key = match str::from_utf8(&device.secret_access_key) {
+                Ok(v) => v,
+                Err(_) => return Err(AuthenticateDeviceError::InternalServerError),
+            };
+
+            let cache = DeviceAuthCache {
+                device_id: device.id,
+                secret_access_key: secret_access_key.to_string(),
+                secret_access_key_salt: device.secret_access_key_salt,
+            };
+
+            if let Err(_) = self
+                ._device_repository
+                .set_auth_cache(access_key_id, cache.clone())
+                .await
+            {
+                return Err(AuthenticateDeviceError::InternalServerError);
+            }
+
+            cache
         };
 
-        let input_secret_access_key_hash = match Argon2::default()
-            .hash_password(secret_access_key.as_bytes(), &device.secret_access_key_salt)
-        {
+        let input_secret_access_key_hash = match Argon2::default().hash_password(
+            secret_access_key.as_bytes(),
+            &device_auth.secret_access_key_salt,
+        ) {
             Ok(p) => p,
-            Err(_) => return Err(LinkDeviceError::InternalServerError),
+            Err(_) => return Err(AuthenticateDeviceError::InternalServerError),
         };
 
-        let original_secret_key_hash = match str::from_utf8(&device.secret_access_key) {
-            Ok(v) => v,
-            Err(_) => return Err(LinkDeviceError::InternalServerError),
-        };
-
-        if input_secret_access_key_hash.to_string() != original_secret_key_hash {
-            return Err(LinkDeviceError::AuthenticationFailed(
+        if input_secret_access_key_hash.to_string() != device_auth.secret_access_key {
+            return Err(AuthenticateDeviceError::AuthenticationFailed(
                 "Authentication failed, Invalid email or password".into(),
             ));
         }
 
-        if let Err(_) = self._device_repository.link(device.id).await {
-            return Err(LinkDeviceError::InternalServerError);
-        }
-
-        Ok(device.id)
+        Ok(device_auth.device_id)
     }
 }

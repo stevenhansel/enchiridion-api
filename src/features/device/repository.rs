@@ -1,9 +1,10 @@
 use async_trait::async_trait;
+use deadpool_redis::redis::{cmd, RedisError};
 use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
 use crate::database::PaginationResult;
 
-use super::{Device, DeviceDetail, ListDeviceParams};
+use super::{Device, DeviceAuthCache, DeviceDetail, ListDeviceParams};
 
 pub struct InsertDeviceParams {
     pub name: String,
@@ -46,16 +47,27 @@ pub trait DeviceRepositoryInterface {
         &self,
         device_id: i32,
     ) -> Result<Vec<i32>, sqlx::Error>;
-    async fn link(&self, device_id: i32) -> Result<(), sqlx::Error>;
+    async fn get_auth_cache(&self, access_key_id: String) -> Result<DeviceAuthCache, RedisError>;
+    async fn set_auth_cache(
+        &self,
+        access_key_id: String,
+        cache: DeviceAuthCache
+    ) -> Result<(), RedisError>;
+    async fn del_auth_cache(&self, access_key_id: String) -> Result<(), RedisError>;
 }
 
 pub struct DeviceRepository {
     _db: Pool<Postgres>,
+    _redis: deadpool_redis::Pool,
 }
 
 impl DeviceRepository {
-    pub fn new(_db: Pool<Postgres>) -> Self {
-        DeviceRepository { _db }
+    pub fn new(_db: Pool<Postgres>, _redis: deadpool_redis::Pool) -> Self {
+        DeviceRepository { _db, _redis }
+    }
+
+    pub fn device_auth_key_builder(&self, access_key_id: String) -> String {
+        format!("device/pub-key-{}", access_key_id)
     }
 }
 
@@ -359,22 +371,56 @@ impl DeviceRepositoryInterface for DeviceRepository {
         Ok(result.into_iter().map(|row| row.announcement_id).collect())
     }
 
-    async fn link(&self, device_id: i32) -> Result<(), sqlx::Error> {
-        let rows_affected = sqlx::query!(
-            r#"
-                update "device"
-                set "linked_at" = now()
-                where "id" = $1
-            "#,
-            device_id,
-        )
-        .execute(&self._db)
-        .await?
-        .rows_affected();
+    async fn get_auth_cache(&self, access_key_id: String) -> Result<DeviceAuthCache, RedisError> {
+        let mut conn = self
+            ._redis
+            .get()
+            .await
+            .expect("Cannot get redis connection");
 
-        if rows_affected == 0 {
-            return Err(sqlx::Error::RowNotFound);
-        }
+        let result = cmd("GET")
+            .arg(&[self.device_auth_key_builder(access_key_id)])
+            .query_async::<_, String>(&mut conn)
+            .await?;
+
+        let cache: DeviceAuthCache = serde_json::from_str(result.as_str()).unwrap();
+
+        Ok(cache)
+    }
+
+    async fn set_auth_cache(
+        &self,
+        access_key_id: String,
+        cache: DeviceAuthCache,
+    ) -> Result<(), RedisError> {
+        let mut conn = self
+            ._redis
+            .get()
+            .await
+            .expect("Cannot get redis connection");
+
+        cmd("SET")
+            .arg(&[
+                self.device_auth_key_builder(access_key_id),
+                serde_json::to_string(&cache).unwrap(),
+            ])
+            .query_async::<_, ()>(&mut conn)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn del_auth_cache(&self, access_key_id: String) -> Result<(), RedisError> {
+        let mut conn = self
+            ._redis
+            .get()
+            .await
+            .expect("Cannot get redis connection");
+
+        cmd("DEL")
+            .arg(&[self.device_auth_key_builder(access_key_id)])
+            .query_async::<_, ()>(&mut conn)
+            .await?;
 
         Ok(())
     }
