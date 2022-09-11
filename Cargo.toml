@@ -47,3 +47,4 @@ signal-hook = { version = "0.3.14", features = ["iterator"] }
 cron = "0.11.0"
 chrono-tz = "0.6.3"
 rand = "0.8.5"
+lipsum = "0.8.2"

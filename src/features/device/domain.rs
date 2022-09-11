@@ -18,6 +18,9 @@ pub struct DeviceDetail {
     pub building_id: i32,
     pub description: String,
     pub active_announcements: i32,
+    pub access_key_id: String,
+    pub secret_access_key: Vec<u8>,
+    pub secret_access_key_salt: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -31,6 +34,7 @@ pub struct ListDeviceParams {
 }
 
 pub enum DeviceErrorCode {
+    AuthenticationFailed,
     DeviceAlreadyExists,
     DeviceNotFound,
     FloorNotFound,
@@ -41,6 +45,7 @@ pub enum DeviceErrorCode {
 impl std::fmt::Display for DeviceErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            DeviceErrorCode::AuthenticationFailed => write!(f, "AUTHENTICATION_FAILED"),
             DeviceErrorCode::DeviceAlreadyExists => write!(f, "DEVICE_ALREADY_EXISTS"),
             DeviceErrorCode::DeviceNotFound => write!(f, "DEVICE_NOT_FOUND"),
             DeviceErrorCode::FloorNotFound => write!(f, "BUILDING_NOT_FOUND"),
@@ -140,3 +145,18 @@ impl std::fmt::Display for ResyncDeviceError {
     }
 }
 
+pub enum LinkDeviceError {
+    AuthenticationFailed(&'static str),
+    DeviceNotFound(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for LinkDeviceError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LinkDeviceError::AuthenticationFailed(message) => write!(f, "{}", message),
+            LinkDeviceError::DeviceNotFound(message) => write!(f, "{}", message),
+            LinkDeviceError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}

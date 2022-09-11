@@ -499,11 +499,6 @@ impl AuthServiceInterface for AuthService {
             },
         };
 
-        if user.is_email_confirmed == false {
-            return Err(AuthError::UserNotVerified(
-                "Email is not confirmed yet".into(),
-            ));
-        }
         if user.status == UserStatus::Rejected {
             return Err(AuthError::UserNotVerified(
                 "User registration is rejected by admin".into(),

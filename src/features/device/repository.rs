@@ -34,6 +34,10 @@ pub trait DeviceRepositoryInterface {
     async fn find(&self, params: ListDeviceParams)
         -> Result<PaginationResult<Device>, sqlx::Error>;
     async fn find_one(&self, device_id: i32) -> Result<DeviceDetail, sqlx::Error>;
+    async fn find_one_by_access_key_id(
+        &self,
+        access_key_id: String,
+    ) -> Result<DeviceDetail, sqlx::Error>;
     async fn insert(&self, params: InsertDeviceParams) -> Result<i32, sqlx::Error>;
     async fn update(&self, device_id: i32, params: UpdateDeviceParams) -> Result<(), sqlx::Error>;
     async fn delete(&self, device_id: i32) -> Result<(), sqlx::Error>;
@@ -42,6 +46,7 @@ pub trait DeviceRepositoryInterface {
         &self,
         device_id: i32,
     ) -> Result<Vec<i32>, sqlx::Error>;
+    async fn link(&self, device_id: i32) -> Result<(), sqlx::Error>;
 }
 
 pub struct DeviceRepository {
@@ -164,6 +169,9 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 "building"."id" as "building_id",
                 "device"."description" as "description",
                 cast("device_announcement_result"."count" as integer) as "active_announcements",
+                "device"."access_key_id" as "access_key_id",
+                "device"."secret_access_key" as "secret_access_key",
+                "device"."secret_access_key_salt" as "secret_access_key_salt",
                 "device"."created_at" as "created_at",
                 "device"."updated_at" as "updated_at"
             from "device"
@@ -188,6 +196,62 @@ impl DeviceRepositoryInterface for DeviceRepository {
             building_id: row.get("building_id"),
             description: row.get("description"),
             active_announcements: row.get("active_announcements"),
+            access_key_id: row.get("access_key_id"),
+            secret_access_key: row.get("secret_access_key"),
+            secret_access_key_salt: row.get("secret_access_key_salt"),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+        })
+        .fetch_one(&self._db)
+        .await?;
+
+        Ok(result)
+    }
+
+    async fn find_one_by_access_key_id(
+        &self,
+        access_key_id: String,
+    ) -> Result<DeviceDetail, sqlx::Error> {
+        let result = sqlx::query(
+            r#"
+            select
+                "device"."id" as "id",
+                "device"."name" as "name",
+                concat("building"."name", ', ', "floor"."name") as "location",
+                "floor"."id" as "floor_id",
+                "building"."id" as "building_id",
+                "device"."description" as "description",
+                cast("device_announcement_result"."count" as integer) as "active_announcements",
+                "device"."access_key_id" as "access_key_id",
+                "device"."secret_access_key" as "secret_access_key",
+                "device"."secret_access_key_salt" as "secret_access_key_salt",
+                "device"."created_at" as "created_at",
+                "device"."updated_at" as "updated_at"
+            from "device"
+            join "floor" on "floor"."id" = "device"."floor_id"
+            join "building" on "building"."id" = "floor"."building_id"
+            left join lateral (
+                select count(*) as "count" from "device_announcement"
+                join "announcement" on "announcement"."id" = "device_announcement"."announcement_id"
+                where 
+                    "device_id" = "device"."id" and
+                    "announcement"."status" = 'active'
+            ) "device_announcement_result" on true
+            where "device"."id" = $1 and "device"."deleted_at" is null
+            "#,
+        )
+        .bind(access_key_id)
+        .map(|row: PgRow| DeviceDetail {
+            id: row.get("id"),
+            name: row.get("name"),
+            location: row.get("location"),
+            floor_id: row.get("floor_id"),
+            building_id: row.get("building_id"),
+            description: row.get("description"),
+            active_announcements: row.get("active_announcements"),
+            access_key_id: row.get("access_key_id"),
+            secret_access_key: row.get("secret_access_key"),
+            secret_access_key_salt: row.get("secret_access_key_salt"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
         })
@@ -293,5 +357,25 @@ impl DeviceRepositoryInterface for DeviceRepository {
         .await?;
 
         Ok(result.into_iter().map(|row| row.announcement_id).collect())
+    }
+
+    async fn link(&self, device_id: i32) -> Result<(), sqlx::Error> {
+        let rows_affected = sqlx::query!(
+            r#"
+                update "device"
+                set "linked_at" = now()
+                where "id" = $1
+            "#,
+            device_id,
+        )
+        .execute(&self._db)
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
     }
 }
