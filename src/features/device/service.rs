@@ -3,7 +3,10 @@ use std::sync::Arc;
 
 use argon2::{password_hash::PasswordHasher, Argon2};
 use async_trait::async_trait;
+use lazy_static::lazy_static;
+use lipsum::lipsum_words;
 use rand::distributions::{Alphanumeric, DistString};
+use regex::Regex;
 
 use crate::{
     database::{DatabaseError, PaginationResult},
@@ -113,9 +116,21 @@ impl DeviceServiceInterface for DeviceService {
         &self,
         params: CreateDeviceParams,
     ) -> Result<CreateDeviceResult, CreateDeviceError> {
-        let access_key_id = Alphanumeric.sample_string(&mut rand::thread_rng(), 48);
+        lazy_static! {
+            static ref WORD_REGEX: Regex = Regex::new(r"[a-zA-Z]+").unwrap();
+        }
+        let generate_random_word = |n: usize| {
+            let words = lipsum_words(n).to_lowercase();
+            let words: Vec<&str> = WORD_REGEX
+                .find_iter(words.as_str())
+                .map(|word| word.as_str())
+                .collect();
 
-        let secret_access_key = Alphanumeric.sample_string(&mut rand::thread_rng(), 48);
+            words.join("-")
+        };
+        let access_key_id = generate_random_word(4);
+
+        let secret_access_key = generate_random_word(4);
         let secret_access_key_salt = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
 
         let secret_access_key_hash = match Argon2::default()
