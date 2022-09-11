@@ -1,6 +1,7 @@
 use std::str;
 use std::sync::Arc;
 
+use actix_web::http::header::HeaderMap;
 use argon2::{password_hash::PasswordHasher, Argon2};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
@@ -14,8 +15,8 @@ use crate::{
 };
 
 use super::{
-    CreateDeviceError, DeleteDeviceError, Device, DeviceAuthCache, DeviceDetail,
-    DeviceRepositoryInterface, GetDeviceDetailByIdError, InsertDeviceParams, AuthenticateDeviceError,
+    AuthenticateDeviceError, CreateDeviceError, DeleteDeviceError, Device, DeviceAuthCache,
+    DeviceDetail, DeviceRepositoryInterface, GetDeviceDetailByIdError, InsertDeviceParams,
     ListDeviceError, ListDeviceParams, ResyncDeviceError, UpdateDeviceError, UpdateDeviceParams,
 };
 
@@ -58,11 +59,7 @@ pub trait DeviceServiceInterface {
     ) -> Result<(), UpdateDeviceError>;
     async fn delete_device(&self, device_id: i32) -> Result<(), DeleteDeviceError>;
     async fn resync(&self, device_id: i32) -> Result<(), ResyncDeviceError>;
-    async fn authenticate(
-        &self,
-        access_key_id: String,
-        secret_access_key: String,
-    ) -> Result<i32, AuthenticateDeviceError>;
+    async fn authenticate(&self, headers: &HeaderMap) -> Result<i32, AuthenticateDeviceError>;
 }
 
 pub struct DeviceService {
@@ -284,11 +281,26 @@ impl DeviceServiceInterface for DeviceService {
         Ok(())
     }
 
-    async fn authenticate(
-        &self,
-        access_key_id: String,
-        secret_access_key: String,
-    ) -> Result<i32, AuthenticateDeviceError> {
+    async fn authenticate(&self, headers: &HeaderMap) -> Result<i32, AuthenticateDeviceError> {
+        let get_header_value = |key: &'static str| match headers.get(key) {
+            Some(value) => match value.to_str() {
+                Ok(value) => Ok(value.to_string()),
+                Err(_) => {
+                    return Err(AuthenticateDeviceError::AuthenticationFailed(
+                        "Authentication failed",
+                    ))
+                }
+            },
+            None => {
+                return Err(AuthenticateDeviceError::AuthenticationFailed(
+                    "Authentication failed",
+                ))
+            }
+        };
+
+        let access_key_id = get_header_value("access-key-id")?;
+        let secret_access_key = get_header_value("secret-access-key")?;
+
         let device_auth: DeviceAuthCache = if let Ok(cache) = self
             ._device_repository
             .get_auth_cache(access_key_id.clone())
@@ -305,7 +317,7 @@ impl DeviceServiceInterface for DeviceService {
                 Err(e) => match e {
                     sqlx::Error::RowNotFound => {
                         return Err(AuthenticateDeviceError::DeviceNotFound(
-                            "Unable to find device in the system",
+                            "Unable to find the corresponding device in the system",
                         ))
                     }
                     _ => return Err(AuthenticateDeviceError::InternalServerError),
@@ -344,7 +356,7 @@ impl DeviceServiceInterface for DeviceService {
 
         if input_secret_access_key_hash.to_string() != device_auth.secret_access_key {
             return Err(AuthenticateDeviceError::AuthenticationFailed(
-                "Authentication failed, Invalid email or password".into(),
+                "Authentication failed".into(),
             ));
         }
 

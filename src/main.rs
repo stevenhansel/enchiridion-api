@@ -79,7 +79,7 @@ async fn main() -> std::io::Result<()> {
         config.clone(),
     ));
     let floor_repository = Arc::new(FloorRepository::new(pool.clone()));
-    let device_repository = Arc::new(DeviceRepository::new(pool.clone()));
+    let device_repository = Arc::new(DeviceRepository::new(pool.clone(), redis_pool.clone()));
     let announcement_repository = Arc::new(AnnouncementRepository::new(pool.clone()));
     let request_repository = Arc::new(RequestRepository::new(pool.clone()));
 
