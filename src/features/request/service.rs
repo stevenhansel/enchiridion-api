@@ -396,6 +396,7 @@ impl RequestServiceInterface for RequestService {
                 if let Err(_) = self
                     ._announcement_queue
                     .create(device_ids, announcement.id)
+                    .await
                 {
                     return Err(UpdateRequestApprovalError::InternalServerError);
                 }
@@ -458,6 +459,7 @@ impl RequestServiceInterface for RequestService {
             if let Err(_) = self
                 ._announcement_queue
                 .delete(device_ids, announcement.id)
+                .await
             {
                 return Err(UpdateRequestApprovalError::InternalServerError);
             }
@@ -561,7 +563,7 @@ impl RequestServiceInterface for RequestService {
                     need_to_sync_ids.push(*id);
                 }
             }
-            if let Err(e) = self
+            if let Err(_) = self
                 ._announcement_repository
                 .update_announcement_target_devices(
                     announcement.id,
@@ -570,26 +572,21 @@ impl RequestServiceInterface for RequestService {
                 )
                 .await
             {
-                    println!("e: {}", e);
                 return Err(UpdateRequestApprovalError::InternalServerError);
             }
 
             if let Err(_) = self
                 ._announcement_queue
-                .delete(
-                    need_to_unsync_ids.clone(),
-                    announcement.id,
-                )
+                .delete(need_to_unsync_ids.clone(), announcement.id)
+                .await
             {
                 return Err(UpdateRequestApprovalError::InternalServerError);
             }
 
             if let Err(_) = self
                 ._announcement_queue
-                .create(
-                    need_to_sync_ids.clone(),
-                    announcement.id,
-                )
+                .create(need_to_sync_ids.clone(), announcement.id)
+                .await
             {
                 return Err(UpdateRequestApprovalError::InternalServerError);
             }

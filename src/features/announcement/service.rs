@@ -350,6 +350,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             if let Err(_) = self
                 ._announcement_queue
                 .create(device_ids.clone(), *id)
+                .await
             {
                 return Err(HandleScheduledAnnouncementsError::InternalServerError);
             }
@@ -427,6 +428,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             if let Err(_) = self
                 ._announcement_queue
                 .delete(device_ids.clone(), *id)
+                .await
             {
                 return Err(HandleScheduledAnnouncementsError::InternalServerError);
             }

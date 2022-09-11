@@ -1,5 +1,5 @@
 use std::net::TcpListener;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::{env, process};
 
 use aws_config::meta::region::RegionProviderChain;
@@ -40,13 +40,11 @@ async fn main() -> std::io::Result<()> {
         .await
         .unwrap();
 
-    let redis_instance = redis::Client::open(config.redis_url.expose_secret().to_string())
-        .expect("[error] Failed to create redis instance");
-    let redis_connection = Arc::new(Mutex::new(
-        redis_instance
-            .get_connection()
-            .expect("[error] Failed to open redis connection"),
-    ));
+    let redis_config =
+        deadpool_redis::Config::from_url(config.redis_url.expose_secret().to_string());
+    let redis_pool = redis_config
+        .create_pool(Some(deadpool_redis::Runtime::Tokio1))
+        .expect("[error] Failed to open redis connection");
 
     let mailgun_adapter = email::MailgunAdapter::new(
         config.mailgun_baseurl.clone(),
@@ -77,7 +75,7 @@ async fn main() -> std::io::Result<()> {
     let user_repository = Arc::new(UserRepository::new(pool.clone()));
     let auth_repository = Arc::new(AuthRepository::new(
         pool.clone(),
-        redis_connection.clone(),
+        redis_pool.clone(),
         config.clone(),
     ));
     let floor_repository = Arc::new(FloorRepository::new(pool.clone()));
@@ -85,7 +83,7 @@ async fn main() -> std::io::Result<()> {
     let announcement_repository = Arc::new(AnnouncementRepository::new(pool.clone()));
     let request_repository = Arc::new(RequestRepository::new(pool.clone()));
 
-    let announcement_queue = Arc::new(AnnouncementQueue::new(redis_connection.clone()));
+    let announcement_queue = Arc::new(AnnouncementQueue::new(redis_pool.clone()));
 
     let role_service = Arc::new(RoleService::new());
     let building_service = Arc::new(BuildingService::new(building_repository.clone()));

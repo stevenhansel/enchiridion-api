@@ -1,7 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    sync::{Arc, Mutex},
-};
+use std::collections::BTreeMap;
 
 use async_trait::async_trait;
 use serde::Serialize;
@@ -39,17 +36,17 @@ pub struct DeviceSynchronizationParams<T> {
 
 #[async_trait]
 pub trait AnnouncementQueueInterface {
-    fn create(
+    async fn create(
         &self,
         device_ids: Vec<i32>,
         announcement_id: i32,
     ) -> Result<(), AnnouncementQueueError>;
-    fn delete(
+    async fn delete(
         &self,
         device_ids: Vec<i32>,
         announcement_id: i32,
     ) -> Result<(), AnnouncementQueueError>;
-    fn resync(
+    async fn resync(
         &self,
         device_id: i32,
         announcement_ids: Vec<i32>,
@@ -57,11 +54,11 @@ pub trait AnnouncementQueueInterface {
 }
 
 pub struct AnnouncementQueue {
-    _redis: Arc<Mutex<redis::Connection>>,
+    _redis: deadpool_redis::Pool,
 }
 
 impl AnnouncementQueue {
-    pub fn new(_redis: Arc<Mutex<redis::Connection>>) -> Self {
+    pub fn new(_redis: deadpool_redis::Pool) -> Self {
         AnnouncementQueue { _redis }
     }
 
@@ -79,7 +76,7 @@ impl AnnouncementQueue {
 
 #[async_trait]
 impl AnnouncementQueueInterface for AnnouncementQueue {
-    fn create(
+    async fn create(
         &self,
         device_ids: Vec<i32>,
         announcement_id: i32,
@@ -99,7 +96,7 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
 
         for device_id in device_ids {
             let producer = self.create_producer(device_id);
-            if let Err(_) = producer.push(self.create_payload_map(&payload)) {
+            if let Err(_) = producer.push(self.create_payload_map(&payload)).await {
                 return Err(AnnouncementQueueError::InternalServerError);
             };
         }
@@ -107,7 +104,7 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
         Ok(())
     }
 
-    fn delete(
+    async fn delete(
         &self,
         device_ids: Vec<i32>,
         announcement_id: i32,
@@ -127,7 +124,7 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
 
         for device_id in device_ids {
             let producer = self.create_producer(device_id);
-            if let Err(_) = producer.push(self.create_payload_map(&payload)) {
+            if let Err(_) = producer.push(self.create_payload_map(&payload)).await {
                 return Err(AnnouncementQueueError::InternalServerError);
             };
         }
@@ -135,7 +132,7 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
         Ok(())
     }
 
-    fn resync(
+    async fn resync(
         &self,
         device_id: i32,
         announcement_ids: Vec<i32>,
@@ -154,7 +151,7 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
         };
 
         let producer = self.create_producer(device_id);
-        if let Err(_) = producer.push(self.create_payload_map(&payload)) {
+        if let Err(_) = producer.push(self.create_payload_map(&payload)).await {
             return Err(AnnouncementQueueError::InternalServerError);
         };
 

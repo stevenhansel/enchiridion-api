@@ -273,7 +273,11 @@ impl DeviceServiceInterface for DeviceService {
             Err(_) => return Err(ResyncDeviceError::InternalServerError),
         };
 
-        if let Err(_) = self._announcement_queue.resync(device_id, announcement_ids) {
+        if let Err(_) = self
+            ._announcement_queue
+            .resync(device_id, announcement_ids)
+            .await
+        {
             return Err(ResyncDeviceError::InternalServerError);
         }
 

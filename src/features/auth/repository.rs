@@ -1,7 +1,5 @@
-use std::sync::{Arc, Mutex};
-
 use async_trait::async_trait;
-use redis::Commands;
+use deadpool_redis::redis::{cmd, RedisError};
 use sqlx::{Pool, Postgres};
 
 use crate::{
@@ -41,14 +39,14 @@ pub trait AuthRepositoryInterface {
 
 pub struct AuthRepository {
     _db: Pool<Postgres>,
-    _redis: Arc<Mutex<redis::Connection>>,
+    _redis: deadpool_redis::Pool,
     _configuration: Configuration,
 }
 
 impl AuthRepository {
     pub fn new(
         _db: Pool<Postgres>,
-        _redis: Arc<Mutex<redis::Connection>>,
+        _redis: deadpool_redis::Pool,
         _configuration: Configuration,
     ) -> AuthRepository {
         AuthRepository {
@@ -59,7 +57,7 @@ impl AuthRepository {
     }
 
     fn refresh_token_key_builder(&self, user_id: i32) -> String {
-        format!("refresh_token_{}", user_id)
+        format!("auth/refresh_token_{}", user_id)
     }
 
     fn map_user_auth_entity(&self, raw: RawAuthEntity) -> UserAuthEntity {
@@ -152,26 +150,42 @@ impl AuthRepositoryInterface for AuthRepository {
         &self,
         user_id: i32,
         refresh_token: String,
-    ) -> Result<(), redis::RedisError> {
-        let mut redis = self._redis.lock().expect("Cannot get redis connection");
+    ) -> Result<(), RedisError> {
+        let mut conn = self
+            ._redis
+            .get()
+            .await
+            .expect("Cannot get redis connection");
 
         let key = self.refresh_token_key_builder(user_id);
         let expire_at = (chrono::Utc::now()
             + chrono::Duration::seconds(self._configuration.email_confirmation_expiration_seconds))
         .timestamp();
 
-        redis.set(key.clone(), refresh_token)?;
-        redis.expire_at(key.clone(), expire_at.try_into().unwrap())?;
+        cmd("SET")
+            .arg(&[key.clone(), refresh_token])
+            .query_async::<_, ()>(&mut conn)
+            .await
+            .unwrap();
+        cmd("EXPIREAT")
+            .arg(&[key.clone(), expire_at.to_string()])
+            .query_async::<_, ()>(&mut conn)
+            .await?;
 
         Ok(())
     }
 
-    async fn delete_user_refresh_token(&self, user_id: i32) -> Result<(), redis::RedisError> {
-        let mut redis = self._redis.lock().expect("Cannot get redis connection");
+    async fn delete_user_refresh_token(&self, user_id: i32) -> Result<(), RedisError> {
+        let mut conn = self
+            ._redis
+            .get()
+            .await
+            .expect("Cannot get redis connection");
 
-        let key = self.refresh_token_key_builder(user_id);
-
-        redis.del(key)?;
+        cmd("DEL")
+            .arg(&[self.refresh_token_key_builder(user_id)])
+            .query_async::<_, ()>(&mut conn)
+            .await?;
 
         Ok(())
     }
