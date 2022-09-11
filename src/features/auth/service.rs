@@ -560,11 +560,27 @@ impl AuthServiceInterface for AuthService {
     }
 
     async fn refresh_token(&self, refresh_token: String) -> Result<RefreshTokenResult, AuthError> {
-        let claims = self.decode_refresh_token(refresh_token)?;
+        let claims = self.decode_refresh_token(refresh_token.clone())?;
         let user_id: i32 = match claims["user_id"].parse() {
             Ok(id) => id,
             Err(_) => return Err(AuthError::InternalServerError),
         };
+
+        let cached_refresh_token = match self._auth_repository.get_user_refresh_token(user_id).await
+        {
+            Ok(token) => token,
+            Err(_) => {
+                return Err(AuthError::AuthenticationFailed(
+                    "Authentication failed, unable to refresh token".into(),
+                ))
+            }
+        };
+
+        if cached_refresh_token != refresh_token {
+            return Err(AuthError::AuthenticationFailed(
+                "Authentication failed, unable to refresh token".into(),
+            ));
+        }
 
         let entity = match self
             ._auth_repository
@@ -586,6 +602,14 @@ impl AuthServiceInterface for AuthService {
             entity.user_status.clone(),
         )?;
         let refresh_token = self.generate_refresh_token(user_id)?;
+
+        if let Err(_) = self
+            ._auth_repository
+            .set_user_refresh_token(user_id, refresh_token.clone())
+            .await
+        {
+            return Err(AuthError::InternalServerError);
+        }
 
         Ok(RefreshTokenResult {
             access_token,

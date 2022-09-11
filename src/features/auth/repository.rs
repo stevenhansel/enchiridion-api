@@ -29,6 +29,7 @@ pub trait AuthRepositoryInterface {
         email: String,
     ) -> Result<UserAuthEntity, sqlx::Error>;
     async fn find_one_auth_entity_by_id(&self, id: i32) -> Result<UserAuthEntity, sqlx::Error>;
+    async fn get_user_refresh_token(&self, user_id: i32) -> Result<String, RedisError>;
     async fn set_user_refresh_token(
         &self,
         user_id: i32,
@@ -144,6 +145,22 @@ impl AuthRepositoryInterface for AuthRepository {
         .await?;
 
         Ok(self.map_user_auth_entity(raw))
+    }
+
+    async fn get_user_refresh_token(&self, user_id: i32) -> Result<String, RedisError> {
+        let mut conn = self
+            ._redis
+            .get()
+            .await
+            .expect("Cannot get redis connection");
+
+        let refresh_token = cmd("GET")
+            .arg(&[self.refresh_token_key_builder(user_id)])
+            .query_async::<_, String>(&mut conn)
+            .await
+            .unwrap();
+
+        Ok(refresh_token)
     }
 
     async fn set_user_refresh_token(
