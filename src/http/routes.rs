@@ -11,25 +11,26 @@ use crate::features::{
     request::http as request_http,
     role::{http as role_http, ApplicationPermission},
     user::{http as user_http, UserStatus},
+    DeviceServiceInterface,
 };
-use crate::http::AuthenticationMiddlewareFactory;
+use crate::http::{AuthenticationMiddlewareFactory, DeviceAuthenticationMiddlewareFactory};
 
-pub fn device_routes() -> Scope {
-    web::scope("/device")
-        .route(
-            "/v1/announcements/{announcement_id}/media",
-            web::get().to(announcement_http::get_announcement_media_presigned_url),
-        )
-        .route(
-            "/v1/devices/{device_id}",
-            web::get().to(device_http::get_device_by_id),
-        )
-        .route(
-            "/v1/buildings",
-            web::get().to(building_http::list_buildings),
-        )
-        .route("/v1/floors", web::get().to(floor_http::list_floor))
-        .route("/v1/devices", web::post().to(device_http::create_device))
+pub enum RouteType {
+    Dashboard,
+    Device,
+}
+
+pub fn device_routes(
+    device_service: Arc<dyn DeviceServiceInterface + Send + Sync + 'static>,
+) -> Scope {
+    web::scope("/device").service(
+        web::resource("/v1/announcements/{announcement_id}/media")
+            .guard(guard::Get())
+            .wrap(DeviceAuthenticationMiddlewareFactory::new(
+                device_service.clone(),
+            ))
+            .to(announcement_http::get_announcement_media_presigned_url_device),
+    )
 }
 
 pub fn dashboard_routes(
@@ -254,7 +255,7 @@ pub fn dashboard_routes(
                                 .with_status(UserStatus::Approved)
                                 .with_require_email_confirmed(true),
                         )
-                        .to(announcement_http::get_announcement_media_presigned_url),
+                        .to(announcement_http::get_announcement_media_presigned_url_dashboard),
                 )
                 .service(
                     web::resource("/{announcement_id}")

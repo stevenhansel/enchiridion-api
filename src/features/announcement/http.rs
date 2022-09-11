@@ -13,8 +13,8 @@ use crate::{
     cloud_storage::TmpFile,
     features::announcement::CreateAnnouncementError,
     http::{
-        derive_authentication_middleware_error, derive_user_id, validate_date_format,
-        AuthenticationContext, HttpErrorResponse, API_VALIDATION_ERROR_CODE,
+        derive_authentication_middleware_error, derive_user_id, device_middleware,
+        validate_date_format, AuthenticationContext, HttpErrorResponse, API_VALIDATION_ERROR_CODE,
     },
 };
 
@@ -514,13 +514,49 @@ pub struct GetAnnouncementMediaPresignedURLResponse {
     media: String,
 }
 
-pub async fn get_announcement_media_presigned_url(
+pub async fn get_announcement_media_presigned_url_dashboard(
     announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
     auth: AuthenticationContext,
     announcement_id: web::Path<i32>,
 ) -> HttpResponse {
     if let Err(e) = derive_user_id(auth) {
         return derive_authentication_middleware_error(e);
+    }
+
+    let obj = match announcement_service
+        .get_announcement_media_presigned_url(announcement_id.into_inner())
+        .await
+    {
+        Ok(media) => media,
+        Err(e) => match e {
+            GetAnnouncementMediaPresignedURLError::AnnouncementNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    AnnouncementErrorCode::AnnouncementNotFound.to_string(),
+                    vec![message],
+                ))
+            }
+            GetAnnouncementMediaPresignedURLError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    AnnouncementErrorCode::InternalServerError.to_string(),
+                    vec![GetAnnouncementMediaPresignedURLError::InternalServerError.to_string()],
+                ))
+            }
+        },
+    };
+
+    HttpResponse::Ok().json(GetAnnouncementMediaPresignedURLResponse {
+        filename: obj.filename,
+        media: obj.media,
+    })
+}
+
+pub async fn get_announcement_media_presigned_url_device(
+    announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
+    auth: device_middleware::DeviceAuthenticationContext,
+    announcement_id: web::Path<i32>,
+) -> HttpResponse {
+    if let Err(e) = device_middleware::get_device_id(auth) {
+        return device_middleware::parse_device_authentication_middleware_error(e);
     }
 
     let obj = match announcement_service

@@ -88,7 +88,6 @@ impl DeviceServiceInterface for DeviceService {
         match self._device_repository.find(params).await {
             Ok(result) => Ok(result),
             Err(e) => {
-                println!("e: {}", e);
                 Err(ListDeviceError::InternalServerError)
             }
         }
@@ -320,13 +319,17 @@ impl DeviceServiceInterface for DeviceService {
                             "Unable to find the corresponding device in the system",
                         ))
                     }
-                    _ => return Err(AuthenticateDeviceError::InternalServerError),
+                    _ => {
+                        return Err(AuthenticateDeviceError::InternalServerError);
+                    }
                 },
             };
 
             let secret_access_key = match str::from_utf8(&device.secret_access_key) {
                 Ok(v) => v,
-                Err(_) => return Err(AuthenticateDeviceError::InternalServerError),
+                Err(e) => {
+                    return Err(AuthenticateDeviceError::InternalServerError);
+                }
             };
 
             let cache = DeviceAuthCache {
@@ -335,7 +338,7 @@ impl DeviceServiceInterface for DeviceService {
                 secret_access_key_salt: device.secret_access_key_salt,
             };
 
-            if let Err(_) = self
+            if let Err(e) = self
                 ._device_repository
                 .set_auth_cache(access_key_id, cache.clone())
                 .await
@@ -351,7 +354,9 @@ impl DeviceServiceInterface for DeviceService {
             &device_auth.secret_access_key_salt,
         ) {
             Ok(p) => p,
-            Err(_) => return Err(AuthenticateDeviceError::InternalServerError),
+            Err(e) => {
+                return Err(AuthenticateDeviceError::InternalServerError);
+            }
         };
 
         if input_secret_access_key_hash.to_string() != device_auth.secret_access_key {

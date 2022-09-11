@@ -164,6 +164,7 @@ impl std::fmt::Display for ResyncDeviceError {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum AuthenticateDeviceError {
     AuthenticationFailed(&'static str),
     DeviceNotFound(&'static str),

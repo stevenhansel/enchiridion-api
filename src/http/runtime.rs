@@ -56,7 +56,7 @@ impl WebServer {
                 .app_data(device_svc.clone())
                 .app_data(request_svc.clone())
                 .app_data(announcement_svc.clone())
-                .service(device_routes())
+                .service(device_routes(device_service.clone()))
                 .service(dashboard_routes(auth_service.clone()))
         })
         .listen(listener)?

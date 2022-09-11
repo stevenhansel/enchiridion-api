@@ -249,7 +249,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
                     "device_id" = "device"."id" and
                     "announcement"."status" = 'active'
             ) "device_announcement_result" on true
-            where "device"."id" = $1 and "device"."deleted_at" is null
+            where "device"."access_key_id" = $1 and "device"."deleted_at" is null
             "#,
         )
         .bind(access_key_id)
