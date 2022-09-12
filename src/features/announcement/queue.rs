@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::queue::Producer;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum AnnouncementSyncAction {
     Create,
@@ -29,9 +29,31 @@ impl std::fmt::Display for AnnouncementQueueError {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub struct DeviceSynchronizationParams<T> {
+pub struct DeviceSynchronizationParams {
     action: AnnouncementSyncAction,
-    data: T,
+    announcement_id: Option<i32>,
+    announcement_ids: Option<Vec<i32>>,
+}
+
+impl DeviceSynchronizationParams {
+    pub fn new(action: AnnouncementSyncAction) -> Self {
+        DeviceSynchronizationParams {
+            action,
+
+            announcement_id: None,
+            announcement_ids: None,
+        }
+    }
+
+    pub fn announcement_id(mut self, id: i32) -> Self {
+        self.announcement_id = Some(id);
+        self
+    }
+
+    pub fn announcement_ids(mut self, ids: Vec<i32>) -> Self {
+        self.announcement_ids = Some(ids);
+        self
+    }
 }
 
 #[async_trait]
@@ -81,10 +103,9 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
         device_ids: Vec<i32>,
         announcement_id: i32,
     ) -> Result<(), AnnouncementQueueError> {
-        let params: DeviceSynchronizationParams<i32> = DeviceSynchronizationParams {
-            action: AnnouncementSyncAction::Create,
-            data: announcement_id,
-        };
+        let params = DeviceSynchronizationParams::new(AnnouncementSyncAction::Create)
+            .announcement_id(announcement_id);
+
         let payload = match serde_json::to_string(&params) {
             Ok(payload) => payload,
             Err(e) => {
@@ -109,10 +130,9 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
         device_ids: Vec<i32>,
         announcement_id: i32,
     ) -> Result<(), AnnouncementQueueError> {
-        let params: DeviceSynchronizationParams<i32> = DeviceSynchronizationParams {
-            action: AnnouncementSyncAction::Delete,
-            data: announcement_id,
-        };
+        let params = DeviceSynchronizationParams::new(AnnouncementSyncAction::Delete)
+            .announcement_id(announcement_id);
+
         let payload = match serde_json::to_string(&params) {
             Ok(payload) => payload,
             Err(e) => {
@@ -137,10 +157,9 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
         device_id: i32,
         announcement_ids: Vec<i32>,
     ) -> Result<(), AnnouncementQueueError> {
-        let params: DeviceSynchronizationParams<Vec<i32>> = DeviceSynchronizationParams {
-            action: AnnouncementSyncAction::Resync,
-            data: announcement_ids,
-        };
+        let params = DeviceSynchronizationParams::new(AnnouncementSyncAction::Resync)
+            .announcement_ids(announcement_ids);
+
         let payload = match serde_json::to_string(&params) {
             Ok(payload) => payload,
             Err(e) => {
