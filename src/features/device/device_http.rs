@@ -11,10 +11,13 @@ use super::{DeviceErrorCode, DeviceServiceInterface, GetDeviceDetailByIdError};
 #[serde(rename_all = "camelCase")]
 pub struct DeviceDetailResponse {
     pub id: i32,
+    pub access_key_id: String,
     pub name: String,
     pub location: String,
-    pub active_announcements: i32,
+    pub floor_id: i32,
+    pub building_id: i32,
     pub description: String,
+    pub active_announcements: i32,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -48,8 +51,11 @@ pub async fn me(
 
     HttpResponse::Ok().json(DeviceDetailResponse {
         id: result.id,
+        access_key_id: result.access_key_id,
         name: result.name.into(),
         location: result.location.into(),
+        floor_id: result.floor_id,
+        building_id: result.building_id,
         description: result.description.into(),
         active_announcements: result.active_announcements,
         created_at: result.created_at.to_rfc3339(),
