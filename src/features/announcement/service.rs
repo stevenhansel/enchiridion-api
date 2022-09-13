@@ -376,7 +376,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             .count(
                 CountAnnouncementParams::default()
                     .status(AnnouncementStatus::Active)
-                    .end_date_lt(now),
+                    .end_date_lte(now),
             )
             .await
         {
@@ -396,7 +396,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
                 FindListAnnouncementParams::default()
                     .limit(count)
                     .status(AnnouncementStatus::Active)
-                    .end_date_lt(now),
+                    .end_date_lte(now),
             )
             .await
         {
