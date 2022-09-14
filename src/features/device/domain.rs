@@ -196,3 +196,50 @@ impl std::fmt::Display for GetDeviceDetailByAccessKeyIdError {
         }
     }
 }
+
+pub enum GetDeviceAuthCacheError {
+    DeviceNotFound(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for GetDeviceAuthCacheError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GetDeviceAuthCacheError::DeviceNotFound(message) => write!(f, "{}", message),
+            GetDeviceAuthCacheError::InternalServerError => {
+                write!(f, "Internal Server Error")
+            }
+        }
+    }
+}
+
+pub enum LinkDeviceError {
+    AuthenticationFailed(&'static str),
+    DeviceNotFound(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for LinkDeviceError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LinkDeviceError::AuthenticationFailed(message) => write!(f, "{}", message),
+            LinkDeviceError::DeviceNotFound(message) => write!(f, "{}", message),
+            LinkDeviceError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}
+
+pub enum UnlinkDeviceError {
+    DeviceNotFound(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for UnlinkDeviceError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            UnlinkDeviceError::DeviceNotFound(message) => write!(f, "{}", message),
+            UnlinkDeviceError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}
+

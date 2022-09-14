@@ -1,11 +1,86 @@
 use std::sync::Arc;
 
 use actix_web::{web, HttpResponse};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::http::{device_middleware, HttpErrorResponse};
 
-use super::{DeviceErrorCode, DeviceServiceInterface, GetDeviceDetailByIdError};
+use super::{
+    DeviceErrorCode, DeviceServiceInterface, GetDeviceDetailByIdError, LinkDeviceError,
+    UnlinkDeviceError,
+};
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LinkDeviceBody {
+    pub access_key_id: String,
+    pub secret_access_key: String,
+}
+
+pub async fn link_device(
+    device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
+    body: web::Json<LinkDeviceBody>,
+) -> HttpResponse {
+    if let Err(e) = device_service
+        .link(
+            body.access_key_id.to_string(),
+            body.secret_access_key.to_string(),
+        )
+        .await
+    {
+        match e {
+            LinkDeviceError::AuthenticationFailed(message) => {
+                return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
+                    DeviceErrorCode::AuthenticationFailed.to_string(),
+                    vec![message.into()],
+                ))
+            }
+            LinkDeviceError::DeviceNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    DeviceErrorCode::DeviceNotFound.to_string(),
+                    vec![message.into()],
+                ))
+            }
+            LinkDeviceError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    DeviceErrorCode::InternalServerError.to_string(),
+                    vec![LinkDeviceError::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
+    HttpResponse::NoContent().finish()
+}
+
+pub async fn unlink_device(
+    device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
+    auth: device_middleware::DeviceAuthenticationContext,
+) -> HttpResponse {
+    let device_id = match device_middleware::get_device_id(auth) {
+        Ok(id) => id,
+        Err(e) => return device_middleware::parse_device_authentication_middleware_error(e),
+    };
+
+    if let Err(e) = device_service.unlink(device_id).await {
+        match e {
+            UnlinkDeviceError::DeviceNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    DeviceErrorCode::DeviceNotFound.to_string(),
+                    vec![message.into()],
+                ))
+            }
+            UnlinkDeviceError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    DeviceErrorCode::InternalServerError.to_string(),
+                    vec![UnlinkDeviceError::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
+    HttpResponse::NoContent().finish()
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

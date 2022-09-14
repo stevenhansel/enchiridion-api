@@ -104,7 +104,7 @@ impl std::ops::Deref for DeviceAuthenticationContext {
 pub fn get_device_id(auth: DeviceAuthenticationContext) -> Result<i32, AuthenticateDeviceError> {
     if let Some(context) = auth.0 {
         return match context.borrow() {
-            Ok(user_id) => Ok(*user_id),
+            Ok(device_id) => Ok(*device_id),
             Err(e) => Err(*e),
         };
     }

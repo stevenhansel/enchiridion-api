@@ -751,6 +751,18 @@
     },
     "query": "\n            select \n                \"user\".\"id\" as \"user_id\",\n                \"user\".\"name\" as \"user_name\",\n                \"user\".\"email\" as \"user_email\",\n                \"user\".\"profile_picture\" as \"user_profile_picture\",\n                \"user\".\"is_email_confirmed\" as \"user_is_email_confirmed\",\n                \"user\".\"status\" as \"user_status: UserStatus\",\n                \"user\".\"role\" as \"user_role\"\n            from \"user\"\n            where \"user\".\"id\" = $1\n            "
   },
+  "e80493fd7938a39c3f6dc41d11e2c23145d4791cc477ac5f34133df7608f22ce": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            update \"device\"\n            set \"linked_at\" = now()\n            where \"id\" = $1\n            "
+  },
   "ecae8b8a5b352f2be9d98644f168e16fe0f013632040785382d108e96b5a96d1": {
     "describe": {
       "columns": [
@@ -780,6 +792,18 @@
       }
     },
     "query": "\n            select \"id\", \"name\", \"color\"\n            from \"building\"\n            where \"deleted_at\" is null\n            order by \"id\" desc\n            "
+  },
+  "f4c3ec1719a0f5617dc7e9ff5f7d14b054af436d244ffa6a24229b9532904054": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            update \"device\"\n            set \"linked_at\" = null\n            where \"id\" = $1\n            "
   },
   "f52ba825d0f400fb0105ba44ac9e805ec957edc7539c42d0c5333fc5c20cbcfe": {
     "describe": {

@@ -47,11 +47,12 @@ pub trait DeviceRepositoryInterface {
         &self,
         device_id: i32,
     ) -> Result<Vec<i32>, sqlx::Error>;
+    async fn update_device_link(&self, device_id: i32, link: bool) -> Result<(), sqlx::Error>;
     async fn get_auth_cache(&self, access_key_id: String) -> Result<DeviceAuthCache, RedisError>;
     async fn set_auth_cache(
         &self,
         access_key_id: String,
-        cache: DeviceAuthCache
+        cache: DeviceAuthCache,
     ) -> Result<(), RedisError>;
     async fn del_auth_cache(&self, access_key_id: String) -> Result<(), RedisError>;
 }
@@ -369,6 +370,39 @@ impl DeviceRepositoryInterface for DeviceRepository {
         .await?;
 
         Ok(result.into_iter().map(|row| row.announcement_id).collect())
+    }
+
+    async fn update_device_link(&self, device_id: i32, link: bool) -> Result<(), sqlx::Error> {
+        let rows_affected = if link {
+            sqlx::query!(
+                r#"
+            update "device"
+            set "linked_at" = now()
+            where "id" = $1
+            "#,
+                device_id,
+            )
+            .execute(&self._db)
+            .await?
+            .rows_affected()
+        } else {
+            sqlx::query!(
+                r#"
+            update "device"
+            set "linked_at" = null
+            where "id" = $1
+            "#,
+                device_id,
+            )
+            .execute(&self._db)
+            .await?
+            .rows_affected()
+        };
+        if rows_affected == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
     }
 
     async fn get_auth_cache(&self, access_key_id: String) -> Result<DeviceAuthCache, RedisError> {

@@ -25,6 +25,19 @@ pub fn device_routes(
 ) -> Scope {
     web::scope("/device")
         .service(
+            web::resource("/v1/link")
+                .guard(guard::Put())
+                .to(device_http_device::link_device),
+        )
+        .service(
+            web::resource("/v1/unlink")
+                .guard(guard::Put())
+                .wrap(DeviceAuthenticationMiddlewareFactory::new(
+                    device_service.clone(),
+                ))
+                .to(device_http_device::unlink_device),
+        )
+        .service(
             web::resource("/v1/me")
                 .guard(guard::Get())
                 .wrap(DeviceAuthenticationMiddlewareFactory::new(
