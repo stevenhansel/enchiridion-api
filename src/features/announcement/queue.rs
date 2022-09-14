@@ -94,6 +94,7 @@ impl AnnouncementQueue {
 
         map
     }
+
 }
 
 #[async_trait]
