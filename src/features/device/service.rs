@@ -185,6 +185,7 @@ impl DeviceServiceInterface for DeviceService {
                 device_id: device.id,
                 secret_access_key: secret_access_key.to_string(),
                 secret_access_key_salt: device.secret_access_key_salt,
+                linked_at: device.linked_at,
             };
 
             if let Err(_) = self
@@ -206,6 +207,7 @@ impl DeviceServiceInterface for DeviceService {
         lazy_static! {
             static ref WORD_REGEX: Regex = Regex::new(r"[a-zA-Z]+").unwrap();
         }
+
         let generate_random_word = |n: usize| {
             let words = lipsum_words(n).to_lowercase();
             let words: Vec<&str> = WORD_REGEX
@@ -376,7 +378,7 @@ impl DeviceServiceInterface for DeviceService {
         access_key_id: String,
         secret_access_key: String,
     ) -> Result<(), LinkDeviceError> {
-        let device_auth = match self.get_device_auth_cache(access_key_id).await {
+        let device_auth = match self.get_device_auth_cache(access_key_id.clone()).await {
             Ok(cache) => cache,
             Err(e) => match e {
                 GetDeviceAuthCacheError::DeviceNotFound(message) => {
@@ -385,6 +387,10 @@ impl DeviceServiceInterface for DeviceService {
                 _ => return Err(LinkDeviceError::InternalServerError),
             },
         };
+
+        if let Some(_) = device_auth.linked_at {
+            return Err(LinkDeviceError::DeviceLinkingError("Device already linked"));
+        }
 
         let input_secret_access_key_hash = match Argon2::default().hash_password(
             secret_access_key.as_bytes(),
@@ -410,12 +416,47 @@ impl DeviceServiceInterface for DeviceService {
             return Err(LinkDeviceError::InternalServerError);
         }
 
+        let updated_device = match self.get_device_detail_by_id(device_auth.device_id).await {
+            Ok(device) => device,
+            Err(e) => match e {
+                GetDeviceDetailByIdError::DeviceNotFound(_) => {
+                    return Err(LinkDeviceError::DeviceNotFound(
+                        "Unable to find device in the system",
+                    ))
+                }
+                GetDeviceDetailByIdError::InternalServerError => {
+                    return Err(LinkDeviceError::InternalServerError)
+                }
+            },
+        };
+
+        let secret_access_key = match str::from_utf8(&updated_device.secret_access_key) {
+            Ok(v) => v.to_string(),
+            Err(_) => {
+                return Err(LinkDeviceError::InternalServerError);
+            }
+        };
+
+        if let Err(_) = self
+            ._device_repository
+            .set_auth_cache(access_key_id, DeviceAuthCache {
+                secret_access_key,
+                device_id: updated_device.id,
+                secret_access_key_salt: updated_device.secret_access_key_salt,
+                linked_at: updated_device.linked_at,
+            })
+            .await
+        {
+            return Err(LinkDeviceError::InternalServerError);
+        }
+
         Ok(())
     }
 
     async fn unlink(&self, device_id: i32) -> Result<(), UnlinkDeviceError> {
-        if let Err(e) = self.get_device_detail_by_id(device_id).await {
-            match e {
+        let device = match self.get_device_detail_by_id(device_id).await {
+            Ok(device) => device,
+            Err(e) => match e {
                 GetDeviceDetailByIdError::DeviceNotFound(_) => {
                     return Err(UnlinkDeviceError::DeviceNotFound(
                         "Unable to find device in the system",
@@ -424,12 +465,35 @@ impl DeviceServiceInterface for DeviceService {
                 GetDeviceDetailByIdError::InternalServerError => {
                     return Err(UnlinkDeviceError::InternalServerError)
                 }
-            }
-        }
+            },
+        };
 
         if let Err(_) = self
             ._device_repository
             .update_device_link(device_id, false)
+            .await
+        {
+            return Err(UnlinkDeviceError::InternalServerError);
+        }
+
+        let secret_access_key = match str::from_utf8(&device.secret_access_key) {
+            Ok(v) => v.to_string(),
+            Err(_) => {
+                return Err(UnlinkDeviceError::InternalServerError);
+            }
+        };
+
+        if let Err(_) = self
+            ._device_repository
+            .set_auth_cache(
+                device.access_key_id,
+                DeviceAuthCache {
+                    device_id,
+                    secret_access_key,
+                    secret_access_key_salt: device.secret_access_key_salt,
+                    linked_at: None,
+                },
+            )
             .await
         {
             return Err(UnlinkDeviceError::InternalServerError);
@@ -467,6 +531,12 @@ impl DeviceServiceInterface for DeviceService {
                 _ => return Err(AuthenticateDeviceError::InternalServerError),
             },
         };
+
+        if let None = device_auth.linked_at {
+            return Err(AuthenticateDeviceError::AuthenticationFailed(
+                "Device not linked",
+            ));
+        }
 
         let input_secret_access_key_hash = match Argon2::default().hash_password(
             secret_access_key.as_bytes(),

@@ -24,6 +24,7 @@ pub struct DeviceDetail {
     pub secret_access_key_salt: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub linked_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -32,14 +33,16 @@ pub struct DeviceAuthCache {
     pub device_id: i32,
     pub secret_access_key: String,
     pub secret_access_key_salt: String,
+    pub linked_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 impl DeviceAuthCache {
-    pub fn new(device_id: i32, secret_access_key: String, secret_access_key_salt: String) -> Self {
+    pub fn new(device_id: i32, secret_access_key: String, secret_access_key_salt: String, linked_at: Option<chrono::DateTime<chrono::Utc>>) -> Self {
         DeviceAuthCache {
             device_id,
             secret_access_key,
             secret_access_key_salt,
+            linked_at,
         }
     }
 }
@@ -58,6 +61,7 @@ pub enum DeviceErrorCode {
     DeviceNotFound,
     FloorNotFound,
     DeviceCascadeConstraint,
+    DeviceLinkingError,
     InternalServerError,
 }
 
@@ -69,6 +73,7 @@ impl std::fmt::Display for DeviceErrorCode {
             DeviceErrorCode::DeviceNotFound => write!(f, "DEVICE_NOT_FOUND"),
             DeviceErrorCode::FloorNotFound => write!(f, "BUILDING_NOT_FOUND"),
             DeviceErrorCode::DeviceCascadeConstraint => write!(f, "DEVICE_CASCADE_CONSTRAINT"),
+            DeviceErrorCode::DeviceLinkingError => write!(f, "DEVICE_LINKING_ERROR"),
             DeviceErrorCode::InternalServerError => write!(f, "INTERNAL_SERVER_ERROR"),
         }
     }
@@ -216,6 +221,7 @@ impl std::fmt::Display for GetDeviceAuthCacheError {
 pub enum LinkDeviceError {
     AuthenticationFailed(&'static str),
     DeviceNotFound(&'static str),
+    DeviceLinkingError(&'static str),
     InternalServerError,
 }
 
@@ -224,6 +230,7 @@ impl std::fmt::Display for LinkDeviceError {
         match self {
             LinkDeviceError::AuthenticationFailed(message) => write!(f, "{}", message),
             LinkDeviceError::DeviceNotFound(message) => write!(f, "{}", message),
+            LinkDeviceError::DeviceLinkingError(message) => write!(f, "{}", message),
             LinkDeviceError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
@@ -231,6 +238,7 @@ impl std::fmt::Display for LinkDeviceError {
 
 pub enum UnlinkDeviceError {
     DeviceNotFound(&'static str),
+    DeviceLinkingError(&'static str),
     InternalServerError,
 }
 
@@ -238,8 +246,8 @@ impl std::fmt::Display for UnlinkDeviceError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             UnlinkDeviceError::DeviceNotFound(message) => write!(f, "{}", message),
+            UnlinkDeviceError::DeviceLinkingError(message) => write!(f, "{}", message),
             UnlinkDeviceError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
 }
-

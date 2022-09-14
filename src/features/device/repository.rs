@@ -186,7 +186,8 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 "device"."secret_access_key" as "secret_access_key",
                 "device"."secret_access_key_salt" as "secret_access_key_salt",
                 "device"."created_at" as "created_at",
-                "device"."updated_at" as "updated_at"
+                "device"."updated_at" as "updated_at",
+                "device"."linked_at" as "linked_at"
             from "device"
             join "floor" on "floor"."id" = "device"."floor_id"
             join "building" on "building"."id" = "floor"."building_id"
@@ -214,6 +215,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
             secret_access_key_salt: row.get("secret_access_key_salt"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
+            linked_at: row.get("linked_at"),
         })
         .fetch_one(&self._db)
         .await?;
@@ -239,7 +241,8 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 "device"."secret_access_key" as "secret_access_key",
                 "device"."secret_access_key_salt" as "secret_access_key_salt",
                 "device"."created_at" as "created_at",
-                "device"."updated_at" as "updated_at"
+                "device"."updated_at" as "updated_at",
+                "device"."linked_at" as "linked_at"
             from "device"
             join "floor" on "floor"."id" = "device"."floor_id"
             join "building" on "building"."id" = "floor"."building_id"
@@ -267,6 +270,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
             secret_access_key_salt: row.get("secret_access_key_salt"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
+            linked_at: row.get("linked_at"),
         })
         .fetch_one(&self._db)
         .await?;

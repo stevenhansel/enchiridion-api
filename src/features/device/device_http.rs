@@ -35,6 +35,12 @@ pub async fn link_device(
                     vec![message.into()],
                 ))
             }
+            LinkDeviceError::DeviceLinkingError(message) => {
+                return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
+                    DeviceErrorCode::DeviceLinkingError.to_string(),
+                    vec![message.into()],
+                ))
+            }
             LinkDeviceError::DeviceNotFound(message) => {
                 return HttpResponse::NotFound().json(HttpErrorResponse::new(
                     DeviceErrorCode::DeviceNotFound.to_string(),
@@ -64,6 +70,12 @@ pub async fn unlink_device(
 
     if let Err(e) = device_service.unlink(device_id).await {
         match e {
+            UnlinkDeviceError::DeviceLinkingError(message) => {
+                return HttpResponse::Unauthorized().json(HttpErrorResponse::new(
+                    DeviceErrorCode::DeviceLinkingError.to_string(),
+                    vec![message.into()],
+                ))
+            }
             UnlinkDeviceError::DeviceNotFound(message) => {
                 return HttpResponse::NotFound().json(HttpErrorResponse::new(
                     DeviceErrorCode::DeviceNotFound.to_string(),
