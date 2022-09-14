@@ -17,7 +17,7 @@ pub async fn execute_announcement_scheduler(
     announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
 ) -> Result<(), HandleScheduledAnnouncementsError> {
     let now = chrono::DateTime::from_utc(
-        chrono::Utc::today().naive_utc().and_hms(0, 0, 0),
+        chrono::Utc::today().naive_utc().and_hms(0, 0, 0) + chrono::Duration::days(1),
         chrono::Utc,
     );
 
@@ -79,7 +79,10 @@ pub async fn run(
                 let today_jakarta = Jakarta.from_utc_datetime(&today_utc.naive_utc());
 
                 if let Some(event) = schedule.after(&today_jakarta).take(1).next() {
-                    println!("[info] Announcement Scheduler is starting, next schedule time: {}", event);
+                    println!(
+                        "[info] Announcement Scheduler is starting, next schedule time: {}",
+                        event
+                    );
                 }
 
                 last_tick = Some(today_jakarta);
