@@ -146,7 +146,7 @@ pub async fn get_device_by_id(
     HttpResponse::Ok().json(DeviceDetailResponse {
         id: result.id,
         name: result.name.into(),
-        location: result.location.into(),
+        location: result.location.text.into(),
         description: result.description.into(),
         active_announcements: result.active_announcements,
         created_at: result.created_at.to_rfc3339(),

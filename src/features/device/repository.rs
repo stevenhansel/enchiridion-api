@@ -4,7 +4,7 @@ use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
 use crate::database::PaginationResult;
 
-use super::{Device, DeviceAuthCache, DeviceDetail, ListDeviceParams};
+use super::{Device, DeviceAuthCache, DeviceDetail, DeviceDetailLocation, ListDeviceParams};
 
 pub struct InsertDeviceParams {
     pub name: String,
@@ -179,7 +179,10 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 "device"."name" as "name",
                 concat("building"."name", ', ', "floor"."name") as "location",
                 "floor"."id" as "floor_id",
+                "floor"."name" as "floor_name",
                 "building"."id" as "building_id",
+                "building"."name" as "building_name",
+                "building"."color" as "building_color",
                 "device"."description" as "description",
                 cast("device_announcement_result"."count" as integer) as "active_announcements",
                 "device"."access_key_id" as "access_key_id",
@@ -205,7 +208,14 @@ impl DeviceRepositoryInterface for DeviceRepository {
         .map(|row: PgRow| DeviceDetail {
             id: row.get("id"),
             name: row.get("name"),
-            location: row.get("location"),
+            location: DeviceDetailLocation {
+                text: row.get("location"),
+                building_id: row.get("building_id"),
+                building_name: row.get("building_name"),
+                building_color: row.get("building_color"),
+                floor_id: row.get("floor_id"),
+                floor_name: row.get("floor_name"),
+            },
             floor_id: row.get("floor_id"),
             building_id: row.get("building_id"),
             description: row.get("description"),
@@ -234,7 +244,10 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 "device"."name" as "name",
                 concat("building"."name", ', ', "floor"."name") as "location",
                 "floor"."id" as "floor_id",
+                "floor"."name" as "floor_name",
                 "building"."id" as "building_id",
+                "building"."name" as "building_name",
+                "building"."color" as "building_color",
                 "device"."description" as "description",
                 cast("device_announcement_result"."count" as integer) as "active_announcements",
                 "device"."access_key_id" as "access_key_id",
@@ -260,7 +273,14 @@ impl DeviceRepositoryInterface for DeviceRepository {
         .map(|row: PgRow| DeviceDetail {
             id: row.get("id"),
             name: row.get("name"),
-            location: row.get("location"),
+            location: DeviceDetailLocation {
+                text: row.get("location"),
+                building_id: row.get("building_id"),
+                building_name: row.get("building_name"),
+                building_color: row.get("building_color"),
+                floor_id: row.get("floor_id"),
+                floor_name: row.get("floor_name"),
+            },
             floor_id: row.get("floor_id"),
             building_id: row.get("building_id"),
             description: row.get("description"),

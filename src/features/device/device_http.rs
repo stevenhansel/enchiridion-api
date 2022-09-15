@@ -100,13 +100,36 @@ pub struct DeviceDetailResponse {
     pub id: i32,
     pub access_key_id: String,
     pub name: String,
-    pub location: String,
+    pub location: DeviceDetailLocationResponse,
     pub floor_id: i32,
     pub building_id: i32,
     pub description: String,
     pub active_announcements: i32,
     pub created_at: String,
     pub updated_at: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceDetailLocationResponse {
+    pub text: String,
+    pub floor: DeviceDetailFloorResponse,
+    pub building: DeviceDetailBuildingResponse,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceDetailFloorResponse {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceDetailBuildingResponse {
+    pub id: i32,
+    pub name: String,
+    pub color: String,
 }
 
 pub async fn me(
@@ -140,7 +163,18 @@ pub async fn me(
         id: result.id,
         access_key_id: result.access_key_id,
         name: result.name.into(),
-        location: result.location.into(),
+        location: DeviceDetailLocationResponse {
+            text: result.location.text,
+            floor: DeviceDetailFloorResponse {
+                id: result.location.floor_id,
+                name: result.location.floor_name,
+            },
+            building: DeviceDetailBuildingResponse {
+                id: result.location.building_id,
+                name: result.location.building_name,
+                color: result.location.building_color,
+            },
+        },
         floor_id: result.floor_id,
         building_id: result.building_id,
         description: result.description.into(),

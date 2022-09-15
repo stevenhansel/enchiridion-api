@@ -14,7 +14,7 @@ pub struct Device {
 pub struct DeviceDetail {
     pub id: i32,
     pub name: String,
-    pub location: String,
+    pub location: DeviceDetailLocation,
     pub floor_id: i32,
     pub building_id: i32,
     pub description: String,
@@ -25,6 +25,16 @@ pub struct DeviceDetail {
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub linked_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[derive(Debug)]
+pub struct DeviceDetailLocation {
+    pub text: String, 
+    pub building_id: i32,
+    pub building_name: String,
+    pub building_color: String,
+    pub floor_id: i32,
+    pub floor_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
