@@ -1,5 +1,3 @@
-use std::collections::{btree_map::Entry, BTreeMap};
-
 use async_trait::async_trait;
 use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
@@ -14,9 +12,14 @@ pub struct RawFloorRow {
     building_id: i32,
     building_name: String,
     building_color: String,
-    device_id: Option<i32>,
-    device_name: Option<String>,
-    device_description: Option<String>,
+}
+
+pub struct RawDeviceRow {
+    device_id: i32,
+    device_name: String,
+    device_description: String,
+    device_floor_id: i32,
+    device_active_announcements: i32,
 }
 
 pub struct FindFloorParams {
@@ -67,13 +70,9 @@ impl FloorRepositoryInterface for FloorRepository {
                 "floor"."name" as "floor_name",
                 "building"."id" as "building_id",
                 "building"."name" as "building_name",
-                "building"."color" as "building_color",
-                "device"."id" as "device_id",
-                "device"."name" as "device_name",
-                "device"."description" as "device_description"
+                "building"."color" as "building_color"
             from "floor"
             join "building" on "building"."id" = "floor"."building_id"
-            left join "device" on "device"."floor_id" = "floor"."id"
             left join lateral (
                 select count(*) from "floor"
                 where
@@ -97,7 +96,7 @@ impl FloorRepositoryInterface for FloorRepository {
                 ) and
                 ($4::integer is null or "building"."id" = $4) and
                 "floor"."deleted_at" is null
-            group by "floor"."id", "building"."id", "device"."id", "result"."count"
+            group by "floor"."id", "building"."id", "result"."count"
             order by "floor"."id" desc
             offset $1 limit $2
             "#,
@@ -112,10 +111,7 @@ impl FloorRepositoryInterface for FloorRepository {
             floor_name: row.get("floor_name"),
             building_id: row.get("building_id"),
             building_name: row.get("building_name"),
-            building_color: row.get("building_color"),
-            device_id: row.get("device_id"),
-            device_name: row.get("device_name"),
-            device_description: row.get("device_description"),
+            building_color: row.get("building_color")
         })
         .fetch_all(&self._db)
         .await?;
@@ -128,56 +124,62 @@ impl FloorRepositoryInterface for FloorRepository {
         let total_pages = (count as f64 / params.limit as f64).ceil() as i32;
         let has_next = ((params.page as f64 * params.limit as f64) / count as f64) < 1.0;
 
-        let mut device_map: BTreeMap<i32, DeviceFloorContent> = BTreeMap::new();
-        for row in &result {
-            if let Some(device_id) = row.device_id {
-                if let Entry::Vacant(v) = device_map.entry(device_id) {
-                    v.insert(DeviceFloorContent {
-                        id: device_id,
-                        name: row.device_name.clone().unwrap(),
-                        description: row.device_description.clone().unwrap(),
-                    });
-                }
-            }
+        let floor_ids: Vec<i32> = result.iter().map(|row| row.floor_id).collect();
+
+        let device_result = sqlx::query(
+            r#"
+            select 
+                "device"."id" as "device_id",
+                "device"."name" as "device_name",
+                "device"."description" as "device_description",
+                "device"."floor_id" as "device_floor_id",
+                cast("result"."count" as integer) as "device_active_announcements"
+            from "device"
+            left join lateral (
+                select count(*) as "count" from "device_announcement"
+                join "announcement" on "announcement"."id" = "device_announcement"."announcement_id"
+                where 
+                    "device_announcement"."device_id" = "device"."id" and
+                    "announcement"."status" = 'active'
+            ) "result" on true
+            where "floor_id" = any($1)
+            "#,
+        )
+        .bind(&floor_ids)
+        .map(|row: PgRow| RawDeviceRow {
+            device_id: row.get("device_id"),
+            device_name: row.get("device_name"),
+            device_description: row.get("device_description"),
+            device_floor_id: row.get("device_floor_id"),
+            device_active_announcements: row.get("device_active_announcements"),
+        })
+        .fetch_all(&self._db)
+        .await?;
+
+        let mut contents: Vec<Floor> = Vec::new();
+        for row in result {
+            let devices: Vec<DeviceFloorContent> = device_result
+                .iter()
+                .filter(|device_row| device_row.device_floor_id == row.floor_id)
+                .map(|device_row| DeviceFloorContent {
+                    id: device_row.device_id,
+                    name: device_row.device_name.to_string(),
+                    description: device_row.device_description.to_string(),
+                    total_announcements: device_row.device_active_announcements,
+                })
+                .collect();
+
+            contents.push(Floor {
+                id: row.floor_id,
+                name: row.floor_name,
+                building: BuildingFloorContent {
+                    id: row.building_id,
+                    name: row.building_name,
+                    color: row.building_color,
+                },
+                devices,
+            })
         }
-
-        let mut floor_map: BTreeMap<i32, Floor> = BTreeMap::new();
-        for row in &result {
-            match floor_map.entry(row.floor_id) {
-                Entry::Vacant(v) => {
-                    let mut devices: Vec<DeviceFloorContent> = vec![];
-                    if let Some(device_id) = row.device_id {
-                        let device = device_map.get(&device_id).unwrap();
-                        devices.push(device.clone());
-                    }
-
-                    v.insert(Floor {
-                        id: row.floor_id,
-                        name: row.floor_name.clone(),
-                        building: BuildingFloorContent {
-                            id: row.building_id,
-                            name: row.building_name.clone(),
-                            color: row.building_color.clone(),
-                        },
-                        devices,
-                    });
-                }
-                Entry::Occupied(o) => {
-                    if let Some(device_id) = row.device_id {
-                        let floor = o.into_mut();
-                        let device = device_map.get(&device_id).unwrap();
-
-                        floor.devices.push(device.clone());
-                    }
-                }
-            }
-        }
-
-        let contents = floor_map
-            .into_iter()
-            .rev()
-            .map(|(_, v)| v)
-            .collect();
 
         Ok(PaginationResult {
             count,

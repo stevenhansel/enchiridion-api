@@ -20,7 +20,7 @@ pub struct DeviceFloorContent {
     pub id: i32,
     pub name: String,
     pub description: String,
-    // pub total_announcements: i32,
+    pub total_announcements: i32,
 }
 
 pub enum FloorErrorCode {

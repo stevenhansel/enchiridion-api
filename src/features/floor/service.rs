@@ -72,6 +72,7 @@ impl FloorServiceInterface for FloorService {
             Ok(result) => Ok(result),
             Err(e) => match e {
                 _ => {
+                    println!("e: {}", e);
                     return Err(ListFloorError::InternalServerError);
                 }
             },
@@ -170,7 +171,6 @@ impl FloorServiceInterface for FloorService {
                     return Err(DeleteFloorError::InternalServerError);
                 }
                 _ => return Err(DeleteFloorError::InternalServerError),
-
             }
         }
 
