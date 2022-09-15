@@ -442,6 +442,14 @@ impl AnnouncementServiceInterface for AnnouncementService {
             return Err(HandleScheduledAnnouncementsError::InternalServerError);
         }
 
+        if let Err(_) = self
+            ._request_service
+            .batch_reject_requests_from_announcement_ids(announcement_ids)
+            .await
+        {
+            return Err(HandleScheduledAnnouncementsError::InternalServerError);
+        }
+
         Ok(())
     }
 }

@@ -515,6 +515,18 @@
     },
     "query": "\n            update \"announcement\"\n            set \"end_date\" = $2\n            where \"id\" = $1\n            "
   },
+  "a9b1e6898f2ee01e3bc227f11d4461dfdbffe0fcf8d96f4dd1e97dedabb1c9be": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n            update \"request\"\n            set\n                \"approved_by_lsc\" = false,\n                \"approved_by_bm\" = false\n            where \n                \"announcement_id\" = any($1) and\n                \"approved_by_lsc\" is null and \"approved_by_bm\" is null\n            "
+  },
   "ab1bc773e0ed791355335d8fdb87a3259a4ce358bd30e84e32d914122244c372": {
     "describe": {
       "columns": [

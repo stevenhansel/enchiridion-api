@@ -471,6 +471,13 @@ impl RequestServiceInterface for RequestService {
             {
                 return Err(UpdateRequestApprovalError::InternalServerError);
             }
+
+            if let Err(_) = self
+                .batch_reject_requests_from_announcement_ids(vec![announcement.id])
+                .await
+            {
+                return Err(UpdateRequestApprovalError::InternalServerError);
+            }
         }
 
         if let Err(_) = self

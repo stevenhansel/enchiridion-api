@@ -401,16 +401,18 @@ impl RequestRepositoryInterface for RequestRepository {
         &self,
         announcement_ids: Vec<i32>,
     ) -> Result<(), sqlx::Error> {
-        let rows_affected = sqlx::query(
+        let rows_affected = sqlx::query!(
             r#"
             update "request"
             set
                 "approved_by_lsc" = false,
                 "approved_by_bm" = false
-            where "announcement_id" = any($1)
+            where 
+                "announcement_id" = any($1) and
+                "approved_by_lsc" is null and "approved_by_bm" is null
             "#,
+            &announcement_ids,
         )
-        .bind(&announcement_ids)
         .execute(&self._db)
         .await?
         .rows_affected();
