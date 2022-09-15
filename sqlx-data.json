@@ -365,26 +365,6 @@
     },
     "query": "\n            update \"request\"\n            set\n                \"approved_by_lsc\" = $2,\n                \"approved_by_bm\" = $3,\n                \"lsc_approver\" = $4,\n                \"bm_approver\" = $5\n            where \"id\" = $1\n            "
   },
-  "64a6eeadbff118e4c1414e29a7b3a447da105707febc620e91a06bcdd755eb74": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n            select \"id\"\n            from \"announcement\"\n            where\n                \"status\" = 'waiting_for_approval' and\n                \"start_date\" + '1 day' < $1\n            "
-  },
   "72dce6209554b6ec61e8e1ff3fb363aa695f0d306027b7b9b98d222729552753": {
     "describe": {
       "columns": [
@@ -534,6 +514,26 @@
       }
     },
     "query": "\n            update \"announcement\"\n            set \"end_date\" = $2\n            where \"id\" = $1\n            "
+  },
+  "ab1bc773e0ed791355335d8fdb87a3259a4ce358bd30e84e32d914122244c372": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n            select \"id\"\n            from \"announcement\"\n            where\n                \"status\" = 'waiting_for_approval' and\n                \"start_date\" < $1\n            "
   },
   "ab2fe152d4e5c293612ffa47ad9c422b129fd048a72318185fa2d77aa7391d91": {
     "describe": {
