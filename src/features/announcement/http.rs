@@ -295,6 +295,7 @@ pub struct ListAnnouncementQueryParams {
     pub device_id: Option<i32>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
+    pub populate_media: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -381,6 +382,7 @@ pub async fn list_announcement(
             status: query_params.status.clone(),
             user_id: query_params.user_id.clone(),
             device_id: query_params.device_id.clone(),
+            populate_media: query_params.populate_media.clone(),
             start_date,
             end_date,
         })

@@ -26,6 +26,7 @@ pub struct ListAnnouncementParams {
     pub device_id: Option<i32>,
     pub start_date: Option<chrono::DateTime<chrono::Utc>>,
     pub end_date: Option<chrono::DateTime<chrono::Utc>>,
+    pub populate_media: Option<bool>,
 }
 
 pub struct CreateAnnouncementParams {
@@ -122,12 +123,34 @@ impl AnnouncementServiceInterface for AnnouncementService {
             repo_params = repo_params.end_date_lte(end_date);
         }
 
-        match self._announcement_repository.find(repo_params).await {
-            Ok(result) => Ok(result),
+        let mut announcements = match self._announcement_repository.find(repo_params).await {
+            Ok(result) => result,
             Err(_) => {
                 return Err(ListAnnouncementError::InternalServerError);
             }
+        };
+
+        if let Some(populate_media) = params.populate_media {
+            if populate_media {
+                let mut contents: Vec<Announcement> = vec![];
+                for content in announcements.contents {
+                    let media_object =
+                        match self.get_announcement_media_presigned_url(content.id).await {
+                            Ok(media) => media,
+                            Err(_) => return Err(ListAnnouncementError::InternalServerError),
+                        };
+
+                    contents.push(Announcement {
+                        media: media_object.media,
+                        ..content
+                    });
+                }
+
+                announcements.contents = contents;
+            }
         }
+
+        Ok(announcements)
     }
 
     async fn get_announcement_detail(
