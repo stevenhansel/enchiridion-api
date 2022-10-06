@@ -151,6 +151,8 @@ impl RequestRepositoryInterface for RequestRepository {
             join "user" on "user"."id"= "request"."user_id"
             left join lateral (
                 select count(*) from "request"
+                join "announcement" on "announcement"."id" = "request"."announcement_id"
+                join "user" on "user"."id"= "request"."user_id"
                 where
                     ($3::integer is null or "request"."id" = $3) and 
                     ($4::integer is null or "announcement"."id" = $4) and 

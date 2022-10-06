@@ -385,6 +385,8 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             join "device_announcement" on "device_announcement"."announcement_id" = "announcement"."id"
             left join lateral (
                 select count(*) from "announcement"
+                join "user" on "user"."id" = "announcement"."user_id"
+                join "device_announcement" on "device_announcement"."announcement_id" = "announcement"."id"
                 where
                     (
                         $3::text is null or 

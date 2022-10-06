@@ -94,6 +94,8 @@ impl DeviceRepositoryInterface for DeviceRepository {
                 join "building" on "building"."id" = "floor"."building_id"
                 left join lateral (
                     select count(*) as "count" from "device"
+                    join "floor" on "floor"."id" = "device"."floor_id"
+                    join "building" on "building"."id" = "floor"."building_id"
                     where
                         (
                             $3::text is null or 

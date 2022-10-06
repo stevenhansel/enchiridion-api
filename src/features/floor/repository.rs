@@ -75,6 +75,7 @@ impl FloorRepositoryInterface for FloorRepository {
             join "building" on "building"."id" = "floor"."building_id"
             left join lateral (
                 select count(*) from "floor"
+                join "building" on "building"."id" = "floor"."building_id"
                 where
                     (
                         $3::text is null or 
