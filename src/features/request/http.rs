@@ -290,6 +290,10 @@ pub async fn create_request(
     } else if body.action == RequestActionType::ChangeDevices {
         if let Some(new_device_ids) = &body.new_device_ids {
             params = params.new_device_ids(new_device_ids.clone());
+        } else {
+            return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+                    API_VALIDATION_ERROR_CODE.to_string(),
+                    vec!["New device ids is required in the data".into()]));
         }
     } else if body.action == RequestActionType::Create {
         return HttpResponse::BadRequest().json(HttpErrorResponse::new(
