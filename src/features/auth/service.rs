@@ -814,7 +814,9 @@ impl AuthServiceInterface for AuthService {
 
         let user = match self._user_repository.find_one_by_id(user_id).await {
             Ok(user) => user,
-            Err(_) => return Err(AuthenticateError::InternalServerError),
+            Err(_) => {
+                return Err(AuthenticateError::InternalServerError);
+            }
         };
 
         if let Some(permission) = permission {

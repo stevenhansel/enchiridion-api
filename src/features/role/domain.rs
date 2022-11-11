@@ -205,6 +205,7 @@ impl ApplicationPermission {
     }
 }
 
+#[derive(Debug)]
 pub struct RoleObject {
     pub name: &'static str,
     pub value: &'static str,
@@ -212,6 +213,7 @@ pub struct RoleObject {
     pub permissions: Vec<PermissionObject>,
 }
 
+#[derive(Debug)]
 pub struct PermissionObject {
     pub label: &'static str,
     pub value: &'static str,

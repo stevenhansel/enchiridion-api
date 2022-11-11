@@ -78,6 +78,7 @@ pub struct UserStatusObject {
     pub value: UserStatus,
 }
 
+#[derive(Debug)]
 pub struct UserAuthEntity {
     pub id: i32,
     pub name: String,
@@ -89,6 +90,7 @@ pub struct UserAuthEntity {
     pub building: Option<BuildingAuthEntity>,
 }
 
+#[derive(Debug)]
 pub struct BuildingAuthEntity {
     pub id: i32,
     pub name: String,

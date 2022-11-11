@@ -63,7 +63,6 @@ impl UserServiceInterface for UserService {
         {
             Ok(result) => Ok(result),
             Err(e) => {
-                println!("e: {}", e.to_string());
                 match e {
                     _ => Err(ListUserError::InternalServerError),
                 }

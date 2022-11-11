@@ -308,7 +308,7 @@ impl UserRepositoryInterface for UserRepository {
                 "building"."updated_at" as "building_updated_at"
             from "user"
             left join "building" on "building"."id" = "user"."building_id"
-            where id = $1
+            where "user"."id" = $1
             "#,
         )
         .bind(id)
@@ -373,7 +373,7 @@ impl UserRepositoryInterface for UserRepository {
                 "building"."updated_at" as "building_updated_at"
             from "user"
             left join "building" on "building"."id" = "user"."building_id"
-            where email = $1
+            where "user"."email" = $1
             "#,
         )
         .bind(email)

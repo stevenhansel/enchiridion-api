@@ -72,7 +72,6 @@ impl FloorServiceInterface for FloorService {
             Ok(result) => Ok(result),
             Err(e) => match e {
                 _ => {
-                    println!("e: {}", e);
                     return Err(ListFloorError::InternalServerError);
                 }
             },
