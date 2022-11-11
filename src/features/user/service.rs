@@ -62,9 +62,12 @@ impl UserServiceInterface for UserService {
             .await
         {
             Ok(result) => Ok(result),
-            Err(e) => match e {
-                _ => Err(ListUserError::InternalServerError),
-            },
+            Err(e) => {
+                println!("e: {}", e.to_string());
+                match e {
+                    _ => Err(ListUserError::InternalServerError),
+                }
+            }
         }
     }
 

@@ -30,6 +30,7 @@ pub struct RegisterBody {
     password: String,
     reason: Option<String>,
     role: String,
+    building_id: i32,
 }
 
 pub async fn register(
@@ -63,6 +64,7 @@ pub async fn register(
             password: body.password.to_string(),
             reason: body.reason.clone(),
             role: body.role.clone(),
+            building_id: body.building_id,
         })
         .await
     {
@@ -208,6 +210,17 @@ pub async fn confirm_email(
         },
     };
 
+    let mut building: Option<BuildingObject> = None;
+    if let Some(b) = result.entity.building {
+        building = Some(BuildingObject {
+            id: b.id,
+            name: b.name,
+            color: b.color,
+            created_at: b.created_at,
+            updated_at: b.updated_at,
+        })
+    }
+
     let response = AuthEntityObject {
         id: result.entity.id,
         name: result.entity.name,
@@ -232,6 +245,7 @@ pub async fn confirm_email(
                 })
                 .collect(),
         },
+        building,
     };
 
     let access_token_cookie = Cookie::build("access_token", result.access_token)
@@ -270,6 +284,7 @@ pub struct AuthEntityObject {
     pub is_email_confirmed: bool,
     pub user_status: UserStatusObject,
     pub role: RoleObject,
+    pub building: Option<BuildingObject>,
 }
 
 #[derive(Debug, Serialize)]
@@ -277,6 +292,16 @@ pub struct AuthEntityObject {
 pub struct UserStatusObject {
     label: String,
     value: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildingObject {
+    pub id: i32,
+    pub name: String,
+    pub color: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Serialize)]
@@ -334,6 +359,17 @@ pub async fn login(
         },
     };
 
+    let mut building: Option<BuildingObject> = None;
+    if let Some(b) = result.entity.building {
+        building = Some(BuildingObject {
+            id: b.id,
+            name: b.name,
+            color: b.color,
+            created_at: b.created_at,
+            updated_at: b.updated_at,
+        })
+    }
+
     let response = AuthEntityObject {
         id: result.entity.id,
         name: result.entity.name,
@@ -358,6 +394,7 @@ pub async fn login(
                 })
                 .collect(),
         },
+        building,
     };
 
     let access_token_cookie = Cookie::build("access_token", result.access_token)
@@ -472,6 +509,17 @@ pub async fn me(
         },
     };
 
+    let mut building: Option<BuildingObject> = None;
+    if let Some(b) = entity.building {
+        building = Some(BuildingObject {
+            id: b.id,
+            name: b.name,
+            color: b.color,
+            created_at: b.created_at,
+            updated_at: b.updated_at,
+        })
+    }
+
     let response = AuthEntityObject {
         id: entity.id,
         name: entity.name,
@@ -495,6 +543,7 @@ pub async fn me(
                 })
                 .collect(),
         },
+        building,
     };
 
     HttpResponse::Ok().json(response)

@@ -36,6 +36,7 @@ pub struct ListUserContentResponse {
     pub status: ListUserContentStatus,
     pub is_email_confirmed: bool,
     pub registration_reason: Option<String>,
+    pub building: Option<ListUserBuilding>,
 }
 
 #[derive(Debug, Serialize)]
@@ -51,6 +52,16 @@ pub struct ListUserContentRole {
 pub struct ListUserContentStatus {
     pub label: String,
     pub value: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListUserBuilding {
+    pub id: i32,
+    pub name: String,
+    pub color: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 pub async fn list_user(
@@ -115,6 +126,17 @@ pub async fn list_user(
                 },
                 is_email_confirmed: u.is_email_confirmed,
                 registration_reason: u.registration_reason,
+                building: if let Some(b) = u.building {
+                    Some(ListUserBuilding {
+                        id: b.id,
+                        name: b.name,
+                        color: b.color,
+                        created_at: b.created_at,
+                        updated_at: b.updated_at,
+                    })
+                } else {
+                    None
+                },
             })
             .collect(),
     };

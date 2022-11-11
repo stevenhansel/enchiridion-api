@@ -86,6 +86,15 @@ pub struct UserAuthEntity {
     pub is_email_confirmed: bool,
     pub user_status: UserStatus,
     pub role: RoleObject,
+    pub building: Option<BuildingAuthEntity>,
+}
+
+pub struct BuildingAuthEntity {
+    pub id: i32,
+    pub name: String,
+    pub color: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 pub struct RefreshTokenResult {

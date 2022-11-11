@@ -37,19 +37,27 @@ pub struct User {
     pub status: UserStatus,
     pub is_email_confirmed: bool,
     pub registration_reason: Option<String>,
+    pub building: Option<UserBuilding>,
 }
 
 pub struct UserDetail {
     pub id: i32,
-
     pub name: String,
     pub email: String,
     pub password: Vec<u8>,
     pub password_salt: String,
     pub registration_reason: Option<String>,
-
     pub is_email_confirmed: bool,
     pub status: UserStatus,
+    pub building: Option<UserBuilding>,
+}
+
+pub struct UserBuilding {
+    pub id: i32,
+    pub name: String,
+    pub color: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 pub enum UserErrorCode {

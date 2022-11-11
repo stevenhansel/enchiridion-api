@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use deadpool_redis::redis::{cmd, RedisError};
-use sqlx::{Pool, Postgres};
+use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
 use crate::{
     config::Configuration,
@@ -10,7 +10,7 @@ use crate::{
     },
 };
 
-use super::UserAuthEntity;
+use super::{BuildingAuthEntity, UserAuthEntity};
 
 pub struct RawAuthEntity {
     user_id: i32,
@@ -20,6 +20,11 @@ pub struct RawAuthEntity {
     user_is_email_confirmed: bool,
     user_status: UserStatus,
     user_role: String,
+    building_id: Option<i32>,
+    building_name: Option<String>,
+    building_color: Option<String>,
+    building_created_at: Option<chrono::DateTime<chrono::Utc>>,
+    building_updated_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[async_trait]
@@ -79,6 +84,17 @@ impl AuthRepository {
             })
             .collect();
 
+        let mut building: Option<BuildingAuthEntity> = None;
+        if let Some(_) = raw.building_id {
+            building = Some(BuildingAuthEntity {
+                id: raw.building_id.unwrap(),
+                name: raw.building_name.unwrap(),
+                color: raw.building_color.unwrap(),
+                created_at: raw.building_created_at.unwrap(),
+                updated_at: raw.building_updated_at.unwrap(),
+            })
+        }
+
         let entity = UserAuthEntity {
             id: raw.user_id,
             name: raw.user_name.to_string(),
@@ -90,6 +106,7 @@ impl AuthRepository {
                 .into_iter()
                 .find(|r| r.value == raw.user_role)
                 .unwrap(),
+            building,
         };
 
         entity
@@ -102,8 +119,7 @@ impl AuthRepositoryInterface for AuthRepository {
         &self,
         email: String,
     ) -> Result<UserAuthEntity, sqlx::Error> {
-        let raw = sqlx::query_as!(
-            RawAuthEntity,
+        let raw = sqlx::query(
             r#"
             select 
                 "user"."id" as "user_id",
@@ -111,13 +127,33 @@ impl AuthRepositoryInterface for AuthRepository {
                 "user"."email" as "user_email",
                 "user"."profile_picture" as "user_profile_picture",
                 "user"."is_email_confirmed" as "user_is_email_confirmed",
-                "user"."status" as "user_status: UserStatus",
-                "user"."role" as "user_role"
+                "user"."status" as "user_status",
+                "user"."role" as "user_role",
+                "building"."id" as "building_id",
+                "building"."name" as "building_name",
+                "building"."color" as "building_color",
+                "building"."created_at" as "building_created_at",
+                "building"."updated_at" as "building_updated_at"
             from "user"
+            left join "building" on "building"."id" = "user"."building_id"
             where email = $1
             "#,
-            email,
         )
+        .bind(email)
+        .map(|row: PgRow| RawAuthEntity {
+            user_id: row.get("user_id"),
+            user_name: row.get("user_name"),
+            user_email: row.get("user_email"),
+            user_profile_picture: row.get("user_profile_picture"),
+            user_is_email_confirmed: row.get("user_is_email_confirmed"),
+            user_status: row.get("user_status"),
+            user_role: row.get("user_role"),
+            building_id: row.get("building_id"),
+            building_name: row.get("building_name"),
+            building_color: row.get("building_color"),
+            building_created_at: row.get("building_created_at"),
+            building_updated_at: row.get("building_updated_at"),
+        })
         .fetch_one(&self._db)
         .await?;
 
@@ -125,8 +161,7 @@ impl AuthRepositoryInterface for AuthRepository {
     }
 
     async fn find_one_auth_entity_by_id(&self, id: i32) -> Result<UserAuthEntity, sqlx::Error> {
-        let raw = sqlx::query_as!(
-            RawAuthEntity,
+        let raw = sqlx::query(
             r#"
             select 
                 "user"."id" as "user_id",
@@ -134,13 +169,33 @@ impl AuthRepositoryInterface for AuthRepository {
                 "user"."email" as "user_email",
                 "user"."profile_picture" as "user_profile_picture",
                 "user"."is_email_confirmed" as "user_is_email_confirmed",
-                "user"."status" as "user_status: UserStatus",
-                "user"."role" as "user_role"
+                "user"."status" as "user_status",
+                "user"."role" as "user_role",
+                "building"."id" as "building_id",
+                "building"."name" as "building_name",
+                "building"."color" as "building_color",
+                "building"."created_at" as "building_created_at",
+                "building"."updated_at" as "building_updated_at"
             from "user"
-            where "user"."id" = $1
+            left join "building" on "building"."id" = "user"."building_id"
+            where email = $1
             "#,
-            id,
         )
+        .bind(id)
+        .map(|row: PgRow| RawAuthEntity {
+            user_id: row.get("user_id"),
+            user_name: row.get("user_name"),
+            user_email: row.get("user_email"),
+            user_profile_picture: row.get("user_profile_picture"),
+            user_is_email_confirmed: row.get("user_is_email_confirmed"),
+            user_status: row.get("user_status"),
+            user_role: row.get("user_role"),
+            building_id: row.get("building_id"),
+            building_name: row.get("building_name"),
+            building_color: row.get("building_color"),
+            building_created_at: row.get("building_created_at"),
+            building_updated_at: row.get("building_updated_at"),
+        })
         .fetch_one(&self._db)
         .await?;
 

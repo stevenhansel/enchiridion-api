@@ -34,6 +34,7 @@ pub struct RegisterParams {
     pub password: String,
     pub reason: Option<String>,
     pub role: String,
+    pub building_id: i32,
 }
 
 pub struct LoginParams {
@@ -288,6 +289,7 @@ impl AuthServiceInterface for AuthService {
                 password: hash.to_string(),
                 password_salt: salt,
                 role: params.role,
+                building_id: params.building_id,
             })
             .await
         {
@@ -758,6 +760,7 @@ impl AuthServiceInterface for AuthService {
                 is_email_confirmed: true,
                 status: UserStatus::Approved,
                 registration_reason: None,
+                building_id: 1,
             })
             .await
         {
