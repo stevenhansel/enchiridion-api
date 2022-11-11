@@ -68,4 +68,4 @@ jobs:
       env:
         token: ${{ secrets.WEBHOOK_TOKEN }}
       run:
-        curl --request GET --url https://beesmart.stevenhansel.com/hooks/deploy?token=$token
+        curl --request GET --url https://api.beesmart.stevenhansel.com/hooks/deploy?token=$token
