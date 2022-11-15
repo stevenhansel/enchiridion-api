@@ -6,7 +6,7 @@ use crate::features::{
     announcement::http as announcement_http,
     auth::{http as auth_http, AuthServiceInterface},
     building::http as building_http,
-    device::{http as device_http_dashboard, device_http as device_http_device},
+    device::{device_http as device_http_device, http as device_http_dashboard},
     floor::http as floor_http,
     request::http as request_http,
     role::{http as role_http, ApplicationPermission},
@@ -130,12 +130,6 @@ pub fn dashboard_routes(
                 .service(
                     web::resource("")
                         .guard(guard::Get())
-                        .wrap(
-                            AuthenticationMiddlewareFactory::new(auth_service.clone())
-                                .with_permission(ApplicationPermission::ViewListBuilding)
-                                .with_status(UserStatus::Approved)
-                                .with_require_email_confirmed(true),
-                        )
                         .to(building_http::list_buildings),
                 )
                 .service(
