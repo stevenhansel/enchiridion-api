@@ -110,6 +110,7 @@ pub struct DeviceDetailResponse {
     pub location: String,
     pub active_announcements: i32,
     pub description: String,
+    pub camera_enabled: bool,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -149,6 +150,7 @@ pub async fn get_device_by_id(
         location: result.location.text.into(),
         description: result.description.into(),
         active_announcements: result.active_announcements,
+        camera_enabled: result.camera_enabled,
         created_at: result.created_at.to_rfc3339(),
         updated_at: result.updated_at.to_rfc3339(),
     })

@@ -105,6 +105,7 @@ pub struct DeviceDetailResponse {
     pub building_id: i32,
     pub description: String,
     pub active_announcements: i32,
+    pub camera_enabled: bool,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -179,6 +180,7 @@ pub async fn me(
         building_id: result.building_id,
         description: result.description.into(),
         active_announcements: result.active_announcements,
+        camera_enabled: result.camera_enabled,
         created_at: result.created_at.to_rfc3339(),
         updated_at: result.updated_at.to_rfc3339(),
     })

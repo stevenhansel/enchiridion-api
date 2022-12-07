@@ -18,6 +18,7 @@ pub struct DeviceDetail {
     pub floor_id: i32,
     pub building_id: i32,
     pub description: String,
+    pub camera_enabled: bool,
     pub active_announcements: i32,
     pub access_key_id: String,
     pub secret_access_key: Vec<u8>,
