@@ -25,6 +25,14 @@ pub fn device_routes(
 ) -> Scope {
     web::scope("/device")
         .service(
+            web::resource("/v1/camera")
+                .guard(guard::Put())
+                .wrap(DeviceAuthenticationMiddlewareFactory::new(
+                    device_service.clone(),
+                ))
+                .to(device_http_device::update_camera_enabled),
+        )
+        .service(
             web::resource("/v1/link")
                 .guard(guard::Put())
                 .to(device_http_device::link_device),

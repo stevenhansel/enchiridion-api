@@ -262,3 +262,18 @@ impl std::fmt::Display for UnlinkDeviceError {
         }
     }
 }
+
+pub enum UpdateCameraEnabledError {
+    DeviceNotFound(&'static str),
+    InternalServerError,
+}
+
+impl std::fmt::Display for UpdateCameraEnabledError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            UpdateCameraEnabledError::DeviceNotFound(message) => write!(f, "{}", message),
+            UpdateCameraEnabledError::InternalServerError => write!(f, "Internal Server Error"),
+        }
+    }
+}
+
