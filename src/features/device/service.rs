@@ -19,7 +19,7 @@ use super::{
     DeviceDetail, DeviceRepositoryInterface, GetDeviceAuthCacheError,
     GetDeviceDetailByAccessKeyIdError, GetDeviceDetailByIdError, InsertDeviceParams,
     LinkDeviceError, ListDeviceError, ListDeviceParams, ResyncDeviceError, UnlinkDeviceError,
-    UpdateDeviceError, UpdateDeviceParams,
+    UpdateCameraEnabledError, UpdateDeviceError, UpdateDeviceParams,
 };
 
 pub struct CreateDeviceParams {
@@ -73,9 +73,15 @@ pub trait DeviceServiceInterface {
         &self,
         access_key_id: String,
         secret_access_key: String,
+        camera_enabled: bool,
     ) -> Result<(), LinkDeviceError>;
     async fn unlink(&self, device_id: i32) -> Result<(), UnlinkDeviceError>;
     async fn authenticate(&self, headers: &HeaderMap) -> Result<i32, AuthenticateDeviceError>;
+    async fn update_camera_enabled(
+        &self,
+        device_id: i32,
+        camera_enabled: bool,
+    ) -> Result<(), UpdateCameraEnabledError>;
 }
 
 pub struct DeviceService {
@@ -377,6 +383,7 @@ impl DeviceServiceInterface for DeviceService {
         &self,
         access_key_id: String,
         secret_access_key: String,
+        camera_enabled: bool,
     ) -> Result<(), LinkDeviceError> {
         let device_auth = match self.get_device_auth_cache(access_key_id.clone()).await {
             Ok(cache) => cache,
@@ -416,6 +423,14 @@ impl DeviceServiceInterface for DeviceService {
             return Err(LinkDeviceError::InternalServerError);
         }
 
+        if let Err(_) = self
+            ._device_repository
+            .update_camera_enabled(device_auth.device_id, camera_enabled)
+            .await
+        {
+            return Err(LinkDeviceError::InternalServerError);
+        }
+
         let updated_device = match self.get_device_detail_by_id(device_auth.device_id).await {
             Ok(device) => device,
             Err(e) => match e {
@@ -439,12 +454,15 @@ impl DeviceServiceInterface for DeviceService {
 
         if let Err(_) = self
             ._device_repository
-            .set_auth_cache(access_key_id, DeviceAuthCache {
-                secret_access_key,
-                device_id: updated_device.id,
-                secret_access_key_salt: updated_device.secret_access_key_salt,
-                linked_at: updated_device.linked_at,
-            })
+            .set_auth_cache(
+                access_key_id,
+                DeviceAuthCache {
+                    secret_access_key,
+                    device_id: updated_device.id,
+                    secret_access_key_salt: updated_device.secret_access_key_salt,
+                    linked_at: updated_device.linked_at,
+                },
+            )
             .await
         {
             return Err(LinkDeviceError::InternalServerError);
@@ -555,5 +573,25 @@ impl DeviceServiceInterface for DeviceService {
         }
 
         Ok(device_auth.device_id)
+    }
+
+    async fn update_camera_enabled(
+        &self,
+        device_id: i32,
+        camera_enabled: bool,
+    ) -> Result<(), UpdateCameraEnabledError> {
+        match self
+            ._device_repository
+            .update_camera_enabled(device_id, camera_enabled)
+            .await
+        {
+            Ok(()) => Ok(()),
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => Err(UpdateCameraEnabledError::DeviceNotFound(
+                    "Device not found".into(),
+                )),
+                _ => Err(UpdateCameraEnabledError::InternalServerError),
+            },
+        }
     }
 }

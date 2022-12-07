@@ -7,7 +7,7 @@ use crate::http::{device_middleware, HttpErrorResponse};
 
 use super::{
     DeviceErrorCode, DeviceServiceInterface, GetDeviceDetailByIdError, LinkDeviceError,
-    UnlinkDeviceError,
+    UnlinkDeviceError, UpdateCameraEnabledError,
 };
 
 #[derive(Debug, Deserialize)]
@@ -15,6 +15,7 @@ use super::{
 pub struct LinkDeviceBody {
     pub access_key_id: String,
     pub secret_access_key: String,
+    pub camera_enabled: bool,
 }
 
 pub async fn link_device(
@@ -25,6 +26,7 @@ pub async fn link_device(
         .link(
             body.access_key_id.to_string(),
             body.secret_access_key.to_string(),
+            body.camera_enabled,
         )
         .await
     {
@@ -184,4 +186,43 @@ pub async fn me(
         created_at: result.created_at.to_rfc3339(),
         updated_at: result.updated_at.to_rfc3339(),
     })
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCameraEnabledBody {
+    pub camera_enabled: bool,
+}
+
+pub async fn update_camera_enabled(
+    device_service: web::Data<Arc<dyn DeviceServiceInterface + Send + Sync + 'static>>,
+    auth: device_middleware::DeviceAuthenticationContext,
+    body: web::Json<UpdateCameraEnabledBody>,
+) -> HttpResponse {
+    let device_id = match device_middleware::get_device_id(auth) {
+        Ok(id) => id,
+        Err(e) => return device_middleware::parse_device_authentication_middleware_error(e),
+    };
+
+    if let Err(e) = device_service
+        .update_camera_enabled(device_id, body.camera_enabled)
+        .await
+    {
+        match e {
+            UpdateCameraEnabledError::DeviceNotFound(message) => {
+                return HttpResponse::NotFound().json(HttpErrorResponse::new(
+                    DeviceErrorCode::DeviceNotFound.to_string(),
+                    vec![message.into()],
+                ))
+            }
+            UpdateCameraEnabledError::InternalServerError => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    DeviceErrorCode::InternalServerError.to_string(),
+                    vec![UpdateCameraEnabledError::InternalServerError.to_string()],
+                ))
+            }
+        }
+    }
+
+    HttpResponse::NoContent().finish()
 }

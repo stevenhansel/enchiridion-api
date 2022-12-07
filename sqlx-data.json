@@ -220,6 +220,19 @@
     },
     "query": "\n            update \"request\"\n            set\n                \"approved_by_lsc\" = $2,\n                \"approved_by_bm\" = $3,\n                \"lsc_approver\" = $4,\n                \"bm_approver\" = $5\n            where \"id\" = $1\n            "
   },
+  "77a57101d78108261374a9f1da80264e7eefb2ff24c86a7a608d16af39b28d2d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Bool"
+        ]
+      }
+    },
+    "query": "\n            update \"device\"\n            set \"camera_enabled\" = $2\n            where \"id\" = $1\n            "
+  },
   "7aeb7251fce536b5b6619866698f2b0bcba244ffa4a33507f1e0c5c3560b548d": {
     "describe": {
       "columns": [

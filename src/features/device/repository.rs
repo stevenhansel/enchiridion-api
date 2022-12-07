@@ -48,6 +48,11 @@ pub trait DeviceRepositoryInterface {
         device_id: i32,
     ) -> Result<Vec<i32>, sqlx::Error>;
     async fn update_device_link(&self, device_id: i32, link: bool) -> Result<(), sqlx::Error>;
+    async fn update_camera_enabled(
+        &self,
+        device_id: i32,
+        camera_enabled: bool,
+    ) -> Result<(), sqlx::Error>;
     async fn get_auth_cache(&self, access_key_id: String) -> Result<DeviceAuthCache, RedisError>;
     async fn set_auth_cache(
         &self,
@@ -296,7 +301,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
             linked_at: row.get("linked_at"),
-            camera_enabled: row.get("camera_enabled")
+            camera_enabled: row.get("camera_enabled"),
         })
         .fetch_one(&self._db)
         .await?;
@@ -428,6 +433,30 @@ impl DeviceRepositoryInterface for DeviceRepository {
             .await?
             .rows_affected()
         };
+        if rows_affected == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
+    }
+    async fn update_camera_enabled(
+        &self,
+        device_id: i32,
+        camera_enabled: bool,
+    ) -> Result<(), sqlx::Error> {
+        let rows_affected = sqlx::query!(
+            r#"
+            update "device"
+            set "camera_enabled" = $2
+            where "id" = $1
+            "#,
+            device_id,
+            camera_enabled,
+        )
+        .execute(&self._db)
+        .await?
+        .rows_affected();
+
         if rows_affected == 0 {
             return Err(sqlx::Error::RowNotFound);
         }
