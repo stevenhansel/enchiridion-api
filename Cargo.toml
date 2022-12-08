@@ -30,7 +30,7 @@ password-hash = { version = "0.4.2", features = ["alloc"] }
 argon2 = "0.4"
 rand_core = { version = "0.6", features = ["std"] }
 secrecy = { version = "0.8.0", features = ["serde"] }
-dotenvy = "0.15.3"
+dotenvy = "0.15.6"
 validator = { version = "0.16.0", features = ["derive"] }
 jwt = "0.16.0"
 hmac = "0.12.1"
