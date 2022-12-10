@@ -32,6 +32,8 @@ pub struct ListAnnouncementParams {
 pub struct CreateAnnouncementParams {
     pub title: String,
     pub media: TmpFile,
+    pub media_type: String,
+    pub media_duration: Option<f32>,
     pub start_date: chrono::DateTime<chrono::Utc>,
     pub end_date: chrono::DateTime<chrono::Utc>,
     pub notes: String,
@@ -197,6 +199,8 @@ impl AnnouncementServiceInterface for AnnouncementService {
                 end_date: params.end_date,
                 device_ids: params.device_ids,
                 user_id: params.user_id,
+                media_type: params.media_type,
+                media_duration: params.media_duration,
                 media,
             })
             .await

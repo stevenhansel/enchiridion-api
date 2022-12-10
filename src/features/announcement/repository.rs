@@ -221,6 +221,8 @@ impl FindListAnnouncementParams {
 pub struct InsertAnnouncementParams {
     pub title: String,
     pub media: String,
+    pub media_type: String,
+    pub media_duration: Option<f32>,
     pub start_date: chrono::DateTime<chrono::Utc>,
     pub end_date: chrono::DateTime<chrono::Utc>,
     pub notes: String,
@@ -236,6 +238,8 @@ pub struct ListAnnouncementRow {
     announcement_end_date: chrono::DateTime<chrono::Utc>,
     announcement_status: AnnouncementStatus,
     announcement_media: String,
+    announcement_media_type: String,
+    announcement_media_duration: Option<f32>,
     announcement_created_at: chrono::DateTime<chrono::Utc>,
     announcement_updated_at: chrono::DateTime<chrono::Utc>,
     user_id: i32,
@@ -249,6 +253,8 @@ pub struct AnnouncementDetailRow {
     announcement_end_date: chrono::DateTime<chrono::Utc>,
     announcement_status: AnnouncementStatus,
     announcement_media: String,
+    announcement_media_type: String,
+    announcement_media_duration: Option<f32>,
     announcement_notes: String,
     announcement_created_at: chrono::DateTime<chrono::Utc>,
     announcement_updated_at: chrono::DateTime<chrono::Utc>,
@@ -376,6 +382,8 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 "announcement"."end_date" as "announcement_end_date",
                 "announcement"."status" as "announcement_status",
                 "announcement"."media" as "announcement_media",
+                "announcement"."media_type" as "announcement_media_type",
+                "announcement"."media_duration" as "announcement_media_duration",
                 "announcement"."created_at" as "announcement_created_at",
                 "announcement"."updated_at" as "announcement_updated_at",
                 "user"."id" as "user_id",
@@ -453,6 +461,8 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             announcement_end_date: row.get("announcement_end_date"),
             announcement_status: row.get("announcement_status"),
             announcement_media: row.get("announcement_media"),
+            announcement_media_type: row.get("announcement_media_type"),
+            announcement_media_duration: row.get("announcement_media_duration"),
             announcement_created_at: row.get("announcement_created_at"),
             announcement_updated_at: row.get("announcement_updated_at"),
             user_id: row.get("user_id"),
@@ -480,6 +490,8 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 user_id: row.user_id,
                 user_name: row.user_name,
                 media: row.announcement_media,
+                media_type: row.announcement_media_type,
+                media_duration: row.announcement_media_duration,
                 created_at: row.announcement_created_at,
                 updated_at: row.announcement_updated_at,
             })
@@ -500,6 +512,8 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                     "announcement"."id" as "announcement_id",
                     "announcement"."title" as "announcement_title",
                     "announcement"."media" as "announcement_media",
+                    "announcement"."media_type" as "announcement_media_type",
+                    "announcement"."media_duration" as "announcement_media_duration",
                     "announcement"."notes" as "announcement_notes",
                     "announcement"."status" as "announcement_status",
                     "announcement"."start_date" as "announcement_start_date",
@@ -527,6 +541,8 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             announcement_end_date: row.get("announcement_end_date"),
             announcement_status: row.get("announcement_status"),
             announcement_media: row.get("announcement_media"),
+            announcement_media_type: row.get("announcement_media_type"),
+            announcement_media_duration: row.get("announcement_media_duration"),
             announcement_notes: row.get("announcement_notes"),
             announcement_created_at: row.get("announcement_created_at"),
             announcement_updated_at: row.get("announcement_updated_at"),
@@ -548,6 +564,8 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             id: result[0].announcement_id,
             title: result[0].announcement_title.clone(),
             media: result[0].announcement_media.clone(),
+            media_type: result[0].announcement_media_type.clone(),
+            media_duration: result[0].announcement_media_duration.clone(),
             notes: result[0].announcement_notes.clone(),
             status: result[0].announcement_status.clone(),
             start_date: result[0].announcement_start_date,
@@ -572,12 +590,12 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         let result = sqlx::query!(
             r#"
                 with cte_announcement as (
-                    insert into "announcement" ("title", "media", "start_date", "end_date", "notes", "user_id")
-                    values ($1, $2, $3, $4, $5, $6)
+                    insert into "announcement" ("title", "media", "start_date", "end_date", "notes", "user_id", "media_type", "media_duration")
+                    values ($1, $2, $3, $4, $5, $6, $7, $8)
                     returning "id"
                 )
                 insert into "device_announcement" ("announcement_id", "device_id")
-                values ((select "id" from "cte_announcement"), unnest($7::int4[]))
+                values ((select "id" from "cte_announcement"), unnest($9::int4[]))
                 returning (select "id" from "cte_announcement")
             "#,
             params.title,
@@ -586,6 +604,8 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             params.end_date,
             params.notes,
             params.user_id,
+            params.media_type,
+            params.media_duration,
             &params.device_ids,
         ).fetch_one(&self._db).await?;
 
@@ -664,7 +684,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
 
         Ok(result.into_iter().map(|row| row.id).collect())
     }
-
+    
     async fn find_announcement_device_map(
         &self,
         announcement_ids: Vec<i32>,
