@@ -243,10 +243,6 @@ pub async fn parse_create_announcement_multipart(
         Some(media_type) => media_type,
         None => return Err("media type is required".into()),
     };
-    let media_duration = match media_duration {
-        Some(media_duration) => media_duration,
-        None => return Err("media duration is required".into()),
-    };
 
     Ok(CreateAnnouncementFormData {
         title,
