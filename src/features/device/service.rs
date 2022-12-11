@@ -73,7 +73,6 @@ pub trait DeviceServiceInterface {
         &self,
         access_key_id: String,
         secret_access_key: String,
-        camera_enabled: bool,
     ) -> Result<(), LinkDeviceError>;
     async fn unlink(&self, device_id: i32) -> Result<(), UnlinkDeviceError>;
     async fn authenticate(&self, headers: &HeaderMap) -> Result<i32, AuthenticateDeviceError>;
@@ -383,7 +382,6 @@ impl DeviceServiceInterface for DeviceService {
         &self,
         access_key_id: String,
         secret_access_key: String,
-        camera_enabled: bool,
     ) -> Result<(), LinkDeviceError> {
         let device_auth = match self.get_device_auth_cache(access_key_id.clone()).await {
             Ok(cache) => cache,
@@ -418,14 +416,6 @@ impl DeviceServiceInterface for DeviceService {
         if let Err(_) = self
             ._device_repository
             .update_device_link(device_auth.device_id, true)
-            .await
-        {
-            return Err(LinkDeviceError::InternalServerError);
-        }
-
-        if let Err(_) = self
-            ._device_repository
-            .update_camera_enabled(device_auth.device_id, camera_enabled)
             .await
         {
             return Err(LinkDeviceError::InternalServerError);

@@ -6,6 +6,7 @@ pub mod floor;
 pub mod request;
 pub mod role;
 pub mod user;
+pub mod device_status;
 
 pub use announcement::*;
 pub use auth::*;
@@ -15,3 +16,4 @@ pub use floor::*;
 pub use request::*;
 pub use role::*;
 pub use user::*;
+pub use device_status::*;

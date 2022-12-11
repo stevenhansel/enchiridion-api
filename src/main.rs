@@ -124,6 +124,7 @@ async fn main() -> std::io::Result<()> {
 
     run(
         TcpListener::bind(config.address)?,
+        redis_pool.clone(),
         role_service.clone(),
         building_service.clone(),
         user_service.clone(),
