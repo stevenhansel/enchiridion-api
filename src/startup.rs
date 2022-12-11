@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use tokio::sync::{broadcast, mpsc};
 
+use crate::features::device_status;
 use crate::shutdown::Shutdown;
 use crate::{http::WebServer, scheduler};
 
@@ -15,6 +16,7 @@ use crate::features::{
 
 pub async fn run(
     listener: TcpListener,
+    redis: deadpool_redis::Pool,
     role_service: Arc<dyn RoleServiceInterface + Send + Sync + 'static>,
     building_service: Arc<dyn BuildingServiceInterface + Send + Sync + 'static>,
     user_service: Arc<dyn UserServiceInterface + Send + Sync + 'static>,
@@ -69,6 +71,10 @@ pub async fn run(
 
     tokio::spawn(async move {
         scheduler::run(shutdown_2, shutdown_complete_tx_2, announcement_service_2).await;
+    });
+
+    tokio::spawn(async move {
+        device_status::listener::run(redis).await;
     });
 
     let signal_listener = tokio::spawn(async move {

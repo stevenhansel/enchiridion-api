@@ -15,7 +15,6 @@ use super::{
 pub struct LinkDeviceBody {
     pub access_key_id: String,
     pub secret_access_key: String,
-    pub camera_enabled: bool,
 }
 
 pub async fn link_device(
@@ -26,7 +25,6 @@ pub async fn link_device(
         .link(
             body.access_key_id.to_string(),
             body.secret_access_key.to_string(),
-            body.camera_enabled,
         )
         .await
     {
