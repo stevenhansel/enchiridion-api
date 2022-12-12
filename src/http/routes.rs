@@ -9,6 +9,7 @@ use crate::features::{
     device::{device_http as device_http_device, http as device_http_dashboard},
     device_status,
     floor::http as floor_http,
+    livestream,
     request::http as request_http,
     role::{http as role_http, ApplicationPermission},
     user::{http as user_http, UserStatus},
@@ -380,8 +381,13 @@ pub fn dashboard_routes(
 }
 
 pub fn socket_routes() -> Scope {
-    web::scope("/socket").route(
-        "/v1/device_status/{device_id}",
-        web::get().to(device_status::route::socket_handler)
-    )
+    web::scope("/socket")
+        .route(
+            "/v1/device_status/{device_id}",
+            web::get().to(device_status::route::socket_handler),
+        )
+        .route(
+            "/v1/livestream/{device_id}",
+            web::get().to(livestream::route::socket_handler),
+        )
 }

@@ -5,7 +5,9 @@ use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
 use crate::{
     database::PaginationResult,
-    features::definition::{DeviceStatus, DEVICE_STATUS_REDIS_KEY, TIMEOUT_DURATION_SECS},
+    features::device_status::definition::{
+        DeviceStatus, DEVICE_STATUS_REDIS_KEY, TIMEOUT_DURATION_SECS,
+    },
 };
 
 use super::{
@@ -578,7 +580,7 @@ impl DeviceRepositoryInterface for DeviceRepository {
         let raw_date = if let Some(res) = result {
             res
         } else {
-            return Ok(DeviceStatus::Unregistered)
+            return Ok(DeviceStatus::Unregistered);
         };
 
         let parsed_date = match DateTime::parse_from_rfc3339(raw_date.as_str()) {
