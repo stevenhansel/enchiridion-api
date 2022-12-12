@@ -11,7 +11,7 @@ use regex::Regex;
 
 use crate::{
     database::{DatabaseError, PaginationResult},
-    features::{definition::DeviceStatus, AnnouncementQueueInterface},
+    features::{device_status::definition::DeviceStatus, AnnouncementQueueInterface},
 };
 
 use super::{
