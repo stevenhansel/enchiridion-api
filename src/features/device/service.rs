@@ -11,15 +11,16 @@ use regex::Regex;
 
 use crate::{
     database::{DatabaseError, PaginationResult},
-    features::AnnouncementQueueInterface,
+    features::{definition::DeviceStatus, AnnouncementQueueInterface},
 };
 
 use super::{
-    AuthenticateDeviceError, CreateDeviceError, DeleteDeviceError, Device, DeviceAuthCache,
-    DeviceDetail, DeviceRepositoryInterface, GetDeviceAuthCacheError,
+    AuthenticateDeviceError, CountDeviceParams, CreateDeviceError, DeleteDeviceError, Device,
+    DeviceAuthCache, DeviceDetail, DeviceRepositoryInterface, GetDeviceAuthCacheError,
     GetDeviceDetailByAccessKeyIdError, GetDeviceDetailByIdError, InsertDeviceParams,
-    LinkDeviceError, ListDeviceError, ListDeviceParams, ResyncDeviceError, UnlinkDeviceError,
-    UpdateCameraEnabledError, UpdateDeviceError, UpdateDeviceParams,
+    LinkDeviceError, ListDeviceError, ListDeviceParams, ResyncDeviceError,
+    SynchronizeDeviceStatusError, UnlinkDeviceError, UpdateCameraEnabledError, UpdateDeviceError,
+    UpdateDeviceParams,
 };
 
 pub struct CreateDeviceParams {
@@ -81,6 +82,7 @@ pub trait DeviceServiceInterface {
         device_id: i32,
         camera_enabled: bool,
     ) -> Result<(), UpdateCameraEnabledError>;
+    async fn synchronize_device_status(&self) -> Result<(), SynchronizeDeviceStatusError>;
 }
 
 pub struct DeviceService {
@@ -583,5 +585,29 @@ impl DeviceServiceInterface for DeviceService {
                 _ => Err(UpdateCameraEnabledError::InternalServerError),
             },
         }
+    }
+
+    async fn synchronize_device_status(&self) -> Result<(), SynchronizeDeviceStatusError> {
+        let count = self
+            ._device_repository
+            .count(CountDeviceParams::default())
+            .await?;
+
+        let devices = self
+            ._device_repository
+            .find(ListDeviceParams::default(1, count))
+            .await?;
+
+        for device in devices.contents {
+            let device_status = self._device_repository.get_device_status(device.id).await?;
+
+            if device_status == DeviceStatus::Unregistered {
+                self._device_repository
+                    .set_device_status(device.id, None)
+                    .await?;
+            }
+        }
+
+        Ok(())
     }
 }

@@ -80,7 +80,7 @@ pub async fn run(
 
                 if let Some(event) = schedule.after(&today_jakarta).take(1).next() {
                     println!(
-                        "[info] Announcement Scheduler is starting, next schedule time: {}",
+                        "Announcement Scheduler is starting, next schedule time: {}",
                         event
                     );
                 }
@@ -98,15 +98,15 @@ pub async fn run(
                 }
 
                 println!(
-                    "[info] Announcement scheduler started processing at {}",
+                    "Announcement scheduler started processing at {}",
                     now
                 );
 
                 if let Err(e) = execute_announcement_scheduler(announcement_service.clone()).await {
-                    eprintln!("[error] Something went wrong when executing the announcement scheduler: {}", e);
+                    eprintln!("Something went wrong when executing the announcement scheduler: {}", e);
                 }
 
-                println!("[info] Announcement scheduler finished processing");
+                println!("Announcement scheduler finished processing");
             }
 
             last_tick = Some(now);
@@ -126,7 +126,7 @@ pub async fn run(
         }
 
         let _ = resp_rx.await;
-        println!("[info] Announcement Scheduler finished shutting down");
+        println!("Scheduler finished shutting down");
     });
 
     tokio::try_join!(cron, shutdown_listener).unwrap();

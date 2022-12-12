@@ -7,6 +7,7 @@ use crate::features::{
     auth::{http as auth_http, AuthServiceInterface},
     building::http as building_http,
     device::{device_http as device_http_device, http as device_http_dashboard},
+    device_status,
     floor::http as floor_http,
     request::http as request_http,
     role::{http as role_http, ApplicationPermission},
@@ -376,4 +377,11 @@ pub fn dashboard_routes(
                         .to(user_http::list_user),
                 ),
         )
+}
+
+pub fn socket_routes() -> Scope {
+    web::scope("/socket").route(
+        "/v1/device_status/{device_id}",
+        web::get().to(device_status::route::socket_handler)
+    )
 }
