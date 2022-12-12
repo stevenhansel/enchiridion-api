@@ -7,6 +7,7 @@ use device_status::socket::{StatusMessage, StatusSocketServer};
 use tokio::sync::{broadcast, mpsc};
 
 use crate::features::livestream::definition::{LivestreamDeviceMap, LivestreamSessionMap};
+use crate::features::livestream::service::LivestreamServiceInterface;
 use crate::features::livestream::socket::LivestreamSocketServer;
 use crate::features::{device_status, livestream};
 use crate::shutdown::Shutdown;
@@ -30,6 +31,7 @@ pub async fn run(
     device_service: Arc<dyn DeviceServiceInterface + Send + Sync + 'static>,
     request_service: Arc<dyn RequestServiceInterface + Send + Sync + 'static>,
     announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
+    livestream_service: Arc<dyn LivestreamServiceInterface>,
 ) -> Result<(), std::io::Error> {
     let (notify_shutdown, _) = broadcast::channel::<()>(1);
 
@@ -123,6 +125,7 @@ pub async fn run(
             shutdown_4,
             shutdown_complete_tx_4,
             redis_2,
+            livestream_service,
             livestream_sessions_2,
             livestream_devices_2,
         )
