@@ -41,7 +41,7 @@ hmac = "0.12.1"
 sha2 = "0.10.5"
 chrono = { version = "0.4.22", features = ["serde"] }
 aws-config = "0.48.0"
-aws-sdk-s3 = "0.18.0"
+aws-sdk-s3 = "0.19.0"
 strum = "0.24"
 strum_macros = "0.24"
 signal-hook = { version = "0.3.14", features = ["iterator"] }
