@@ -10,4 +10,4 @@ docker run \
   -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=enchiridion \
   -e POSTGRES_HOST_AUTH_METHOD=trust \
-  postgres
+  timescale/timescaledb-ha:pg14-latest
