@@ -18,7 +18,11 @@ opt-level = 0
 opt-level = 3
 
 [dependencies]
+actix = "0.13.0"
+actix-cors = "0.6.2"
+actix-multipart = "0.4.0"
 actix-web = "4.2.1"
+actix-web-actors = "4.1.0"
 sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls" , "postgres", "offline", "chrono" ] }
 reqwest = "0.11.11"
 tokio = { version = "1.22.0", features = ["macros", "rt-multi-thread"] }
@@ -36,10 +40,8 @@ jwt = "0.16.0"
 hmac = "0.12.1"
 sha2 = "0.10.5"
 chrono = { version = "0.4.22", features = ["serde"] }
-actix-cors = "0.6.2"
 aws-config = "0.48.0"
 aws-sdk-s3 = "0.18.0"
-actix-multipart = "0.4.0"
 strum = "0.24"
 strum_macros = "0.24"
 signal-hook = { version = "0.3.14", features = ["iterator"] }
@@ -51,3 +53,4 @@ regex = "1.6.0"
 lazy_static = "1.4.0"
 deadpool-redis = { version = "0.10.2" }
 redis = { version = "0.21", default-features = false, features = ["acl", "aio", "script", "geospatial", "streams"] }
+thiserror = "1.0.37"

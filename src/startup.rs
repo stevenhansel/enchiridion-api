@@ -1,6 +1,10 @@
+use std::collections::{HashMap, HashSet};
 use std::net::TcpListener;
-use std::sync::Arc;
+use std::process;
+use std::sync::{Arc, Mutex};
 
+use actix::{Actor, Recipient};
+use device_status::socket::{StatusMessage, StatusSocketServer};
 use tokio::sync::{broadcast, mpsc};
 
 use crate::features::device_status;
@@ -30,13 +34,35 @@ pub async fn run(
 
     let shutdown_1 = Shutdown::new(notify_shutdown.subscribe());
     let shutdown_2 = Shutdown::new(notify_shutdown.subscribe());
+    let shutdown_3 = Shutdown::new(notify_shutdown.subscribe());
 
     let (shutdown_complete_tx, mut shutdown_complete_rx) = mpsc::channel::<()>(1);
     let shutdown_complete_tx_1 = shutdown_complete_tx.clone();
     let shutdown_complete_tx_2 = shutdown_complete_tx.clone();
+    let shutdown_complete_tx_3 = shutdown_complete_tx.clone();
 
     let announcement_service_1 = announcement_service.clone();
     let announcement_service_2 = announcement_service.clone();
+
+    let auth_service_1 = auth_service.clone();
+    let auth_service_2 = auth_service.clone();
+
+    let device_service_1 = device_service.clone();
+    let device_service_2 = device_service.clone();
+
+    let device_status_sessions: Arc<Mutex<HashMap<usize, Recipient<StatusMessage>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+    let device_status_devices: Arc<Mutex<HashMap<i32, HashSet<usize>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+
+    let device_status_sessions_1 = device_status_sessions.clone();
+    let device_status_sessions_2 = device_status_sessions.clone();
+
+    let device_status_devices_1 = device_status_devices.clone();
+    let device_status_devices_2 = device_status_devices.clone();
+
+    let device_status_socket_srv =
+        StatusSocketServer::new(device_status_sessions_1, device_status_devices_1).start();
 
     tokio::spawn(async move {
         let server = match WebServer::build(
@@ -44,27 +70,22 @@ pub async fn run(
             role_service,
             building_service,
             user_service,
-            auth_service,
+            auth_service_1,
             floor_service,
-            device_service,
+            device_service_1,
             request_service,
             announcement_service_1,
+            device_status_socket_srv,
         ) {
             Ok(server) => server,
             Err(e) => {
-                eprintln!(
-                    "[error] Something went wrong when building the server: {:?}",
-                    e
-                );
+                eprintln!("Something went wrong when building the server: {:?}", e);
                 return;
             }
         };
 
         if let Err(e) = server.run(shutdown_1, shutdown_complete_tx_1).await {
-            eprintln!(
-                "[error] Something went wrong when running the server: {:?}",
-                e
-            );
+            eprintln!("Something went wrong when running the server: {:?}", e);
             return;
         }
     });
@@ -74,8 +95,34 @@ pub async fn run(
     });
 
     tokio::spawn(async move {
-        device_status::listener::run(redis).await;
+        device_status::listener::run(
+            shutdown_3,
+            shutdown_complete_tx_3,
+            redis,
+            device_status_sessions_2,
+            device_status_devices_2,
+        )
+        .await;
     });
+
+    auth_service_2
+        .seed_default_user()
+        .await
+        .unwrap_or_else(|e| {
+            println!("Something when wrong when seeding the default user: {}", e);
+            process::exit(1);
+        });
+
+    device_service_2
+        .synchronize_device_status()
+        .await
+        .unwrap_or_else(|e| {
+            println!(
+                "Something when wrong when synchronizing the device status: {:?}",
+                e
+            );
+            process::exit(1);
+        });
 
     let signal_listener = tokio::spawn(async move {
         tokio::signal::ctrl_c().await.unwrap();

@@ -1,10 +1,17 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Duration, Utc};
 use deadpool_redis::redis::{cmd, RedisError};
 use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
-use crate::database::PaginationResult;
+use crate::{
+    database::PaginationResult,
+    features::definition::{DeviceStatus, DEVICE_STATUS_REDIS_KEY, TIMEOUT_DURATION_SECS},
+};
 
-use super::{Device, DeviceAuthCache, DeviceDetail, DeviceDetailLocation, ListDeviceParams};
+use super::{
+    CountDeviceParams, Device, DeviceAuthCache, DeviceDetail, DeviceDetailLocation,
+    ListDeviceParams,
+};
 
 pub struct InsertDeviceParams {
     pub name: String,
@@ -32,6 +39,7 @@ pub struct ListDeviceRow {
 
 #[async_trait]
 pub trait DeviceRepositoryInterface {
+    async fn count(&self, params: CountDeviceParams) -> Result<i32, sqlx::Error>;
     async fn find(&self, params: ListDeviceParams)
         -> Result<PaginationResult<Device>, sqlx::Error>;
     async fn find_one(&self, device_id: i32) -> Result<DeviceDetail, sqlx::Error>;
@@ -60,6 +68,12 @@ pub trait DeviceRepositoryInterface {
         cache: DeviceAuthCache,
     ) -> Result<(), RedisError>;
     async fn del_auth_cache(&self, access_key_id: String) -> Result<(), RedisError>;
+    async fn get_device_status(&self, device_id: i32) -> Result<DeviceStatus, RedisError>;
+    async fn set_device_status(
+        &self,
+        device_id: i32,
+        timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<(), RedisError>;
 }
 
 pub struct DeviceRepository {
@@ -79,6 +93,37 @@ impl DeviceRepository {
 
 #[async_trait]
 impl DeviceRepositoryInterface for DeviceRepository {
+    async fn count(&self, params: CountDeviceParams) -> Result<i32, sqlx::Error> {
+        let result = sqlx::query(
+        r#"
+            select
+                cast(count("device".*) as integer) as "count"
+            from "device"
+            join "floor" on "floor"."id" = "device"."floor_id"
+            join "building" on "building"."id" = "floor"."building_id"
+            where 
+                (
+                    $1::text is null or 
+                    "device"."id" = cast(
+                        (coalesce(nullif(regexp_replace($1, '[^0-9]+', '', 'g'), ''), '0')) as integer    
+                    ) or
+                    "device"."name" ilike concat('%', $1, '%')
+                ) and
+                ($2::integer is null or "building"."id" = $2) and
+                ($3::integer is null or "floor"."id" = $3) and
+                "device"."deleted_at" is null
+        "#,
+        )
+        .bind(params.query)
+        .bind(params.building_id)
+        .bind(params.floor_id)
+        .map(|row: PgRow| row.get("count"))
+        .fetch_one(&self._db)
+        .await?;
+
+        Ok(result)
+    }
+
     async fn find(
         &self,
         params: ListDeviceParams,
@@ -512,6 +557,71 @@ impl DeviceRepositoryInterface for DeviceRepository {
 
         cmd("DEL")
             .arg(&[self.device_auth_key_builder(access_key_id)])
+            .query_async::<_, ()>(&mut conn)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn get_device_status(&self, device_id: i32) -> Result<DeviceStatus, RedisError> {
+        let mut conn = self
+            ._redis
+            .get()
+            .await
+            .expect("Cannot get redis connection");
+
+        let result = cmd("HGET")
+            .arg(&[DEVICE_STATUS_REDIS_KEY, device_id.to_string().as_str()])
+            .query_async::<_, Option<String>>(&mut conn)
+            .await?;
+
+        let raw_date = if let Some(res) = result {
+            res
+        } else {
+            return Ok(DeviceStatus::Unregistered)
+        };
+
+        let parsed_date = match DateTime::parse_from_rfc3339(raw_date.as_str()) {
+            Ok(date) => Some(date),
+            Err(_) => None,
+        };
+
+        if let Some(date) = parsed_date {
+            let now = Utc::now();
+
+            if date + Duration::seconds(TIMEOUT_DURATION_SECS) < now {
+                return Ok(DeviceStatus::Disconnected);
+            }
+        } else {
+            return Ok(DeviceStatus::Unregistered);
+        }
+
+        return Ok(DeviceStatus::Connected);
+    }
+
+    async fn set_device_status(
+        &self,
+        device_id: i32,
+        timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<(), RedisError> {
+        let mut conn = self
+            ._redis
+            .get()
+            .await
+            .expect("Cannot get redis connection");
+
+        let value = if let Some(date) = timestamp {
+            date.to_rfc3339()
+        } else {
+            String::new()
+        };
+
+        cmd("HSET")
+            .arg(&[
+                DEVICE_STATUS_REDIS_KEY,
+                device_id.to_string().as_str(),
+                value.as_str(),
+            ])
             .query_async::<_, ()>(&mut conn)
             .await?;
 

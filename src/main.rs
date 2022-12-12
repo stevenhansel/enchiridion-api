@@ -1,6 +1,6 @@
+use std::env;
 use std::net::TcpListener;
 use std::sync::Arc;
-use std::{env, process};
 
 use aws_config::meta::region::RegionProviderChain;
 use secrecy::ExposeSecret;
@@ -12,7 +12,7 @@ use enchiridion_api::{
     email,
     features::{
         announcement::{AnnouncementQueue, AnnouncementRepository, AnnouncementService},
-        auth::{AuthRepository, AuthService, AuthServiceInterface, SeedDefaultUserError},
+        auth::{AuthRepository, AuthService},
         building::{BuildingRepository, BuildingService},
         device::{DeviceRepository, DeviceService},
         floor::{FloorRepository, FloorService},
@@ -23,7 +23,7 @@ use enchiridion_api::{
     startup::run,
 };
 
-#[tokio::main(flavor = "current_thread")]
+#[actix_web::main(flavor = "current_thread")]
 async fn main() -> std::io::Result<()> {
     let environment = match env::var("ENVIRONMENT") {
         Ok(env) => env,
@@ -113,14 +113,6 @@ async fn main() -> std::io::Result<()> {
         request_service.clone(),
         cloud_storage,
     ));
-
-    auth_service
-        .seed_default_user()
-        .await
-        .unwrap_or_else(|e| match e {
-            SeedDefaultUserError::InternalServerError => process::exit(1),
-            _ => {}
-        });
 
     run(
         TcpListener::bind(config.address)?,
