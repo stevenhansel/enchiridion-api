@@ -719,9 +719,7 @@ impl AuthServiceInterface for AuthService {
             .await
         {
             Ok(_) => {
-                return Err(SeedDefaultUserError::EmailAlreadyExists(
-                    "Default user already exists",
-                ))
+                return Ok(()) 
             }
             Err(e) => match e {
                 sqlx::Error::RowNotFound => {}

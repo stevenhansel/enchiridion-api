@@ -1,6 +1,6 @@
+use std::{env, process};
 use std::net::TcpListener;
 use std::sync::Arc;
-use std::{env, process};
 
 use aws_config::meta::region::RegionProviderChain;
 use secrecy::ExposeSecret;
@@ -12,18 +12,19 @@ use enchiridion_api::{
     email,
     features::{
         announcement::{AnnouncementQueue, AnnouncementRepository, AnnouncementService},
-        auth::{AuthRepository, AuthService, AuthServiceInterface, SeedDefaultUserError},
+        auth::{AuthRepository, AuthService},
         building::{BuildingRepository, BuildingService},
         device::{DeviceRepository, DeviceService},
         floor::{FloorRepository, FloorService},
         request::{RequestRepository, RequestService},
         role::RoleService,
         user::{UserRepository, UserService},
+        AuthServiceInterface, DeviceServiceInterface,
     },
     startup::run,
 };
 
-#[tokio::main(flavor = "current_thread")]
+#[actix_web::main(flavor = "current_thread")]
 async fn main() -> std::io::Result<()> {
     let environment = match env::var("ENVIRONMENT") {
         Ok(env) => env,
@@ -114,16 +115,25 @@ async fn main() -> std::io::Result<()> {
         cloud_storage,
     ));
 
-    auth_service
-        .seed_default_user()
+    auth_service.seed_default_user().await.unwrap_or_else(|e| {
+        println!("Something when wrong when seeding the default user: {}", e);
+        process::exit(1);
+    });
+
+    device_service
+        .synchronize_device_status()
         .await
-        .unwrap_or_else(|e| match e {
-            SeedDefaultUserError::InternalServerError => process::exit(1),
-            _ => {}
+        .unwrap_or_else(|e| {
+            println!(
+                "Something when wrong when synchronizing the device status: {:?}",
+                e
+            );
+            process::exit(1);
         });
 
     run(
         TcpListener::bind(config.address)?,
+        redis_pool.clone(),
         role_service.clone(),
         building_service.clone(),
         user_service.clone(),
