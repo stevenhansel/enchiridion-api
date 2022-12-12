@@ -10,7 +10,7 @@ use super::socket::LivestreamMessage;
 
 pub const DEVICE_LIVESTREAM_QUEUE_NAME: &'static str = "device_livestream";
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct LivestreamMessagePayload {
     pub timestamp: chrono::DateTime<chrono::FixedOffset>,

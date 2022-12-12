@@ -1,8 +1,10 @@
-use std::{env, process};
 use std::net::TcpListener;
 use std::sync::Arc;
+use std::{env, process};
 
 use aws_config::meta::region::RegionProviderChain;
+use enchiridion_api::features::livestream::repository::LivestreamRepository;
+use enchiridion_api::features::livestream::service::LivestreamService;
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
@@ -83,6 +85,7 @@ async fn main() -> std::io::Result<()> {
     let device_repository = Arc::new(DeviceRepository::new(pool.clone(), redis_pool.clone()));
     let announcement_repository = Arc::new(AnnouncementRepository::new(pool.clone()));
     let request_repository = Arc::new(RequestRepository::new(pool.clone()));
+    let livestream_repository = Arc::new(LivestreamRepository::new(pool.clone()));
 
     let announcement_queue = Arc::new(AnnouncementQueue::new(redis_pool.clone()));
 
@@ -114,6 +117,7 @@ async fn main() -> std::io::Result<()> {
         request_service.clone(),
         cloud_storage,
     ));
+    let livestream_service = Arc::new(LivestreamService::new(livestream_repository));
 
     auth_service.seed_default_user().await.unwrap_or_else(|e| {
         println!("Something when wrong when seeding the default user: {}", e);
@@ -142,6 +146,7 @@ async fn main() -> std::io::Result<()> {
         device_service.clone(),
         request_service.clone(),
         announcement_service.clone(),
+        livestream_service.clone(),
     )
     .await
 }

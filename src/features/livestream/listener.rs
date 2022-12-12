@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use chrono::DateTime;
 use tokio::sync::{mpsc, oneshot};
 
@@ -9,6 +11,7 @@ use crate::{
 
 use super::{
     definition::{LivestreamDeviceMap, LivestreamMessagePayload, LivestreamSessionMap},
+    service::LivestreamServiceInterface,
     socket::LivestreamMessage,
 };
 
@@ -16,6 +19,7 @@ pub async fn run(
     mut shutdown: Shutdown,
     _sender: mpsc::Sender<()>,
     redis: deadpool_redis::Pool,
+    livestream_service: Arc<dyn LivestreamServiceInterface>,
     sessions: LivestreamSessionMap,
     devices: LivestreamDeviceMap,
 ) {
@@ -38,11 +42,20 @@ pub async fn run(
                 Err(_) => continue,
             };
 
+            let livestream_service = livestream_service.clone();
+
             let sessions = sessions.clone();
             let devices = devices.clone();
 
             let message_id = if let Some(message_id) = pending_message_id {
-                handle_pending_message(&mut consumer, sessions, devices, message_id).await
+                handle_pending_message(
+                    &mut consumer,
+                    livestream_service,
+                    sessions,
+                    devices,
+                    message_id,
+                )
+                .await
             } else {
                 #[allow(unused_assignments)]
                 let mut message_id: Option<String> = None;
@@ -52,7 +65,7 @@ pub async fn run(
                         break;
                     },
                     data = consumer.consume_raw() => {
-                        message_id = handle_upcoming_message(data, sessions, devices).await;
+                        message_id = handle_upcoming_message(data, livestream_service, sessions, devices).await;
                     },
                 }
 
@@ -88,6 +101,7 @@ pub async fn run(
 
 async fn handle_pending_message(
     consumer: &mut Consumer,
+    livestream_service: Arc<dyn LivestreamServiceInterface>,
     sessions: LivestreamSessionMap,
     devices: LivestreamDeviceMap,
     message_id: String,
@@ -111,6 +125,10 @@ async fn handle_pending_message(
         None => return Some(message_id.to_string()),
     };
 
+    if let Err(_) = livestream_service.insert(livestream_message.clone()).await {
+        return Some(message_id.to_string());
+    };
+
     publish(sessions, devices, livestream_message);
 
     return Some(message_id.to_string());
@@ -118,6 +136,7 @@ async fn handle_pending_message(
 
 async fn handle_upcoming_message(
     result: Result<Vec<(String, String)>, ConsumerError>,
+    livestream_service: Arc<dyn LivestreamServiceInterface>,
     sessions: LivestreamSessionMap,
     devices: LivestreamDeviceMap,
 ) -> Option<String> {
@@ -135,6 +154,10 @@ async fn handle_upcoming_message(
     let livestream_message = match parse_livestream_message(payload.to_string()) {
         Some(msg) => msg,
         None => return Some(message_id.to_string()),
+    };
+
+    if let Err(_) = livestream_service.insert(livestream_message.clone()).await {
+        return Some(message_id.to_string());
     };
 
     publish(sessions, devices, livestream_message);
