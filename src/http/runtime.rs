@@ -87,7 +87,7 @@ impl WebServer {
     ) -> Result<(), std::io::Error> {
         let handle = self.get_handle();
 
-        let runtime = tokio::spawn(async move {
+        let runtime = actix_web::rt::spawn(async move {
             println!("Server is starting on http://localhost:8080");
 
             if let Err(e) = self.server.await {
@@ -96,7 +96,7 @@ impl WebServer {
             }
         });
 
-        let shutdown_listener = tokio::spawn(async move {
+        let shutdown_listener = actix_web::rt::spawn(async move {
             let _ = shutdown.recv().await;
 
             handle.stop(true).await;
