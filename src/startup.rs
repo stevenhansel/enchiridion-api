@@ -76,7 +76,7 @@ pub async fn run(
     let redis_1 = redis.clone();
     let redis_2 = redis.clone();
 
-    tokio::spawn(async move {
+    actix_web::rt::spawn(async move {
         let server = match WebServer::build(
             listener,
             role_service,
@@ -103,11 +103,11 @@ pub async fn run(
         }
     });
 
-    tokio::spawn(async move {
+    actix_web::rt::spawn(async move {
         scheduler::run(shutdown_2, shutdown_complete_tx_2, announcement_service_2).await;
     });
 
-    tokio::spawn(async move {
+    actix_web::rt::spawn(async move {
         device_status::listener::run(
             shutdown_3,
             shutdown_complete_tx_3,
@@ -118,7 +118,7 @@ pub async fn run(
         .await;
     });
 
-    tokio::spawn(async move {
+    actix_web::rt::spawn(async move {
         livestream::listener::run(
             shutdown_4,
             shutdown_complete_tx_4,
@@ -129,8 +129,8 @@ pub async fn run(
         .await;
     });
 
-    let signal_listener = tokio::spawn(async move {
-        tokio::signal::ctrl_c().await.unwrap();
+    let signal_listener = actix_web::rt::spawn(async move {
+        actix_web::rt::signal::ctrl_c().await.unwrap();
     });
 
     signal_listener.await.unwrap();

@@ -22,7 +22,7 @@ pub async fn run(
     let (tx, mut rx) = mpsc::channel::<oneshot::Sender<bool>>(32);
     let tx_2 = tx.clone();
 
-    let listener = tokio::spawn(async move {
+    let listener = actix_web::rt::spawn(async move {
         let mut consumer = Consumer::new(redis, DEVICE_LIVESTREAM_QUEUE_NAME.to_string());
 
         println!("Livestream consumer has started");
@@ -67,7 +67,7 @@ pub async fn run(
         }
     });
 
-    let shutdown_listener = tokio::spawn(async move {
+    let shutdown_listener = actix_web::rt::spawn(async move {
         let _ = shutdown.recv().await;
 
         let (resp_tx, resp_rx) = oneshot::channel::<bool>();

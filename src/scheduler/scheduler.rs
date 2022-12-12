@@ -25,17 +25,17 @@ pub async fn execute_announcement_scheduler(
     let announcement_service_2 = announcement_service.clone();
     let announcement_service_3 = announcement_service.clone();
 
-    let waiting_for_approval_handler = tokio::spawn(async move {
+    let waiting_for_approval_handler = actix_web::rt::spawn(async move {
         announcement_service_1
             .handle_waiting_for_approval_announcements(now)
             .await
     });
-    let waiting_for_sync_handler = tokio::spawn(async move {
+    let waiting_for_sync_handler = actix_web::rt::spawn(async move {
         announcement_service_2
             .handle_waiting_for_sync_announcements(now)
             .await
     });
-    let active_handler = tokio::spawn(async move {
+    let active_handler = actix_web::rt::spawn(async move {
         announcement_service_3
             .handle_active_announcements(now)
             .await
@@ -60,7 +60,7 @@ pub async fn run(
     let (tx, mut rx) = mpsc::channel::<oneshot::Sender<bool>>(32);
     let tx_2 = tx.clone();
 
-    let cron = tokio::spawn(async move {
+    let cron = actix_web::rt::spawn(async move {
         let schedule = Schedule::from_str("0 0 0 * * *").unwrap();
         let mut last_tick: Option<chrono::DateTime<Tz>> = None;
 
@@ -113,7 +113,7 @@ pub async fn run(
         }
     });
 
-    let shutdown_listener = tokio::spawn(async move {
+    let shutdown_listener = actix_web::rt::spawn(async move {
         let _ = shutdown.recv().await;
 
         let (resp_tx, resp_rx) = oneshot::channel::<bool>();
