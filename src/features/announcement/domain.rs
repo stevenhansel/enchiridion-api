@@ -10,7 +10,7 @@ pub struct Announcement {
     pub user_name: String,
     pub media: String,
     pub media_type: String,
-    pub media_duration: Option<f32>,
+    pub media_duration: Option<f64>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -20,7 +20,7 @@ pub struct AnnouncementDetail {
     pub title: String,
     pub media: String,
     pub media_type: String,
-    pub media_duration: Option<f32>,
+    pub media_duration: Option<f64>,
     pub notes: String,
     pub status: AnnouncementStatus,
     pub start_date: chrono::DateTime<chrono::Utc>,

@@ -33,7 +33,7 @@ pub struct CreateAnnouncementParams {
     pub title: String,
     pub media: TmpFile,
     pub media_type: String,
-    pub media_duration: Option<f32>,
+    pub media_duration: Option<f64>,
     pub start_date: chrono::DateTime<chrono::Utc>,
     pub end_date: chrono::DateTime<chrono::Utc>,
     pub notes: String,
@@ -127,7 +127,8 @@ impl AnnouncementServiceInterface for AnnouncementService {
 
         let mut announcements = match self._announcement_repository.find(repo_params).await {
             Ok(result) => result,
-            Err(_) => {
+            Err(e) => {
+                eprintln!("e: {:?}", e);
                 return Err(ListAnnouncementError::InternalServerError);
             }
         };
@@ -353,11 +354,19 @@ impl AnnouncementServiceInterface for AnnouncementService {
             Err(_) => return Err(HandleScheduledAnnouncementsError::InternalServerError),
         };
 
-        let announcement_ids: Vec<i32> = announcements
+        let announcement_data: Vec<(i32, String, Option<f64>)> = announcements
             .contents
             .into_iter()
-            .map(|announcement| announcement.id)
+            .map(|announcement| {
+                (
+                    announcement.id,
+                    announcement.media_type,
+                    announcement.media_duration,
+                )
+            })
             .collect();
+
+        let announcement_ids: Vec<i32> = announcement_data.iter().map(|data| data.0).collect();
 
         let announcement_device_map = match self
             ._announcement_repository
@@ -368,7 +377,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             Err(_) => return Err(HandleScheduledAnnouncementsError::InternalServerError),
         };
 
-        for id in &announcement_ids {
+        for (id, media_type, media_duration) in &announcement_data {
             let device_ids = match announcement_device_map.get(id) {
                 Some(ids) => ids,
                 None => return Err(HandleScheduledAnnouncementsError::InternalServerError),
@@ -376,7 +385,12 @@ impl AnnouncementServiceInterface for AnnouncementService {
 
             if let Err(_) = self
                 ._announcement_queue
-                .create(device_ids.clone(), *id)
+                .create(
+                    device_ids.clone(),
+                    *id,
+                    media_type.to_string(),
+                    *media_duration,
+                )
                 .await
             {
                 return Err(HandleScheduledAnnouncementsError::InternalServerError);

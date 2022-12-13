@@ -29,7 +29,7 @@ pub struct CreateAnnouncementFormData {
     pub title: String,
     pub media: TmpFile,
     pub media_type: String,
-    pub media_duration: Option<f32>,
+    pub media_duration: Option<f64>,
     pub start_date: chrono::DateTime<chrono::Utc>,
     pub end_date: chrono::DateTime<chrono::Utc>,
     pub notes: String,
@@ -46,7 +46,7 @@ pub async fn parse_create_announcement_multipart(
     let mut device_ids: Option<Vec<i32>> = None;
     let mut media: Option<TmpFile> = None;
     let mut media_type: Option<String> = None;
-    let mut media_duration: Option<f32> = None;
+    let mut media_duration: Option<f64> = None;
 
     while let Some(item) = payload.next().await {
         let mut field = match item {
@@ -208,9 +208,10 @@ pub async fn parse_create_announcement_multipart(
                 chunks.push(chunk);
             }
 
-            media_duration = match std::str::from_utf8(&chunks[0]) {
-                Ok(media_duration) => Some(media_duration.to_string().parse::<f32>().unwrap()),
-                Err(e) => return Err(e.to_string()),
+            if let Ok(duration) = std::str::from_utf8(&chunks[0]) {
+                if duration != "null" {
+                    media_duration = Some(duration.to_string().parse::<f64>().unwrap());
+                }
             }
         }
     }
@@ -482,7 +483,7 @@ pub struct GetAnnouncementDetailResponse {
     created_at: String,
     updated_at: String,
     media_type: String,
-    media_duration: Option<f32>,
+    media_duration: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
