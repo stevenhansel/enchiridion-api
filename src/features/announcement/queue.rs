@@ -33,15 +33,18 @@ pub struct DeviceSynchronizationParams {
     action: AnnouncementSyncAction,
     announcement_id: Option<i32>,
     announcement_ids: Option<Vec<i32>>,
+    media_type: Option<String>,
+    media_duration: Option<f64>,
 }
 
 impl DeviceSynchronizationParams {
     pub fn new(action: AnnouncementSyncAction) -> Self {
         DeviceSynchronizationParams {
             action,
-
             announcement_id: None,
             announcement_ids: None,
+            media_type: None,
+            media_duration: None,
         }
     }
 
@@ -54,6 +57,16 @@ impl DeviceSynchronizationParams {
         self.announcement_ids = Some(ids);
         self
     }
+
+    pub fn media_type (mut self, media_type: String) -> Self {
+        self.media_type = Some(media_type);
+        self
+    }
+
+    pub fn media_duration(mut self, media_duration: f64) -> Self {
+        self.media_duration = Some(media_duration);
+        self
+    }
 }
 
 #[async_trait]
@@ -62,6 +75,8 @@ pub trait AnnouncementQueueInterface {
         &self,
         device_ids: Vec<i32>,
         announcement_id: i32,
+        media_type: String,
+        media_duration: Option<f64>,
     ) -> Result<(), AnnouncementQueueError>;
     async fn delete(
         &self,
@@ -103,9 +118,15 @@ impl AnnouncementQueueInterface for AnnouncementQueue {
         &self,
         device_ids: Vec<i32>,
         announcement_id: i32,
+        media_type: String,
+        media_duration: Option<f64>,
     ) -> Result<(), AnnouncementQueueError> {
-        let params = DeviceSynchronizationParams::new(AnnouncementSyncAction::Create)
-            .announcement_id(announcement_id);
+        let mut params = DeviceSynchronizationParams::new(AnnouncementSyncAction::Create)
+            .announcement_id(announcement_id)
+            .media_type(media_type);
+        if let Some(duration) = media_duration {
+            params = params.media_duration(duration);
+        }
 
         let payload = match serde_json::to_string(&params) {
             Ok(payload) => payload,

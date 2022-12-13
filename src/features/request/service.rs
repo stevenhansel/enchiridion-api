@@ -395,7 +395,12 @@ impl RequestServiceInterface for RequestService {
 
                 if let Err(_) = self
                     ._announcement_queue
-                    .create(device_ids, announcement.id)
+                    .create(
+                        device_ids,
+                        announcement.id,
+                        announcement.media_type,
+                        announcement.media_duration,
+                    )
                     .await
                 {
                     return Err(UpdateRequestApprovalError::InternalServerError);
@@ -592,7 +597,12 @@ impl RequestServiceInterface for RequestService {
 
             if let Err(_) = self
                 ._announcement_queue
-                .create(need_to_sync_ids.clone(), announcement.id)
+                .create(
+                    need_to_sync_ids.clone(),
+                    announcement.id,
+                    announcement.media_type,
+                    announcement.media_duration,
+                )
                 .await
             {
                 return Err(UpdateRequestApprovalError::InternalServerError);

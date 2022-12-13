@@ -28,6 +28,8 @@ use super::{
 pub struct CreateAnnouncementFormData {
     pub title: String,
     pub media: TmpFile,
+    pub media_type: String,
+    pub media_duration: Option<f64>,
     pub start_date: chrono::DateTime<chrono::Utc>,
     pub end_date: chrono::DateTime<chrono::Utc>,
     pub notes: String,
@@ -43,6 +45,8 @@ pub async fn parse_create_announcement_multipart(
     let mut notes: Option<String> = None;
     let mut device_ids: Option<Vec<i32>> = None;
     let mut media: Option<TmpFile> = None;
+    let mut media_type: Option<String> = None;
+    let mut media_duration: Option<f64> = None;
 
     while let Some(item) = payload.next().await {
         let mut field = match item {
@@ -178,6 +182,37 @@ pub async fn parse_create_announcement_multipart(
             };
 
             media = Some(tmp);
+        } else if field.name() == "media_type" {
+            let mut chunks: Vec<Bytes> = vec![];
+            while let Some(chunk) = field.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(e) => return Err(e.to_string()),
+                };
+
+                chunks.push(chunk);
+            }
+
+            media_type = match std::str::from_utf8(&chunks[0]) {
+                Ok(media_type) => Some(media_type.to_string()),
+                Err(e) => return Err(e.to_string()),
+            }
+        } else if field.name() == "media_duration" {
+            let mut chunks: Vec<Bytes> = vec![];
+            while let Some(chunk) = field.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(e) => return Err(e.to_string()),
+                };
+
+                chunks.push(chunk);
+            }
+
+            if let Ok(duration) = std::str::from_utf8(&chunks[0]) {
+                if duration != "null" {
+                    media_duration = Some(duration.to_string().parse::<f64>().unwrap());
+                }
+            }
         }
     }
 
@@ -205,6 +240,10 @@ pub async fn parse_create_announcement_multipart(
         Some(media) => media,
         None => return Err("media is required".into()),
     };
+    let media_type = match media_type {
+        Some(media_type) => media_type,
+        None => return Err("media type is required".into()),
+    };
 
     Ok(CreateAnnouncementFormData {
         title,
@@ -213,6 +252,8 @@ pub async fn parse_create_announcement_multipart(
         notes,
         device_ids,
         media,
+        media_type,
+        media_duration,
     })
 }
 
@@ -257,6 +298,8 @@ pub async fn create_announcement(
         .create_announcement(CreateAnnouncementParams {
             title: form.title.clone(),
             media: form.media.to_owned(),
+            media_type: form.media_type,
+            media_duration: form.media_duration,
             start_date: form.start_date,
             end_date: form.end_date,
             notes: form.notes.clone(),
@@ -439,6 +482,8 @@ pub struct GetAnnouncementDetailResponse {
     devices: Vec<GetAnnouncementDetailDevice>,
     created_at: String,
     updated_at: String,
+    media_type: String,
+    media_duration: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -486,6 +531,8 @@ pub async fn get_announcement_detail(
         id: result.id,
         title: result.title,
         media: result.media,
+        media_type: result.media_type,
+        media_duration: result.media_duration,
         notes: result.notes,
         status: result.status.object(),
         author: AnnouncementAuthorObject {
