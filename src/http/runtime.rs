@@ -1,5 +1,6 @@
 use std::{net::TcpListener, sync::Arc};
 
+use actix::Addr;
 use actix_cors::Cors;
 use actix_web::{
     dev::{Server, ServerHandle},
@@ -11,13 +12,17 @@ use crate::{
     features::{
         announcement::AnnouncementServiceInterface, auth::AuthServiceInterface,
         building::BuildingServiceInterface, device::DeviceServiceInterface,
-        floor::FloorServiceInterface, request::RequestServiceInterface, role::RoleServiceInterface,
-        user::UserServiceInterface,
+        device_status::socket::StatusSocketServer, floor::FloorServiceInterface,
+        livestream::socket::LivestreamSocketServer, request::RequestServiceInterface,
+        role::RoleServiceInterface, user::UserServiceInterface,
     },
     shutdown::Shutdown,
 };
 
-use super::routes::{dashboard_routes, device_routes};
+use super::{
+    routes::{dashboard_routes, device_routes},
+    socket_routes,
+};
 
 pub struct WebServer {
     pub server: Server,
@@ -34,6 +39,8 @@ impl WebServer {
         device_service: Arc<dyn DeviceServiceInterface + Send + Sync + 'static>,
         request_service: Arc<dyn RequestServiceInterface + Send + Sync + 'static>,
         announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
+        status_socket_server_addr: Addr<StatusSocketServer>,
+        livestream_socket_server_addr: Addr<LivestreamSocketServer>,
     ) -> Result<Self, std::io::Error> {
         let role_svc = web::Data::new(role_service.clone());
         let building_svc = web::Data::new(building_service.clone());
@@ -43,6 +50,9 @@ impl WebServer {
         let device_svc = web::Data::new(device_service.clone());
         let request_svc = web::Data::new(request_service.clone());
         let announcement_svc = web::Data::new(announcement_service.clone());
+        let status_socket_srv = web::Data::new(status_socket_server_addr);
+        let livestream_socket_srv = web::Data::new(livestream_socket_server_addr);
+
         let server = HttpServer::new(move || {
             let cors = Cors::permissive();
 
@@ -56,12 +66,15 @@ impl WebServer {
                 .app_data(device_svc.clone())
                 .app_data(request_svc.clone())
                 .app_data(announcement_svc.clone())
+                .app_data(status_socket_srv.clone())
+                .app_data(livestream_socket_srv.clone())
+                // .wrap(Logger::default())
                 .service(device_routes(device_service.clone()))
                 .service(dashboard_routes(auth_service.clone()))
+                .service(socket_routes())
         })
         .listen(listener)?
         .disable_signals()
-        // .worker_max_blocking_threads(0)
         .run();
 
         Ok(WebServer { server })
@@ -74,23 +87,20 @@ impl WebServer {
     ) -> Result<(), std::io::Error> {
         let handle = self.get_handle();
 
-        let runtime = tokio::spawn(async move {
-            println!("[info] Server is starting on http://localhost:8080");
+        let runtime = actix_web::rt::spawn(async move {
+            println!("Server is starting on http://localhost:8080");
 
             if let Err(e) = self.server.await {
-                eprintln!(
-                    "[error] Something when wrong when running the server: {:?}",
-                    e
-                );
+                eprintln!("Something when wrong when running the server: {:?}", e);
                 return;
             }
         });
 
-        let shutdown_listener = tokio::spawn(async move {
+        let shutdown_listener = actix_web::rt::spawn(async move {
             let _ = shutdown.recv().await;
 
             handle.stop(true).await;
-            println!("[info] Web service finished shutting down");
+            println!("Web service finished shutting down");
         });
 
         runtime.await.unwrap();

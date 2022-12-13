@@ -1,5 +1,6 @@
 use core::fmt;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 #[derive(Debug)]
 pub struct Device {
@@ -30,7 +31,7 @@ pub struct DeviceDetail {
 
 #[derive(Debug)]
 pub struct DeviceDetailLocation {
-    pub text: String, 
+    pub text: String,
     pub building_id: i32,
     pub building_name: String,
     pub building_color: String,
@@ -48,7 +49,12 @@ pub struct DeviceAuthCache {
 }
 
 impl DeviceAuthCache {
-    pub fn new(device_id: i32, secret_access_key: String, secret_access_key_salt: String, linked_at: Option<chrono::DateTime<chrono::Utc>>) -> Self {
+    pub fn new(
+        device_id: i32,
+        secret_access_key: String,
+        secret_access_key_salt: String,
+        linked_at: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Self {
         DeviceAuthCache {
             device_id,
             secret_access_key,
@@ -64,6 +70,34 @@ pub struct ListDeviceParams {
     pub query: Option<String>,
     pub building_id: Option<i32>,
     pub floor_id: Option<i32>,
+}
+
+impl ListDeviceParams {
+    pub fn default(page: i32, limit: i32) -> Self {
+        ListDeviceParams {
+            page,
+            limit,
+            query: None,
+            building_id: None,
+            floor_id: None,
+        }
+    }
+}
+
+pub struct CountDeviceParams {
+    pub query: Option<String>,
+    pub building_id: Option<i32>,
+    pub floor_id: Option<i32>,
+}
+
+impl CountDeviceParams {
+    pub fn default() -> CountDeviceParams {
+        CountDeviceParams {
+            query: None,
+            building_id: None,
+            floor_id: None,
+        }
+    }
 }
 
 pub enum DeviceErrorCode {
@@ -277,3 +311,11 @@ impl std::fmt::Display for UpdateCameraEnabledError {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum SynchronizeDeviceStatusError {
+    #[error("An error occurred with the request to the database")]
+    DatabaseError(#[from] sqlx::Error),
+    #[error("An error occurred with the request to the redis")]
+    RedisError(#[from] redis::RedisError),
+
+}

@@ -11,15 +11,16 @@ use regex::Regex;
 
 use crate::{
     database::{DatabaseError, PaginationResult},
-    features::AnnouncementQueueInterface,
+    features::{device_status::definition::DeviceStatus, AnnouncementQueueInterface},
 };
 
 use super::{
-    AuthenticateDeviceError, CreateDeviceError, DeleteDeviceError, Device, DeviceAuthCache,
-    DeviceDetail, DeviceRepositoryInterface, GetDeviceAuthCacheError,
+    AuthenticateDeviceError, CountDeviceParams, CreateDeviceError, DeleteDeviceError, Device,
+    DeviceAuthCache, DeviceDetail, DeviceRepositoryInterface, GetDeviceAuthCacheError,
     GetDeviceDetailByAccessKeyIdError, GetDeviceDetailByIdError, InsertDeviceParams,
-    LinkDeviceError, ListDeviceError, ListDeviceParams, ResyncDeviceError, UnlinkDeviceError,
-    UpdateCameraEnabledError, UpdateDeviceError, UpdateDeviceParams,
+    LinkDeviceError, ListDeviceError, ListDeviceParams, ResyncDeviceError,
+    SynchronizeDeviceStatusError, UnlinkDeviceError, UpdateCameraEnabledError, UpdateDeviceError,
+    UpdateDeviceParams,
 };
 
 pub struct CreateDeviceParams {
@@ -73,7 +74,6 @@ pub trait DeviceServiceInterface {
         &self,
         access_key_id: String,
         secret_access_key: String,
-        camera_enabled: bool,
     ) -> Result<(), LinkDeviceError>;
     async fn unlink(&self, device_id: i32) -> Result<(), UnlinkDeviceError>;
     async fn authenticate(&self, headers: &HeaderMap) -> Result<i32, AuthenticateDeviceError>;
@@ -82,6 +82,7 @@ pub trait DeviceServiceInterface {
         device_id: i32,
         camera_enabled: bool,
     ) -> Result<(), UpdateCameraEnabledError>;
+    async fn synchronize_device_status(&self) -> Result<(), SynchronizeDeviceStatusError>;
 }
 
 pub struct DeviceService {
@@ -383,7 +384,6 @@ impl DeviceServiceInterface for DeviceService {
         &self,
         access_key_id: String,
         secret_access_key: String,
-        camera_enabled: bool,
     ) -> Result<(), LinkDeviceError> {
         let device_auth = match self.get_device_auth_cache(access_key_id.clone()).await {
             Ok(cache) => cache,
@@ -418,14 +418,6 @@ impl DeviceServiceInterface for DeviceService {
         if let Err(_) = self
             ._device_repository
             .update_device_link(device_auth.device_id, true)
-            .await
-        {
-            return Err(LinkDeviceError::InternalServerError);
-        }
-
-        if let Err(_) = self
-            ._device_repository
-            .update_camera_enabled(device_auth.device_id, camera_enabled)
             .await
         {
             return Err(LinkDeviceError::InternalServerError);
@@ -593,5 +585,29 @@ impl DeviceServiceInterface for DeviceService {
                 _ => Err(UpdateCameraEnabledError::InternalServerError),
             },
         }
+    }
+
+    async fn synchronize_device_status(&self) -> Result<(), SynchronizeDeviceStatusError> {
+        let count = self
+            ._device_repository
+            .count(CountDeviceParams::default())
+            .await?;
+
+        let devices = self
+            ._device_repository
+            .find(ListDeviceParams::default(1, count))
+            .await?;
+
+        for device in devices.contents {
+            let device_status = self._device_repository.get_device_status(device.id).await?;
+
+            if device_status == DeviceStatus::Unregistered {
+                self._device_repository
+                    .set_device_status(device.id, None)
+                    .await?;
+            }
+        }
+
+        Ok(())
     }
 }

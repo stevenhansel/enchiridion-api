@@ -6,6 +6,8 @@ pub mod floor;
 pub mod request;
 pub mod role;
 pub mod user;
+pub mod device_status;
+pub mod livestream;
 
 pub use announcement::*;
 pub use auth::*;
