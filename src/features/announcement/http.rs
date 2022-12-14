@@ -360,6 +360,8 @@ pub struct ListAnnouncementContent {
     status: AnnouncementStatusObject,
     author: AnnouncementAuthorObject,
     media: String,
+    media_type: String,
+    media_duration: Option<f64>,
     created_at: String,
 }
 
@@ -456,6 +458,8 @@ pub async fn list_announcement(
                 name: row.user_name,
             },
             media: row.media,
+            media_type: row.media_type,
+            media_duration: row.media_duration,
             created_at: row.created_at.to_rfc3339(),
         })
         .collect();
