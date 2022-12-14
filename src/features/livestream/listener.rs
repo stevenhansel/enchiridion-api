@@ -206,7 +206,7 @@ fn publish(
 
     if let Some(device_sessions) = devices.get(&device_id) {
         for session_id in device_sessions {
-            if let Some(session_addr) = sessions.get(&session_id) {
+            if let Some(session_addr) = sessions.get(session_id) {
                 session_addr.do_send(LivestreamMessage(payload.clone()))
             }
         }

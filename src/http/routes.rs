@@ -204,6 +204,17 @@ pub fn dashboard_routes(
         .service(
             web::scope("/v1/devices")
                 .service(
+                    web::resource("/{device_id}/livestream")
+                        .guard(guard::Get())
+                        .wrap(
+                            AuthenticationMiddlewareFactory::new(auth_service.clone())
+                                .with_permission(ApplicationPermission::ResyncDevice)
+                                .with_status(UserStatus::Approved)
+                                .with_require_email_confirmed(true),
+                        )
+                        .to(livestream::http::livestream),
+                )
+                .service(
                     web::resource("/{device_id}/resync")
                         .guard(guard::Put())
                         .wrap(

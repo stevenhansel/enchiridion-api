@@ -49,6 +49,9 @@ pub async fn run(
     let announcement_service_1 = announcement_service.clone();
     let announcement_service_2 = announcement_service.clone();
 
+    let livestream_service_1 = livestream_service.clone();
+    let livestream_service_2 = livestream_service.clone();
+
     let device_status_sessions: Arc<Mutex<HashMap<usize, Recipient<StatusMessage>>>> =
         Arc::new(Mutex::new(HashMap::new()));
     let device_status_devices: Arc<Mutex<HashMap<i32, HashSet<usize>>>> =
@@ -89,6 +92,7 @@ pub async fn run(
             device_service,
             request_service,
             announcement_service_1,
+            livestream_service_1,
             device_status_socket_srv,
             livestream_socket_srv,
         ) {
@@ -125,7 +129,7 @@ pub async fn run(
             shutdown_4,
             shutdown_complete_tx_4,
             redis_2,
-            livestream_service,
+            livestream_service_2,
             livestream_sessions_2,
             livestream_devices_2,
         )
