@@ -52,5 +52,5 @@ lipsum = "0.8.2"
 regex = "1.6.0"
 lazy_static = "1.4.0"
 deadpool-redis = { version = "0.10.2" }
-redis = { version = "0.21", default-features = false, features = ["acl", "aio", "script", "geospatial", "streams"] }
+redis = { version = "0.22", default-features = false, features = ["acl", "aio", "script", "geospatial", "streams"] }
 thiserror = "1.0.37"
