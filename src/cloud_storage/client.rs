@@ -31,7 +31,7 @@ pub struct TmpFile {
 impl TmpFile {
     pub fn new(filename: String, filetype: String, key: String) -> Self {
         TmpFile {
-            path: format!("./tmp/{}.{}", filename.clone(), filetype.clone()),
+            path: format!("./tmp/{}.{}", filename, filetype),
             filename,
             filetype,
             key,
@@ -42,7 +42,7 @@ impl TmpFile {
         if let Err(e) = create_dir_all("./tmp") {
             return Err(TmpFileError::WriteError(e.to_string()));
         }
-        let mut file = match File::create(path.clone()) {
+        let mut file = match File::create(path) {
             Ok(f) => f,
             Err(e) => return Err(TmpFileError::WriteError(e.to_string())),
         };

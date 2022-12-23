@@ -79,6 +79,8 @@ pub struct Configuration {
     pub default_user_email: Secret<String>,
     pub default_user_password: Secret<String>,
     pub default_user_role: String,
+
+    pub static_base_url: String,
 }
 
 impl Configuration {
@@ -113,7 +115,10 @@ impl Configuration {
             aws_access_key_id: Secret::new(dotenvy::var("AWS_ACCESS_KEY_ID")?),
             aws_access_key_secret: Secret::new(dotenvy::var("AWS_ACCESS_KEY_SECRET")?),
             aws_s3_bucket_name: dotenvy::var("AWS_S3_BUCKET_NAME")?,
-            aws_s3_presigning_url_expiration_seconds: dotenvy::var("AWS_S3_PRESIGNING_URL_EXPIRATION_SECONDS")?.parse()?,
+            aws_s3_presigning_url_expiration_seconds: dotenvy::var(
+                "AWS_S3_PRESIGNING_URL_EXPIRATION_SECONDS",
+            )?
+            .parse()?,
 
             dashboard_baseurl: dotenvy::var("DASHBOARD_BASEURL")?,
 
@@ -121,6 +126,8 @@ impl Configuration {
             default_user_email: Secret::new(dotenvy::var("DEFAULT_USER_EMAIL")?),
             default_user_password: Secret::new(dotenvy::var("DEFAULT_USER_PASSWORD")?),
             default_user_role: dotenvy::var("DEFAULT_USER_ROLE")?,
+
+            static_base_url: dotenvy::var("STATIC_BASE_URL")?,
         })
     }
 
@@ -155,7 +162,10 @@ impl Configuration {
             aws_access_key_id: Secret::new(env::var("AWS_ACCESS_KEY_ID")?),
             aws_access_key_secret: Secret::new(env::var("AWS_ACCESS_KEY_SECRET")?),
             aws_s3_bucket_name: env::var("AWS_S3_BUCKET_NAME")?,
-            aws_s3_presigning_url_expiration_seconds: env::var("AWS_S3_PRESIGNING_URL_EXPIRATION_SECONDS")?.parse()?,
+            aws_s3_presigning_url_expiration_seconds: env::var(
+                "AWS_S3_PRESIGNING_URL_EXPIRATION_SECONDS",
+            )?
+            .parse()?,
 
             dashboard_baseurl: env::var("DASHBOARD_BASEURL")?,
             default_user_name: Secret::new(env::var("DEFAULT_USER_NAME")?),
@@ -163,6 +173,7 @@ impl Configuration {
             default_user_password: Secret::new(env::var("DEFAULT_USER_PASSWORD")?),
             default_user_role: env::var("DEFAULT_USER_ROLE")?,
 
+            static_base_url: env::var("STATIC_BASE_URL")?,
         })
     }
 }

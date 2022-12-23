@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use actix_files;
 use actix_web::{guard, web, Scope};
 
 use crate::features::{
@@ -401,4 +402,7 @@ pub fn socket_routes() -> Scope {
             "/v1/livestream/{device_id}",
             web::get().to(livestream::route::socket_handler),
         )
+}
+pub fn static_routes() -> Scope {
+    web::scope("/static").service(actix_files::Files::new("/", "./static").show_files_listing())
 }

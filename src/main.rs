@@ -2,14 +2,14 @@ use std::net::TcpListener;
 use std::sync::Arc;
 use std::{env, process};
 
-use aws_config::meta::region::RegionProviderChain;
+use enchiridion_api::cloud_storage::LocalAdapter;
 use enchiridion_api::features::livestream::repository::LivestreamRepository;
 use enchiridion_api::features::livestream::service::LivestreamService;
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
 use enchiridion_api::{
-    cloud_storage::{self, s3::S3Adapter},
+    cloud_storage,
     config::Configuration,
     email,
     features::{
@@ -56,23 +56,8 @@ async fn main() -> std::io::Result<()> {
     );
     let email_client = email::Client::new(Box::new(mailgun_adapter));
 
-    let s3_credentials = aws_sdk_s3::Credentials::new(
-        config.aws_access_key_id.expose_secret(),
-        config.aws_access_key_secret.expose_secret(),
-        None,
-        None,
-        "enchiridion_api",
-    );
-
-    let region_provider = RegionProviderChain::first_try("ap-southeast-1");
-    let aws_configuration = aws_config::from_env()
-        .credentials_provider(s3_credentials)
-        .region(region_provider)
-        .load()
-        .await;
-    let s3_client = aws_sdk_s3::Client::new(&aws_configuration);
-    let s3_adapter = S3Adapter::new(s3_client, config.aws_s3_bucket_name.clone());
-    let cloud_storage = cloud_storage::Client::new(Box::new(s3_adapter));
+    let local_adapter = LocalAdapter::new(config.static_base_url.clone());
+    let cloud_storage = cloud_storage::Client::new(Box::new(local_adapter));
 
     let building_repository = Arc::new(BuildingRepository::new(pool.clone()));
     let user_repository = Arc::new(UserRepository::new(pool.clone()));
