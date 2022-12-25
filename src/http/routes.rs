@@ -10,6 +10,7 @@ use crate::features::{
     device_status,
     floor::http as floor_http,
     livestream,
+    media::http as media_http,
     request::http as request_http,
     role::{http as role_http, ApplicationPermission},
     user::{http as user_http, UserStatus},
@@ -388,6 +389,19 @@ pub fn dashboard_routes(
                         )
                         .to(user_http::list_user),
                 ),
+        )
+        .service(
+            web::scope("/v1/medias").service(
+                web::resource("")
+                    .guard(guard::Post())
+                    .wrap(
+                        AuthenticationMiddlewareFactory::new(auth_service.clone())
+                            .with_permission(ApplicationPermission::CreateMedia)
+                            .with_status(UserStatus::Approved)
+                            .with_require_email_confirmed(true),
+                    )
+                    .to(media_http::upload),
+            ),
         )
 }
 

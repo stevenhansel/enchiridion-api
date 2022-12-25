@@ -42,6 +42,8 @@ pub static DEFAULT_ROLES: &'static [ApplicationRole] = &[
             // User
             ApplicationPermission::ViewListUser,
             ApplicationPermission::UpdateUserApproval,
+            // Media
+            ApplicationPermission::CreateMedia,
         ],
     },
     ApplicationRole {
@@ -65,6 +67,8 @@ pub static DEFAULT_ROLES: &'static [ApplicationRole] = &[
             ApplicationPermission::ViewListRequest,
             ApplicationPermission::CreateRequest,
             ApplicationPermission::UpdateRequestApproval,
+            // Media
+            ApplicationPermission::CreateMedia,
         ],
     },
     ApplicationRole {
@@ -88,6 +92,8 @@ pub static DEFAULT_ROLES: &'static [ApplicationRole] = &[
             ApplicationPermission::ViewListRequest,
             ApplicationPermission::CreateRequest,
             ApplicationPermission::UpdateRequestApproval,
+            // Media
+            ApplicationPermission::CreateMedia,
         ],
     },
     ApplicationRole {
@@ -110,6 +116,8 @@ pub static DEFAULT_ROLES: &'static [ApplicationRole] = &[
             // Request
             ApplicationPermission::ViewListRequest,
             ApplicationPermission::CreateRequest,
+            // Media
+            ApplicationPermission::CreateMedia,
         ],
     },
 ];
@@ -145,6 +153,8 @@ pub enum ApplicationPermission {
     // User
     ViewListUser,
     UpdateUserApproval,
+    // Media
+    CreateMedia,
 }
 
 impl ApplicationPermission {
@@ -173,6 +183,7 @@ impl ApplicationPermission {
             ApplicationPermission::UpdateRequestApproval => "Update Request Approval",
             ApplicationPermission::ViewListUser => "View List User",
             ApplicationPermission::UpdateUserApproval => "Update User Approval",
+            ApplicationPermission::CreateMedia => "Create Media",
         }
     }
 
@@ -201,6 +212,7 @@ impl ApplicationPermission {
             ApplicationPermission::UpdateRequestApproval => "update_request_approval",
             ApplicationPermission::ViewListUser => "view_list_user",
             ApplicationPermission::UpdateUserApproval => "update_user_approval",
+            ApplicationPermission::CreateMedia => "create_media",
         }
     }
 }

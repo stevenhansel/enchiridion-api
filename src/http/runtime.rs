@@ -17,6 +17,7 @@ use crate::{
         device_status::socket::StatusSocketServer,
         floor::FloorServiceInterface,
         livestream::{service::LivestreamServiceInterface, socket::LivestreamSocketServer},
+        media::service::MediaServiceInterface,
         request::RequestServiceInterface,
         role::RoleServiceInterface,
         user::UserServiceInterface,
@@ -45,6 +46,7 @@ impl WebServer {
         request_service: Arc<dyn RequestServiceInterface + Send + Sync + 'static>,
         announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
         livestream_service: Arc<dyn LivestreamServiceInterface>,
+        media_service: Arc<dyn MediaServiceInterface>,
         status_socket_server_addr: Addr<StatusSocketServer>,
         livestream_socket_server_addr: Addr<LivestreamSocketServer>,
     ) -> Result<Self, std::io::Error> {
@@ -57,6 +59,7 @@ impl WebServer {
         let request_svc = web::Data::new(request_service.clone());
         let announcement_svc = web::Data::new(announcement_service.clone());
         let livestream_svc = web::Data::new(livestream_service.clone());
+        let media_svc = web::Data::new(media_service.clone());
         let status_socket_srv = web::Data::new(status_socket_server_addr);
         let livestream_socket_srv = web::Data::new(livestream_socket_server_addr);
 
@@ -74,6 +77,7 @@ impl WebServer {
                 .app_data(request_svc.clone())
                 .app_data(announcement_svc.clone())
                 .app_data(livestream_svc.clone())
+                .app_data(media_svc.clone())
                 .app_data(status_socket_srv.clone())
                 .app_data(livestream_socket_srv.clone())
                 // .wrap(Logger::default())

@@ -8,6 +8,7 @@ pub mod role;
 pub mod user;
 pub mod device_status;
 pub mod livestream;
+pub mod media;
 
 pub use announcement::*;
 pub use auth::*;

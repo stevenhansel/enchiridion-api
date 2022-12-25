@@ -9,6 +9,7 @@ use tokio::sync::{broadcast, mpsc};
 use crate::features::livestream::definition::{LivestreamDeviceMap, LivestreamSessionMap};
 use crate::features::livestream::service::LivestreamServiceInterface;
 use crate::features::livestream::socket::LivestreamSocketServer;
+use crate::features::media::service::MediaServiceInterface;
 use crate::features::{device_status, livestream};
 use crate::shutdown::Shutdown;
 use crate::{http::WebServer, scheduler};
@@ -32,6 +33,7 @@ pub async fn run(
     request_service: Arc<dyn RequestServiceInterface + Send + Sync + 'static>,
     announcement_service: Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>,
     livestream_service: Arc<dyn LivestreamServiceInterface>,
+    media_service: Arc<dyn MediaServiceInterface>,
 ) -> Result<(), std::io::Error> {
     let (notify_shutdown, _) = broadcast::channel::<()>(1);
 
@@ -93,6 +95,7 @@ pub async fn run(
             request_service,
             announcement_service_1,
             livestream_service_1,
+            media_service,
             device_status_socket_srv,
             livestream_socket_srv,
         ) {

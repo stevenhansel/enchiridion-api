@@ -5,6 +5,8 @@ use std::{env, process};
 use enchiridion_api::cloud_storage::LocalAdapter;
 use enchiridion_api::features::livestream::repository::LivestreamRepository;
 use enchiridion_api::features::livestream::service::LivestreamService;
+use enchiridion_api::features::media::repository::MediaRepository;
+use enchiridion_api::features::media::service::MediaService;
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
@@ -71,6 +73,7 @@ async fn main() -> std::io::Result<()> {
     let announcement_repository = Arc::new(AnnouncementRepository::new(pool.clone()));
     let request_repository = Arc::new(RequestRepository::new(pool.clone()));
     let livestream_repository = Arc::new(LivestreamRepository::new(pool.clone()));
+    let media_repository = Arc::new(MediaRepository::new(pool.clone()));
 
     let announcement_queue = Arc::new(AnnouncementQueue::new(redis_pool.clone()));
 
@@ -104,6 +107,12 @@ async fn main() -> std::io::Result<()> {
     ));
     let livestream_service = Arc::new(LivestreamService::new(livestream_repository));
 
+    // TODO: Make cloud storage Arc so that it can be cloneable
+    let local_adapter = LocalAdapter::new(config.static_base_url.clone());
+    let cloud_storage = cloud_storage::Client::new(Box::new(local_adapter));
+
+    let media_service = Arc::new(MediaService::new(media_repository, cloud_storage));
+
     auth_service.seed_default_user().await.unwrap_or_else(|e| {
         println!("Something when wrong when seeding the default user: {}", e);
         process::exit(1);
@@ -132,6 +141,7 @@ async fn main() -> std::io::Result<()> {
         request_service.clone(),
         announcement_service.clone(),
         livestream_service.clone(),
+        media_service.clone(),
     )
     .await
 }
