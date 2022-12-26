@@ -27,7 +27,7 @@ use crate::{
 
 use super::{
     routes::{dashboard_routes, device_routes},
-    socket_routes,
+    socket_routes, static_routes,
 };
 
 pub struct WebServer {
@@ -84,6 +84,7 @@ impl WebServer {
                 .service(device_routes(device_service.clone()))
                 .service(dashboard_routes(auth_service.clone()))
                 .service(socket_routes())
+                .service(static_routes())
         })
         .listen(listener)?
         .disable_signals()
@@ -104,7 +105,6 @@ impl WebServer {
 
             if let Err(e) = self.server.await {
                 eprintln!("Something when wrong when running the server: {:?}", e);
-                return;
             }
         });
 

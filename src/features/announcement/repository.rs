@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use async_trait::async_trait;
 use sqlx::{postgres::PgRow, Pool, Postgres, Row};
 
-use crate::database::PaginationResult;
+use crate::{database::PaginationResult, features::media::domain::MediaType};
 
 use super::{Announcement, AnnouncementDetail, AnnouncementDetailDevices, AnnouncementStatus};
 
@@ -220,9 +220,7 @@ impl FindListAnnouncementParams {
 
 pub struct InsertAnnouncementParams {
     pub title: String,
-    pub media: String,
-    pub media_type: String,
-    pub media_duration: Option<f64>,
+    pub media_id: i32,
     pub start_date: chrono::DateTime<chrono::Utc>,
     pub end_date: chrono::DateTime<chrono::Utc>,
     pub notes: String,
@@ -238,7 +236,7 @@ pub struct ListAnnouncementRow {
     announcement_end_date: chrono::DateTime<chrono::Utc>,
     announcement_status: AnnouncementStatus,
     announcement_media: String,
-    announcement_media_type: String,
+    announcement_media_type: MediaType,
     announcement_media_duration: Option<f64>,
     announcement_created_at: chrono::DateTime<chrono::Utc>,
     announcement_updated_at: chrono::DateTime<chrono::Utc>,
@@ -253,7 +251,7 @@ pub struct AnnouncementDetailRow {
     announcement_end_date: chrono::DateTime<chrono::Utc>,
     announcement_status: AnnouncementStatus,
     announcement_media: String,
-    announcement_media_type: String,
+    announcement_media_type: MediaType,
     announcement_media_duration: Option<f64>,
     announcement_notes: String,
     announcement_created_at: chrono::DateTime<chrono::Utc>,
@@ -381,15 +379,16 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 "announcement"."start_date" as "announcement_start_date",
                 "announcement"."end_date" as "announcement_end_date",
                 "announcement"."status" as "announcement_status",
-                "announcement"."media" as "announcement_media",
-                "announcement"."media_type" as "announcement_media_type",
-                "announcement"."media_duration" as "announcement_media_duration",
+                "media"."path" as "announcement_media",
+                "media"."media_type" as "announcement_media_type",
+                "media"."media_duration" as "announcement_media_duration",
                 "announcement"."created_at" as "announcement_created_at",
                 "announcement"."updated_at" as "announcement_updated_at",
                 "user"."id" as "user_id",
                 "user"."name" as "user_name"
             from "announcement"
             join "user" on "user"."id" = "announcement"."user_id"
+            join "media" on "media"."id" = "announcement"."media_id"
             join "device_announcement" on "device_announcement"."announcement_id" = "announcement"."id"
             left join lateral (
                 select count(*) from "announcement"
@@ -434,7 +433,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 ($12::timestamp is null or "announcement"."end_date" >= $12) and
                 ($13::timestamp is null or "announcement"."end_date" < $13) and
                 ($14::timestamp is null or "announcement"."end_date" <= $14)
-            group by "announcement"."id", "user"."id", "result"."count"
+            group by "announcement"."id", "media"."id", "user"."id", "result"."count"
             order by "announcement"."id" desc
             offset $1 limit $2
             "#,
@@ -443,16 +442,16 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         .bind(params.limit)
         .bind(params.query.clone())
         .bind(params.status.clone())
-        .bind(params.user_id.clone())
-        .bind(params.device_id.clone())
-        .bind(params.start_date_gt.clone())
-        .bind(params.start_date_gte.clone())
-        .bind(params.start_date_lt.clone())
-        .bind(params.start_date_lte.clone())
-        .bind(params.end_date_gt.clone())
-        .bind(params.end_date_gte.clone())
-        .bind(params.end_date_lt.clone())
-        .bind(params.end_date_lte.clone())
+        .bind(params.user_id)
+        .bind(params.device_id)
+        .bind(params.start_date_gt)
+        .bind(params.start_date_gte)
+        .bind(params.start_date_lt)
+        .bind(params.start_date_lte)
+        .bind(params.end_date_gt)
+        .bind(params.end_date_gte)
+        .bind(params.end_date_lt)
+        .bind(params.end_date_lte)
         .map(|row: PgRow| ListAnnouncementRow {
             count: row.get("count"),
             announcement_id: row.get("announcement_id"),
@@ -472,7 +471,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         .await?;
 
         let mut count = 0;
-        if result.len() > 0 {
+        if !result.is_empty() {
             count = result[0].count;
         }
 
@@ -511,9 +510,9 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                 select
                     "announcement"."id" as "announcement_id",
                     "announcement"."title" as "announcement_title",
-                    "announcement"."media" as "announcement_media",
-                    "announcement"."media_type" as "announcement_media_type",
-                    "announcement"."media_duration" as "announcement_media_duration",
+                    "media"."path" as "announcement_media",
+                    "media"."media_type" as "announcement_media_type",
+                    "media"."media_duration" as "announcement_media_duration",
                     "announcement"."notes" as "announcement_notes",
                     "announcement"."status" as "announcement_status",
                     "announcement"."start_date" as "announcement_start_date",
@@ -528,6 +527,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
                     "device"."floor_id" as "device_floor_id"
                 from "announcement"
                 join "user" on "user"."id" = "announcement"."user_id"
+                join "media" on "media"."id" = "announcement"."media_id"
                 join "device_announcement" on "device_announcement"."announcement_id" = "announcement"."id"
                 join "device" on "device"."id" = "device_announcement"."device_id"
                 where "announcement"."id" = $1
@@ -565,7 +565,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
             title: result[0].announcement_title.clone(),
             media: result[0].announcement_media.clone(),
             media_type: result[0].announcement_media_type.clone(),
-            media_duration: result[0].announcement_media_duration.clone(),
+            media_duration: result[0].announcement_media_duration,
             notes: result[0].announcement_notes.clone(),
             status: result[0].announcement_status.clone(),
             start_date: result[0].announcement_start_date,
@@ -590,22 +590,20 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
         let result = sqlx::query!(
             r#"
                 with cte_announcement as (
-                    insert into "announcement" ("title", "media", "start_date", "end_date", "notes", "user_id", "media_type", "media_duration")
-                    values ($1, $2, $3, $4, $5, $6, $7, $8)
+                    insert into "announcement" ("title", "media_id", "start_date", "end_date", "notes", "user_id")
+                    values ($1, $2, $3, $4, $5, $6)
                     returning "id"
                 )
                 insert into "device_announcement" ("announcement_id", "device_id")
-                values ((select "id" from "cte_announcement"), unnest($9::int4[]))
+                values ((select "id" from "cte_announcement"), unnest($7::int4[]))
                 returning (select "id" from "cte_announcement")
             "#,
             params.title,
-            params.media,
+            params.media_id,
             params.start_date,
             params.end_date,
             params.notes,
             params.user_id,
-            params.media_type,
-            params.media_duration,
             &params.device_ids,
         ).fetch_one(&self._db).await?;
 
@@ -684,7 +682,7 @@ impl AnnouncementRepositoryInterface for AnnouncementRepository {
 
         Ok(result.into_iter().map(|row| row.id).collect())
     }
-    
+
     async fn find_announcement_device_map(
         &self,
         announcement_ids: Vec<i32>,

@@ -398,7 +398,7 @@ impl RequestServiceInterface for RequestService {
                     .create(
                         device_ids,
                         announcement.id,
-                        announcement.media_type,
+                        announcement.media_type.to_string(),
                         announcement.media_duration,
                     )
                     .await
@@ -600,7 +600,7 @@ impl RequestServiceInterface for RequestService {
                 .create(
                     need_to_sync_ids.clone(),
                     announcement.id,
-                    announcement.media_type,
+                    announcement.media_type.to_string(),
                     announcement.media_duration,
                 )
                 .await

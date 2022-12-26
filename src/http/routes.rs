@@ -416,3 +416,7 @@ pub fn socket_routes() -> Scope {
             web::get().to(livestream::route::socket_handler),
         )
 }
+
+pub fn static_routes() -> Scope {
+    web::scope("/static").service(actix_files::Files::new("/", "./static").show_files_listing())
+}

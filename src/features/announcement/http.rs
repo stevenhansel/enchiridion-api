@@ -1,20 +1,15 @@
 use std::sync::Arc;
 
-use actix_multipart::Multipart;
-use actix_web::{
-    web::{self, Bytes},
-    HttpResponse,
-};
+use actix_web::{web, HttpResponse};
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
-use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cloud_storage::TmpFile,
-    features::announcement::CreateAnnouncementError,
+    features::{announcement::CreateAnnouncementError, media::domain::MediaType},
     http::{
         derive_authentication_middleware_error, derive_user_id, device_middleware,
-        validate_date_format, AuthenticationContext, HttpErrorResponse, API_VALIDATION_ERROR_CODE,
+        validate_date_format, ApiValidationError, AuthenticationContext, HttpErrorResponse,
+        API_VALIDATION_ERROR_CODE,
     },
 };
 
@@ -24,287 +19,67 @@ use super::{
     GetAnnouncementMediaPresignedURLError, ListAnnouncementError, ListAnnouncementParams,
 };
 
-#[derive(Debug)]
-pub struct CreateAnnouncementFormData {
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAnnouncementBody {
     pub title: String,
-    pub media: TmpFile,
-    pub media_type: String,
-    pub media_duration: Option<f64>,
-    pub start_date: chrono::DateTime<chrono::Utc>,
-    pub end_date: chrono::DateTime<chrono::Utc>,
+    pub media_id: i32,
+    pub start_date: String,
+    pub end_date: String,
     pub notes: String,
     pub device_ids: Vec<i32>,
 }
 
-pub async fn parse_create_announcement_multipart(
-    mut payload: Multipart,
-) -> Result<CreateAnnouncementFormData, String> {
-    let mut title: Option<String> = None;
-    let mut start_date: Option<chrono::DateTime<chrono::Utc>> = None;
-    let mut end_date: Option<chrono::DateTime<chrono::Utc>> = None;
-    let mut notes: Option<String> = None;
-    let mut device_ids: Option<Vec<i32>> = None;
-    let mut media: Option<TmpFile> = None;
-    let mut media_type: Option<String> = None;
-    let mut media_duration: Option<f64> = None;
-
-    while let Some(item) = payload.next().await {
-        let mut field = match item {
-            Ok(item) => item,
-            Err(e) => return Err(e.to_string()),
-        };
-
-        if field.name() == "title" {
-            let mut chunks: Vec<Bytes> = vec![];
-            while let Some(chunk) = field.next().await {
-                let chunk = match chunk {
-                    Ok(c) => c,
-                    Err(e) => return Err(e.to_string()),
-                };
-
-                chunks.push(chunk);
-            }
-
-            title = match std::str::from_utf8(&chunks[0]) {
-                Ok(title) => Some(title.to_string()),
-                Err(e) => return Err(e.to_string()),
-            }
-        } else if field.name() == "startDate" {
-            let mut chunks: Vec<Bytes> = vec![];
-            while let Some(chunk) = field.next().await {
-                let chunk = match chunk {
-                    Ok(c) => c,
-                    Err(e) => return Err(e.to_string()),
-                };
-
-                chunks.push(chunk);
-            }
-
-            let date_string = match std::str::from_utf8(&chunks[0]) {
-                Ok(title) => title.to_string(),
-                Err(e) => return Err(e.to_string()),
-            };
-            let naive_date = match NaiveDate::parse_from_str(date_string.as_str(), "%Y-%m-%d") {
-                Ok(date) => date,
-                Err(e) => return Err(e.to_string()),
-            };
-            let naive_time = NaiveTime::from_hms(0, 0, 0);
-            let naive_date_time = NaiveDateTime::new(naive_date, naive_time);
-
-            start_date = Some(chrono::Utc.from_utc_datetime(&naive_date_time));
-        } else if field.name() == "endDate" {
-            let mut chunks: Vec<Bytes> = vec![];
-            while let Some(chunk) = field.next().await {
-                let chunk = match chunk {
-                    Ok(c) => c,
-                    Err(e) => return Err(e.to_string()),
-                };
-
-                chunks.push(chunk);
-            }
-
-            let date_string = match std::str::from_utf8(&chunks[0]) {
-                Ok(title) => title.to_string(),
-                Err(e) => return Err(e.to_string()),
-            };
-            let naive_date = match NaiveDate::parse_from_str(date_string.as_str(), "%Y-%m-%d") {
-                Ok(date) => date,
-                Err(e) => return Err(e.to_string()),
-            };
-            let naive_time = NaiveTime::from_hms(0, 0, 0);
-            let naive_date_time = NaiveDateTime::new(naive_date, naive_time);
-
-            end_date = Some(chrono::Utc.from_utc_datetime(&naive_date_time));
-        } else if field.name() == "notes" {
-            let mut chunks: Vec<Bytes> = vec![];
-            while let Some(chunk) = field.next().await {
-                let chunk = match chunk {
-                    Ok(c) => c,
-                    Err(e) => return Err(e.to_string()),
-                };
-
-                chunks.push(chunk);
-            }
-
-            notes = match std::str::from_utf8(&chunks[0]) {
-                Ok(notes) => Some(notes.to_string()),
-                Err(e) => return Err(e.to_string()),
-            }
-        } else if field.name() == "deviceIds" {
-            let mut chunks: Vec<Bytes> = vec![];
-            while let Some(chunk) = field.next().await {
-                let chunk = match chunk {
-                    Ok(c) => c,
-                    Err(e) => return Err(e.to_string()),
-                };
-
-                chunks.push(chunk);
-            }
-
-            let raw_ids = match std::str::from_utf8(&chunks[0]) {
-                Ok(notes) => notes.to_string(),
-                Err(e) => return Err(e.to_string()),
-            };
-
-            let mut ids: Vec<i32> = vec![];
-            for raw_id in raw_ids.split(",") {
-                let id: i32 = match raw_id.parse() {
-                    Ok(id) => id,
-                    Err(e) => return Err(e.to_string()),
-                };
-                ids.push(id);
-            }
-
-            device_ids = Some(ids);
-        } else if field.name() == "media" {
-            let mut chunks: Vec<Bytes> = vec![];
-            while let Some(chunk) = field.next().await {
-                let chunk = match chunk {
-                    Ok(c) => c,
-                    Err(e) => return Err(e.to_string()),
-                };
-
-                chunks.push(chunk);
-            }
-            let now = chrono::Utc::now().timestamp().to_string();
-            let tmp = TmpFile::new(
-                now,
-                field.content_type().subtype().to_string(),
-                "announcement".into(),
-            );
-            let path = tmp.path.clone();
-
-            if let Err(e) = web::block(move || TmpFile::write(path, chunks))
-                .await
-                .unwrap()
-            {
-                return Err(e.to_string());
-            };
-
-            media = Some(tmp);
-        } else if field.name() == "media_type" {
-            let mut chunks: Vec<Bytes> = vec![];
-            while let Some(chunk) = field.next().await {
-                let chunk = match chunk {
-                    Ok(c) => c,
-                    Err(e) => return Err(e.to_string()),
-                };
-
-                chunks.push(chunk);
-            }
-
-            media_type = match std::str::from_utf8(&chunks[0]) {
-                Ok(media_type) => Some(media_type.to_string()),
-                Err(e) => return Err(e.to_string()),
-            }
-        } else if field.name() == "media_duration" {
-            let mut chunks: Vec<Bytes> = vec![];
-            while let Some(chunk) = field.next().await {
-                let chunk = match chunk {
-                    Ok(c) => c,
-                    Err(e) => return Err(e.to_string()),
-                };
-
-                chunks.push(chunk);
-            }
-
-            if let Ok(duration) = std::str::from_utf8(&chunks[0]) {
-                if duration != "null" {
-                    media_duration = Some(duration.to_string().parse::<f64>().unwrap());
-                }
-            }
-        }
-    }
-
-    let title = match title {
-        Some(title) => title,
-        None => return Err("title is required".into()),
+fn parse_announcement_date_input(raw: String) -> Option<chrono::DateTime<chrono::Utc>> {
+    let naive_date = match NaiveDate::parse_from_str(raw.as_str(), "%Y-%m-%d") {
+        Ok(date) => date,
+        Err(_) => return None,
     };
-    let start_date = match start_date {
-        Some(start_date) => start_date,
-        None => return Err("startDate is required".into()),
-    };
-    let end_date = match end_date {
-        Some(end_date) => end_date,
-        None => return Err("endDate is required".into()),
-    };
-    let notes = match notes {
-        Some(notes) => notes,
-        None => return Err("notes is required".into()),
-    };
-    let device_ids = match device_ids {
-        Some(ids) => ids,
-        None => return Err("deviceIds is required".into()),
-    };
-    let media = match media {
-        Some(media) => media,
-        None => return Err("media is required".into()),
-    };
-    let media_type = match media_type {
-        Some(media_type) => media_type,
-        None => return Err("media type is required".into()),
-    };
+    let naive_time = NaiveTime::from_hms(0, 0, 0);
+    let naive_date_time = NaiveDateTime::new(naive_date, naive_time);
 
-    Ok(CreateAnnouncementFormData {
-        title,
-        start_date,
-        end_date,
-        notes,
-        device_ids,
-        media,
-        media_type,
-        media_duration,
-    })
+    Some(chrono::Utc.from_utc_datetime(&naive_date_time))
 }
 
 pub async fn create_announcement(
     announcement_service: web::Data<Arc<dyn AnnouncementServiceInterface + Send + Sync + 'static>>,
     auth: AuthenticationContext,
-    multipart: Multipart,
+    body: web::Json<CreateAnnouncementBody>,
 ) -> HttpResponse {
     let user_id = match derive_user_id(auth) {
         Ok(id) => id,
         Err(e) => return derive_authentication_middleware_error(e),
     };
 
-    let form = match parse_create_announcement_multipart(multipart).await {
-        Ok(result) => result,
-        Err(message) => {
+    let start_date = match parse_announcement_date_input(body.start_date.clone()) {
+        Some(date) => date,
+        None => {
             return HttpResponse::BadRequest().json(HttpErrorResponse::new(
-                "API_VALIDATION_ERROR".into(),
-                vec![message],
+                "API_VALIDATION_ERROR".to_string(),
+                vec!["Start date is invalid".to_string()],
             ))
         }
     };
 
-    let today = chrono::Utc::today().and_hms(0, 0, 0);
-    if form.start_date < today {
-        return HttpResponse::BadRequest().json(HttpErrorResponse::new(
-            "API_VALIDATION_ERROR".into(),
-            vec![
-                "Start date of the announcement must be greater than or equal to today".to_string(),
-            ],
-        ));
-    }
-
-    if form.start_date >= form.end_date {
-        return HttpResponse::BadRequest().json(HttpErrorResponse::new(
-            "API_VALIDATION_ERROR".into(),
-            vec!["End date of the announcement must be greater than the start date of the announcement".to_string()],
-        ));
-    }
+    let end_date = match parse_announcement_date_input(body.end_date.clone()) {
+        Some(date) => date,
+        None => {
+            return HttpResponse::BadRequest().json(HttpErrorResponse::new(
+                "API_VALIDATION_ERROR".to_string(),
+                vec!["End date is invalid".to_string()],
+            ))
+        }
+    };
 
     if let Err(e) = announcement_service
         .create_announcement(CreateAnnouncementParams {
-            title: form.title.clone(),
-            media: form.media.to_owned(),
-            media_type: form.media_type,
-            media_duration: form.media_duration,
-            start_date: form.start_date,
-            end_date: form.end_date,
-            notes: form.notes.clone(),
-            device_ids: form.device_ids,
+            title: body.title.clone(),
+            media_id: body.media_id,
+            notes: body.notes.clone(),
+            device_ids: body.device_ids.clone(),
             user_id,
+            start_date,
+            end_date,
         })
         .await
     {
@@ -360,7 +135,7 @@ pub struct ListAnnouncementContent {
     status: AnnouncementStatusObject,
     author: AnnouncementAuthorObject,
     media: String,
-    media_type: String,
+    media_type: MediaType,
     media_duration: Option<f64>,
     created_at: String,
 }
@@ -486,7 +261,7 @@ pub struct GetAnnouncementDetailResponse {
     devices: Vec<GetAnnouncementDetailDevice>,
     created_at: String,
     updated_at: String,
-    media_type: String,
+    media_type: MediaType,
     media_duration: Option<f64>,
 }
 

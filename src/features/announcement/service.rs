@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use crate::{
-    cloud_storage::{self, TmpFile},
+    cloud_storage,
     database::{DatabaseError, PaginationResult},
     features::{
         request::{CreateRequestParams, RequestActionType, RequestServiceInterface},
@@ -31,9 +31,7 @@ pub struct ListAnnouncementParams {
 
 pub struct CreateAnnouncementParams {
     pub title: String,
-    pub media: TmpFile,
-    pub media_type: String,
-    pub media_duration: Option<f64>,
+    pub media_id: i32,
     pub start_date: chrono::DateTime<chrono::Utc>,
     pub end_date: chrono::DateTime<chrono::Utc>,
     pub notes: String,
@@ -189,8 +187,6 @@ impl AnnouncementServiceInterface for AnnouncementService {
         params: CreateAnnouncementParams,
     ) -> Result<(), CreateAnnouncementError> {
         // TODO: use db transaction if fail
-        let media = params.media.key();
-
         let announcement_id = match self
             ._announcement_repository
             .insert(InsertAnnouncementParams {
@@ -200,9 +196,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
                 end_date: params.end_date,
                 device_ids: params.device_ids,
                 user_id: params.user_id,
-                media_type: params.media_type,
-                media_duration: params.media_duration,
-                media,
+                media_id: params.media_id,
             })
             .await
         {
@@ -233,10 +227,6 @@ impl AnnouncementServiceInterface for AnnouncementService {
             ))
             .await
         {
-            return Err(CreateAnnouncementError::InternalServerError);
-        }
-
-        if let Err(_) = self._cloud_storage.upload(params.media).await {
             return Err(CreateAnnouncementError::InternalServerError);
         }
 
@@ -360,7 +350,7 @@ impl AnnouncementServiceInterface for AnnouncementService {
             .map(|announcement| {
                 (
                     announcement.id,
-                    announcement.media_type,
+                    announcement.media_type.to_string(),
                     announcement.media_duration,
                 )
             })
