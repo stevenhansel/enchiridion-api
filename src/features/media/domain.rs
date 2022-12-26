@@ -1,6 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, sqlx::Type, Serialize, Deserialize)]
+pub struct CreateMediaResult {
+    pub id: i32,
+    pub path: String,
+    pub media_type: MediaType,
+    pub media_duration: Option<f64>,
+}
+
+#[derive(Debug, Clone, sqlx::Type, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "media_type", rename_all = "snake_case")]
 pub enum MediaType {

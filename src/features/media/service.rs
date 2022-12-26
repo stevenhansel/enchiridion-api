@@ -1,11 +1,11 @@
-use std::sync::Arc;
+use std::{process::Command, sync::Arc};
 
 use async_trait::async_trait;
 
 use crate::cloud_storage::{self, TmpFile};
 
 use super::{
-    domain::MediaType,
+    domain::{CreateMediaResult, MediaType},
     error::CreateMediaError,
     repository::{InsertMediaParams, MediaRepositoryInterface},
 };
@@ -19,7 +19,10 @@ pub struct CreateMediaParams {
 
 #[async_trait]
 pub trait MediaServiceInterface: Send + Sync + 'static {
-    async fn create_media(&self, params: CreateMediaParams) -> Result<i32, CreateMediaError>;
+    async fn create_media(
+        &self,
+        params: CreateMediaParams,
+    ) -> Result<CreateMediaResult, CreateMediaError>;
 }
 
 pub struct MediaService {
@@ -41,10 +44,13 @@ impl MediaService {
 
 #[async_trait]
 impl MediaServiceInterface for MediaService {
-    async fn create_media(&self, params: CreateMediaParams) -> Result<i32, CreateMediaError> {
+    async fn create_media(
+        &self,
+        params: CreateMediaParams,
+    ) -> Result<CreateMediaResult, CreateMediaError> {
         let path = params.media.key();
-        // Command::new("ffmpeg");
 
+        // Command::new("ffmpeg").arg("").arg("");
         // TODO: if media_type video crop video according to the coordinates
         if self._cloud_storage.upload(params.media).await.is_err() {
             return Err(CreateMediaError::Unknown);
@@ -53,12 +59,22 @@ impl MediaServiceInterface for MediaService {
         let id = self
             ._media_repository
             .insert(InsertMediaParams {
-                path,
-                media_type: params.media_type,
+                path: path.clone(),
+                media_type: params.media_type.clone(),
                 media_duration: params.media_duration,
             })
             .await?;
 
-        Ok(id)
+        let path = match self._cloud_storage.get_object(path).await {
+            Ok(path) => path,
+            Err(_) => return Err(CreateMediaError::Unknown),
+        };
+
+        Ok(CreateMediaResult {
+            id,
+            path,
+            media_type: params.media_type,
+            media_duration: params.media_duration,
+        })
     }
 }

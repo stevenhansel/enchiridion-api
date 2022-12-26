@@ -29,8 +29,12 @@ pub struct CreateMediaMultipart {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateMediaResponse {
     pub id: i32,
+    pub path: String,
+    pub media_type: MediaType,
+    pub media_duration: Option<f64>,
 }
 
 pub async fn parse_create_announcement_multipart(
@@ -72,7 +76,7 @@ pub async fn parse_create_announcement_multipart(
             };
 
             media = Some(tmp);
-        } else if field.name() == "media_type" {
+        } else if field.name() == "mediaType" {
             let mut chunks: Vec<Bytes> = vec![];
             while let Some(chunk) = field.next().await {
                 let chunk = match chunk {
@@ -91,7 +95,7 @@ pub async fn parse_create_announcement_multipart(
             if let Ok(media_type_res) = MediaType::from_str(media_type_str) {
                 media_type = Some(media_type_res);
             }
-        } else if field.name() == "media_duration" {
+        } else if field.name() == "mediaDuration" {
             let mut chunks: Vec<Bytes> = vec![];
             while let Some(chunk) = field.next().await {
                 let chunk = match chunk {
@@ -145,7 +149,7 @@ pub async fn upload(
         }
     };
 
-    let id = match media_service
+    let result = match media_service
         .create_media(CreateMediaParams {
             media: form.media,
             media_type: form.media_type,
@@ -154,18 +158,20 @@ pub async fn upload(
         .await
     {
         Ok(id) => id,
-        Err(e) => {
-            println!("{:?}", e);
-            match e {
-                CreateMediaError::Database(_) | CreateMediaError::Unknown => {
-                    return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
-                        MediaErrorCode::InternalServerError.to_string(),
-                        vec![MediaErrorCode::InternalServerError.to_string()],
-                    ))
-                }
+        Err(e) => match e {
+            CreateMediaError::Database(_) | CreateMediaError::Unknown => {
+                return HttpResponse::InternalServerError().json(HttpErrorResponse::new(
+                    MediaErrorCode::InternalServerError.to_string(),
+                    vec![MediaErrorCode::InternalServerError.to_string()],
+                ))
             }
-        }
+        },
     };
 
-    HttpResponse::Created().json(CreateMediaResponse { id })
+    HttpResponse::Created().json(CreateMediaResponse {
+        id: result.id,
+        path: result.path,
+        media_type: result.media_type,
+        media_duration: result.media_duration,
+    })
 }
