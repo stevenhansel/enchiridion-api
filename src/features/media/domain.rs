@@ -7,6 +7,15 @@ pub struct CreateMediaResult {
     pub media_duration: Option<f64>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CropArgs {
+    pub width: i64,
+    pub height: i64,
+    pub x: i64,
+    pub y: i64,
+}
+
 #[derive(Debug, Clone, sqlx::Type, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "media_type", rename_all = "snake_case")]
@@ -31,7 +40,7 @@ impl std::str::FromStr for MediaType {
         match s {
             "image" => Ok(MediaType::Image),
             "video" => Ok(MediaType::Video),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }

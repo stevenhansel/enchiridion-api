@@ -1,11 +1,11 @@
-use std::{process::Command, sync::Arc};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 
 use crate::cloud_storage::{self, TmpFile};
 
 use super::{
-    domain::{CreateMediaResult, MediaType},
+    domain::{CreateMediaResult, CropArgs, MediaType},
     error::CreateMediaError,
     repository::{InsertMediaParams, MediaRepositoryInterface},
 };
@@ -14,7 +14,7 @@ pub struct CreateMediaParams {
     pub media: TmpFile,
     pub media_type: MediaType,
     pub media_duration: Option<f64>,
-    // TODO: add crop coordinates,
+    pub crop_args: Option<CropArgs>,
 }
 
 #[async_trait]
@@ -48,11 +48,18 @@ impl MediaServiceInterface for MediaService {
         &self,
         params: CreateMediaParams,
     ) -> Result<CreateMediaResult, CreateMediaError> {
-        let path = params.media.key();
+        let mut media = params.media;
+        if let Some(args) = params.crop_args {
+            media = match media.crop(args).await {
+                Ok(m) => m,
+                Err(_) => return Err(CreateMediaError::Unknown),
+            };
+        }
 
-        // Command::new("ffmpeg").arg("").arg("");
-        // TODO: if media_type video crop video according to the coordinates
-        if self._cloud_storage.upload(params.media).await.is_err() {
+        let path = media.key();
+
+        if self._cloud_storage.upload(media).await.is_err() {
+            println!("error 1");
             return Err(CreateMediaError::Unknown);
         }
 

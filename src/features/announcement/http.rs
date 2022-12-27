@@ -8,8 +8,7 @@ use crate::{
     features::{announcement::CreateAnnouncementError, media::domain::MediaType},
     http::{
         derive_authentication_middleware_error, derive_user_id, device_middleware,
-        validate_date_format, ApiValidationError, AuthenticationContext, HttpErrorResponse,
-        API_VALIDATION_ERROR_CODE,
+        validate_date_format, AuthenticationContext, HttpErrorResponse, API_VALIDATION_ERROR_CODE,
     },
 };
 

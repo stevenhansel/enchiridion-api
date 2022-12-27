@@ -1,3 +1,4 @@
+use async_process::{Command, Stdio};
 use std::{
     fs::{create_dir_all, remove_file, File},
     io::Write,
@@ -6,9 +7,13 @@ use std::{
 use actix_web::web::Bytes;
 use async_trait::async_trait;
 
+use crate::features::media::domain::CropArgs;
+
+#[derive(Debug)]
 pub enum TmpFileError {
     WriteError(String),
     RemoveError(String),
+    CropError(String),
 }
 
 impl std::fmt::Display for TmpFileError {
@@ -16,6 +21,7 @@ impl std::fmt::Display for TmpFileError {
         match self {
             TmpFileError::WriteError(message) => write!(f, "{}", message),
             TmpFileError::RemoveError(message) => write!(f, "{}", message),
+            TmpFileError::CropError(message) => write!(f, "{}", message),
         }
     }
 }
@@ -69,6 +75,40 @@ impl TmpFile {
 
     pub fn key(&self) -> String {
         format!("{}/{}.{}", self.key, self.filename, self.filetype)
+    }
+
+    pub async fn crop(&self, crop_args: CropArgs) -> Result<Self, TmpFileError> {
+        let crop_filter_str = format!(
+            r#"crop={}:{}:{}:{}"#,
+            crop_args.width, crop_args.height, crop_args.x, crop_args.y
+        );
+
+        let new_filename = format!("{}_cropped", self.filename);
+        let new_path = format!("./tmp/{}.{}", new_filename, self.filetype);
+
+        if let Err(e) = Command::new("ffmpeg")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .arg("-y")
+            .arg("-i")
+            .arg(self.path.clone())
+            .arg("-filter:v")
+            .arg(crop_filter_str)
+            .arg("-c:a")
+            .arg("copy")
+            .arg(new_path.clone())
+            .output()
+            .await
+        {
+            return Err(TmpFileError::CropError(e.to_string()));
+        };
+
+        Ok(TmpFile {
+            path: new_path,
+            filename: new_filename,
+            filetype: self.filetype.clone(),
+            key: self.key.clone(),
+        })
     }
 }
 

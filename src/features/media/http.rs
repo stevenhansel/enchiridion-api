@@ -17,7 +17,7 @@ use crate::{
 };
 
 use super::{
-    domain::MediaType,
+    domain::{CropArgs, MediaType},
     error::{CreateMediaError, MediaErrorCode},
     service::{CreateMediaParams, MediaServiceInterface},
 };
@@ -26,6 +26,7 @@ pub struct CreateMediaMultipart {
     pub media: TmpFile,
     pub media_type: MediaType,
     pub media_duration: Option<f64>,
+    pub crop_args: Option<CropArgs>,
 }
 
 #[derive(Debug, Serialize)]
@@ -43,6 +44,7 @@ pub async fn parse_create_announcement_multipart(
     let mut media: Option<TmpFile> = None;
     let mut media_type: Option<MediaType> = None;
     let mut media_duration: Option<f64> = None;
+    let mut crop_args: Option<CropArgs> = None;
 
     while let Some(item) = payload.next().await {
         let mut field = match item {
@@ -111,6 +113,24 @@ pub async fn parse_create_announcement_multipart(
                     media_duration = Some(duration.to_string().parse::<f64>().unwrap());
                 }
             }
+        } else if field.name() == "crop" {
+            let mut chunks: Vec<Bytes> = vec![];
+            while let Some(chunk) = field.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(e) => return Err(e.to_string()),
+                };
+
+                chunks.push(chunk);
+            }
+
+            if let Ok(raw) = std::str::from_utf8(&chunks[0]) {
+                if raw != "null" {
+                    if let Ok(args) = serde_json::from_str::<CropArgs>(raw) {
+                        crop_args = Some(args);
+                    }
+                }
+            }
         }
     }
 
@@ -127,6 +147,7 @@ pub async fn parse_create_announcement_multipart(
         media,
         media_type,
         media_duration,
+        crop_args,
     })
 }
 
@@ -154,6 +175,7 @@ pub async fn upload(
             media: form.media,
             media_type: form.media_type,
             media_duration: form.media_duration,
+            crop_args: form.crop_args,
         })
         .await
     {

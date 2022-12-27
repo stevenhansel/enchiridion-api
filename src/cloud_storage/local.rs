@@ -26,7 +26,9 @@ impl CloudStorageClient for LocalAdapter {
     async fn upload(&self, file: TmpFile) -> Result<(), CloudStorageError> {
         let bytes = match fs::read(Path::new(&file.path)) {
             Ok(bytes) => bytes,
-            Err(e) => return Err(CloudStorageError::ReadFileError(e.to_string())),
+            Err(e) => {
+                return Err(CloudStorageError::ReadFileError(e.to_string()));
+            }
         };
 
         let static_dir = format!("./static/{}", file.key);
