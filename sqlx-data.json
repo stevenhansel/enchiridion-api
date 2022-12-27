@@ -220,34 +220,6 @@
     },
     "query": "\n            update \"request\"\n            set\n                \"approved_by_lsc\" = $2,\n                \"approved_by_bm\" = $3,\n                \"lsc_approver\" = $4,\n                \"bm_approver\" = $5\n            where \"id\" = $1\n            "
   },
-  "778f6f0e0fed1d145579803f2d148d6626ed333bb53ebb1c145ba2c098792fe5": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Text",
-          "Timestamptz",
-          "Timestamptz",
-          "Text",
-          "Int4",
-          "Text",
-          "Float8",
-          "Int4Array"
-        ]
-      }
-    },
-    "query": "\n                with cte_announcement as (\n                    insert into \"announcement\" (\"title\", \"media\", \"start_date\", \"end_date\", \"notes\", \"user_id\", \"media_type\", \"media_duration\")\n                    values ($1, $2, $3, $4, $5, $6, $7, $8)\n                    returning \"id\"\n                )\n                insert into \"device_announcement\" (\"announcement_id\", \"device_id\")\n                values ((select \"id\" from \"cte_announcement\"), unnest($9::int4[]))\n                returning (select \"id\" from \"cte_announcement\")\n            "
-  },
   "77a57101d78108261374a9f1da80264e7eefb2ff24c86a7a608d16af39b28d2d": {
     "describe": {
       "columns": [],
@@ -566,6 +538,32 @@
       }
     },
     "query": "\n            insert into \"device_announcement\" (\"announcement_id\", \"device_id\")\n            values ($1, unnest($2::int4[]))\n            "
+  },
+  "f726b5b11f934e4439ab58a9d3acb9153ee579205d0e2737572ffae8f8eb0289": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int4",
+          "Timestamptz",
+          "Timestamptz",
+          "Text",
+          "Int4",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n                with cte_announcement as (\n                    insert into \"announcement\" (\"title\", \"media_id\", \"start_date\", \"end_date\", \"notes\", \"user_id\")\n                    values ($1, $2, $3, $4, $5, $6)\n                    returning \"id\"\n                )\n                insert into \"device_announcement\" (\"announcement_id\", \"device_id\")\n                values ((select \"id\" from \"cte_announcement\"), unnest($7::int4[]))\n                returning (select \"id\" from \"cte_announcement\")\n            "
   },
   "f9629db5d47e77b11324f13abc77ac76ea104209146d351c7fa5a662d229164a": {
     "describe": {
