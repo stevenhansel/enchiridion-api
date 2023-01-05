@@ -209,7 +209,7 @@ pub fn dashboard_routes(
                         .guard(guard::Get())
                         .wrap(
                             AuthenticationMiddlewareFactory::new(auth_service.clone())
-                                .with_permission(ApplicationPermission::ResyncDevice)
+                                .with_permission(ApplicationPermission::ViewDeviceDetail)
                                 .with_status(UserStatus::Approved)
                                 .with_require_email_confirmed(true),
                         )
