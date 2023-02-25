@@ -252,13 +252,13 @@ pub async fn confirm_email(
         .path("/")
         .secure(false)
         .http_only(false)
-        .same_site(SameSite::None)
+        .same_site(SameSite::Lax)
         .finish();
     let refresh_token_cookie = Cookie::build("refresh_token", result.refresh_token)
         .path("/")
         .secure(false)
         .http_only(false)
-        .same_site(SameSite::None)
+        .same_site(SameSite::Lax)
         .finish();
 
     HttpResponse::Ok()
@@ -401,13 +401,13 @@ pub async fn login(
         .path("/")
         .secure(false)
         .http_only(false)
-        .same_site(SameSite::None)
+        .same_site(SameSite::Lax)
         .finish();
     let refresh_token_cookie = Cookie::build("refresh_token", result.refresh_token)
         .path("/")
         .secure(false)
         .http_only(false)
-        .same_site(SameSite::None)
+        .same_site(SameSite::Lax)
         .finish();
 
     HttpResponse::Ok()
@@ -467,13 +467,13 @@ pub async fn refresh_token(
         .path("/")
         .secure(false)
         .http_only(false)
-        .same_site(SameSite::None)
+        .same_site(SameSite::Lax)
         .finish();
     let refresh_token_cookie = Cookie::build("refresh_token", result.refresh_token)
         .path("/")
         .secure(false)
         .http_only(false)
-        .same_site(SameSite::None)
+        .same_site(SameSite::Lax)
         .finish();
 
     HttpResponse::NoContent()
@@ -580,13 +580,13 @@ pub async fn logout(
         .path("/")
         .secure(false)
         .http_only(false)
-        .same_site(SameSite::None)
+        .same_site(SameSite::Lax)
         .finish();
     let refresh_token_cookie = Cookie::build("refresh_token", "")
         .path("/")
         .secure(false)
         .http_only(false)
-        .same_site(SameSite::None)
+        .same_site(SameSite::Lax)
         .finish();
 
     HttpResponse::NoContent()
