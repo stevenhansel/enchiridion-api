@@ -55,7 +55,7 @@ pub struct ListFloorDeviceContent {
     pub id: i32,
     pub name: String,
     pub description: String,
-    // pub total_announcements: i32,
+    pub total_announcements: i32,
 }
 
 pub async fn list_floor(
@@ -113,6 +113,7 @@ pub async fn list_floor(
                     id: row.id,
                     name: row.name,
                     description: row.description,
+                    total_announcements: row.total_announcements,
                 })
                 .collect(),
         })
